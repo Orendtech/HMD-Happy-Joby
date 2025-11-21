@@ -87,11 +87,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                 <span className={`text-[10px] font-medium mt-1 transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 hidden'}`}>
                                     {item.label}
                                 </span>
-
-                                {/* Active Dot Indicator */}
-                                {isActive && (
-                                    <div className="absolute top-1 w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
-                                )}
                             </button>
                         );
                     })}
