@@ -36,7 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 <div className="flex items-center gap-4">
                    <div className="relative group">
                         <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                        <img src="https://img2.pic.in.th/pic/Happy-joby.png" alt="Logo" className="relative h-10 w-auto object-contain drop-shadow-lg" />
+                        <img src="https://img2.pic.in.th/pic/Happy-joby.png" alt="Logo" className="relative h-10 w-auto object-contain drop-shadow-lg rounded-lg" />
                    </div>
                    <div className="flex flex-col">
                        <div className="flex items-center gap-2">

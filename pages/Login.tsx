@@ -61,7 +61,7 @@ const Login: React.FC = () => {
                         <img 
                             src="https://img2.pic.in.th/pic/Happy-joby.png" 
                             alt="Happy Joby Logo" 
-                            className="relative h-28 w-auto object-contain drop-shadow-2xl" 
+                            className="relative h-28 w-auto object-contain drop-shadow-2xl rounded-2xl" 
                         />
                     </div>
                     <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
