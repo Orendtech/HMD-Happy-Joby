@@ -14,15 +14,15 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const location = useLocation();
 
     const navItems = [
-        { path: '/', icon: <Clock size={22} />, label: 'ลงเวลา' },
-        { path: '/reports', icon: <FileText size={22} />, label: 'รายงาน' },
-        { path: '/management', icon: <Users size={22} />, label: 'รายชื่อ' },
-        { path: '/dashboard', icon: <MapIcon size={22} />, label: 'แผนที่' },
+        { path: '/', icon: <Clock size={24} />, label: 'ลงเวลา' },
+        { path: '/reports', icon: <FileText size={24} />, label: 'รายงาน' },
+        { path: '/management', icon: <Users size={24} />, label: 'รายชื่อ' },
+        { path: '/dashboard', icon: <MapIcon size={24} />, label: 'แผนที่' },
     ];
 
     // Add Admin Tab if user is admin or manager
     if (['admin', 'manager'].includes(userProfile?.role || '')) {
-        navItems.push({ path: '/admin', icon: <ShieldCheck size={22} />, label: 'Admin' });
+        navItems.push({ path: '/admin', icon: <ShieldCheck size={24} />, label: 'Admin' });
     }
 
     return (
@@ -32,11 +32,11 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
              <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
 
              {/* Minimal Header with Safe Area Padding */}
-            <header className="px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 flex justify-between items-center z-20">
+            <header className="px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 flex justify-between items-center z-20 bg-gradient-to-b from-slate-950 to-transparent">
                 <div className="flex items-center gap-4">
                    <div className="relative group">
                         <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                        <img src="https://img2.pic.in.th/pic/Happy-joby.png" alt="Logo" className="relative h-12 w-auto object-contain drop-shadow-lg" />
+                        <img src="https://img2.pic.in.th/pic/Happy-joby.png" alt="Logo" className="relative h-10 w-auto object-contain drop-shadow-lg" />
                    </div>
                    <div className="flex flex-col">
                        <div className="flex items-center gap-2">
@@ -51,41 +51,46 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 </div>
                 <button 
                     onClick={() => navigate('/settings')} 
-                    className="p-3 bg-slate-900/50 border border-white/5 rounded-full hover:bg-slate-800 transition-all hover:scale-110 active:scale-95 group"
+                    className="p-2 bg-slate-900/50 border border-white/5 rounded-full hover:bg-slate-800 transition-all active:scale-95 group"
                 >
                     <Settings size={20} className="text-slate-400 group-hover:text-white transition-colors" />
                 </button>
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto pb-32 px-4 z-10 pt-2 scroll-smooth">
+            <main className="flex-1 overflow-y-auto pb-28 px-4 z-10 pt-2 scroll-smooth">
                 <Outlet />
             </main>
 
-            {/* Floating Dock Navigation */}
-            <nav className="fixed bottom-6 left-4 right-4 z-50 pb-[env(safe-area-inset-bottom)]">
-                <div className="bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 p-2 max-w-md mx-auto flex justify-between items-center relative overflow-hidden">
-                    {/* Shine effect on dock */}
-                    <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-                    
+            {/* Native Bottom Tab Bar */}
+            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-950/90 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)] pt-2 transition-all duration-300">
+                <div className="flex justify-around items-center h-16 max-w-md mx-auto w-full px-2">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
                             <button
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
-                                className={`relative flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-all duration-500 group ${
-                                    isActive ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                                className={`relative flex flex-col items-center justify-center w-full h-full transition-all duration-300 group ${
+                                    isActive ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'
                                 }`}
                             >
+                                {/* Active Background Glow */}
                                 {isActive && (
-                                    <div className="absolute inset-0 bg-white/10 rounded-xl blur-md scale-75 animate-pulse"></div>
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-cyan-500/10 rounded-full blur-md -z-10"></div>
                                 )}
-                                <div className={`relative z-10 transform transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`}>
+
+                                <div className={`transform transition-all duration-300 ${isActive ? '-translate-y-1 scale-110' : ''}`}>
                                     {item.icon}
                                 </div>
+                                
+                                <span className={`text-[10px] font-medium mt-1 transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 hidden'}`}>
+                                    {item.label}
+                                </span>
+
+                                {/* Active Dot Indicator */}
                                 {isActive && (
-                                    <div className="absolute -bottom-1 w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_10px_rgba(34,211,238,1)]"></div>
+                                    <div className="absolute top-1 w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_rgba(34,211,238,0.8)]"></div>
                                 )}
                             </button>
                         );
