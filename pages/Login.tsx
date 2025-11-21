@@ -1,0 +1,161 @@
+import React, { useState } from 'react';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../firebaseConfig';
+import { GlassCard } from '../components/GlassCard';
+import { Key, Mail, AlertCircle, Eye, EyeOff, Sparkles, ArrowRight } from 'lucide-react';
+
+const Login: React.FC = () => {
+    const [isLogin, setIsLogin] = useState(true);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [resetSent, setResetSent] = useState(false);
+
+    const handleAuth = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            if (isLogin) {
+                await signInWithEmailAndPassword(auth, email, password);
+            } else {
+                await createUserWithEmailAndPassword(auth, email, password);
+            }
+        } catch (err: any) {
+            console.error(err);
+            if (err.code === 'auth/invalid-credential') setError('Invalid credentials.');
+            else if (err.code === 'auth/email-already-in-use') setError('Email already in use.');
+            else if (err.code === 'auth/weak-password') setError('Password is too weak.');
+            else setError('Something went wrong. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            setError('Please enter your email to reset password.');
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            setResetSent(true);
+            setError('');
+        } catch (err) {
+            setError('Failed to send reset email.');
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 p-6 font-sans relative overflow-hidden">
+             {/* Cinematic Background */}
+             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[5000ms]"></div>
+             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <div className="w-full max-w-md z-10 animate-enter">
+                <div className="text-center mb-10">
+                     <div className="relative inline-block mb-6 group cursor-default">
+                        <div className="absolute -inset-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                        <img 
+                            src="https://img2.pic.in.th/pic/Happy-joby.png" 
+                            alt="Happy Joby Logo" 
+                            className="relative h-28 w-auto object-contain drop-shadow-2xl" 
+                        />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                        Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Happy Joby</span>
+                    </h1>
+                    <p className="text-slate-400 text-sm">The intelligent workspace for modern teams.</p>
+                </div>
+
+                <GlassCard className="p-8 border-white/5 bg-slate-900/50 shadow-2xl ring-1 ring-white/10">
+                    <form onSubmit={handleAuth} className="space-y-5">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-slate-400 ml-1 uppercase tracking-wider">Email</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                                <input 
+                                    type="email" 
+                                    required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                                    placeholder="name@company.com"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-slate-400 ml-1 uppercase tracking-wider">Password</label>
+                            <div className="relative group">
+                                <Key className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                                <input 
+                                    type={showPassword ? "text" : "password"} 
+                                    required
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3 pl-12 pr-12 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
+                                    placeholder="••••••••"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-3.5 text-slate-500 hover:text-white focus:outline-none transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {error && (
+                            <div className="flex items-center gap-3 text-rose-400 text-sm bg-rose-950/30 border border-rose-500/20 p-3 rounded-xl animate-pulse">
+                                <AlertCircle size={18} />
+                                {error}
+                            </div>
+                        )}
+
+                         {resetSent && (
+                            <div className="flex items-center gap-3 text-emerald-400 text-sm bg-emerald-950/30 border border-emerald-500/20 p-3 rounded-xl">
+                                <Sparkles size={18} />
+                                Reset email sent successfully.
+                            </div>
+                        )}
+
+                        <button 
+                            type="submit"
+                            disabled={loading}
+                            className="w-full group relative bg-white text-slate-950 font-bold py-3.5 rounded-xl shadow-lg shadow-white/10 transition-all transform hover:scale-[1.02] active:scale-95 overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-200/50 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+                            <span className="flex items-center justify-center gap-2">
+                                {loading ? <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div> : (
+                                    <>
+                                        {isLogin ? 'Sign In' : 'Create Account'} 
+                                        {!loading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform"/>}
+                                    </>
+                                )}
+                            </span>
+                        </button>
+                    </form>
+
+                    <div className="mt-8 flex flex-col items-center gap-4 text-sm">
+                        <button onClick={() => setIsLogin(!isLogin)} className="text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 group">
+                            {isLogin ? 'New here?' : 'Already have an account?'}
+                            <span className="text-cyan-400 group-hover:underline underline-offset-4">{isLogin ? 'Create an account' : 'Sign in'}</span>
+                        </button>
+                        
+                        {isLogin && (
+                             <button onClick={handleForgotPassword} className="text-slate-500 hover:text-slate-300 text-xs transition-colors">
+                                Forgot Password?
+                            </button>
+                        )}
+                    </div>
+                </GlassCard>
+            </div>
+        </div>
+    );
+};
+
+export default Login;

@@ -1,0 +1,7 @@
+{
+  "name": "HMDA of Happy Joby",
+  "description": "A mobile-first employee attendance tracking system with GPS location, hospital management, and admin dashboard.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

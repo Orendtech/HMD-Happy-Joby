@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="th" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <title>Happy Joby - Intelligent Workspace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+     <style>
+      body {
+        font-family: 'Sarabun', sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        background-color: #020617; /* Slate 950 */
+        color: #f8fafc;
+      }
+      
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+
+      /* Map Override */
+      .leaflet-container {
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        background: #0f172a;
+        font-family: 'Sarabun', sans-serif;
+      }
+      
+      /* Animations */
+      @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes float-up {
+        0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8); }
+        20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+        80% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
+        100% { opacity: 0; transform: translate(-50%, -40px) scale(0.9); }
+      }
+      .animate-enter {
+        animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      .animate-float-up {
+        animation: float-up 2s ease-out forwards;
+      }
+      .delay-100 { animation-delay: 100ms; }
+      .delay-200 { animation-delay: 200ms; }
+      .delay-300 { animation-delay: 300ms; }
+
+    </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                          DEFAULT: '#06b6d4', // Cyan 500
+                          glow: '#22d3ee', // Cyan 400
+                        },
+                        surface: {
+                          light: 'rgba(255, 255, 255, 0.05)',
+                          medium: 'rgba(30, 41, 59, 0.7)',
+                          dark: '#020617'
+                        }
+                    },
+                    backgroundImage: {
+                      'ai-gradient': 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%)',
+                      'glass': 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.0) 100%)'
+                    }
+                }
+            }
+        }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react-leaflet": "https://aistudiocdn.com/react-leaflet@^5.0.0",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "leaflet/": "https://aistudiocdn.com/leaflet@^1.9.4/",
+    "leaflet": "https://aistudiocdn.com/leaflet@^1.9.4",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
