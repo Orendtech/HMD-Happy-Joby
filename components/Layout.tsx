@@ -31,8 +31,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
              <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen animate-pulse duration-[10000ms]"></div>
              <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
 
-             {/* Minimal Header */}
-            <header className="px-6 pt-6 pb-2 flex justify-between items-center z-20">
+             {/* Minimal Header with Safe Area Padding */}
+            <header className="px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 flex justify-between items-center z-20">
                 <div className="flex items-center gap-4">
                    <div className="relative group">
                         <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
@@ -63,7 +63,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             </main>
 
             {/* Floating Dock Navigation */}
-            <nav className="fixed bottom-6 left-4 right-4 z-50">
+            <nav className="fixed bottom-6 left-4 right-4 z-50 pb-[env(safe-area-inset-bottom)]">
                 <div className="bg-slate-900/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl shadow-black/50 p-2 max-w-md mx-auto flex justify-between items-center relative overflow-hidden">
                     {/* Shine effect on dock */}
                     <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>

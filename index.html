@@ -2,7 +2,19 @@
 <html lang="th" class="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
+    
+    <!-- PWA & Theme Settings -->
+    <meta name="theme-color" content="#020617" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Happy Joby" />
+
+    <!-- App Icons -->
+    <link rel="icon" type="image/png" href="https://img2.pic.in.th/pic/Happy-joby.png" />
+    <link rel="apple-touch-icon" href="https://img2.pic.in.th/pic/Happy-joby.png" />
+    <link rel="manifest" href="/manifest.json" />
+
     <title>Happy Joby - Intelligent Workspace</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -15,6 +27,9 @@
         -webkit-tap-highlight-color: transparent;
         background-color: #020617; /* Slate 950 */
         color: #f8fafc;
+        /* Handle safe area for iPhones with notches */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
       }
       
       /* Custom Scrollbar */
