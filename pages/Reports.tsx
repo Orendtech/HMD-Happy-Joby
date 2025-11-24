@@ -3,7 +3,7 @@ import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
 import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers } from '../services/dbService';
 import { AttendanceDay, PipelineData, UserProfile, AdminUser, VisitReport } from '../types';
-import { Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, Edit, X, Save, Loader2, Building, Users, ChevronDown, ExternalLink, BarChart3, List, PieChart, Calendar, Trash2, ArrowLeft } from 'lucide-react';
+import { Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, Edit, X, Save, Loader2, Building, Users, ChevronDown, ExternalLink, BarChart3, List, PieChart, Calendar, Trash2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 interface Props {
     user: User;
@@ -20,7 +20,7 @@ interface EditTarget {
 }
 
 const Reports: React.FC<Props> = ({ user }) => {
-    const [activeTab, setActiveTab] = useState<'reports' | 'dashboard'>('dashboard');
+    const [activeTab, setActiveTab] = useState<'reports' | 'dashboard'>('reports');
     const [history, setHistory] = useState<AttendanceDay[]>([]);
     const [loading, setLoading] = useState(true);
     const [isPrivileged, setIsPrivileged] = useState(false);
@@ -363,7 +363,18 @@ const Reports: React.FC<Props> = ({ user }) => {
                                 if (day.report?.visits) {
                                     visits = day.report.visits;
                                 } else {
-                                    // Legacy Support logic omitted for brevity but preserved in system
+                                    // Legacy Support logic
+                                    const flatPipeline = Array.isArray(day.report?.pipeline) ? day.report?.pipeline : day.report?.pipeline ? [day.report.pipeline] : [];
+                                    const flatMetWith = Array.isArray(day.report?.metWith) ? day.report?.metWith : day.report?.metWith ? [day.report.metWith] : [];
+                                    if (day.checkIns.length > 0) {
+                                        visits = day.checkIns.map((ci, i) => ({
+                                            location: ci.location,
+                                            checkInTime: ci.timestamp,
+                                            summary: i === day.checkIns.length - 1 ? day.report?.summary || '' : '',
+                                            metWith: i === day.checkIns.length - 1 ? flatMetWith : [],
+                                            pipeline: i === day.checkIns.length - 1 ? flatPipeline : []
+                                        }));
+                                    }
                                 }
 
                                 return (
@@ -404,49 +415,91 @@ const Reports: React.FC<Props> = ({ user }) => {
                                                                 <div className="text-[10px] text-slate-400 bg-slate-50 dark:bg-black/20 px-1.5 py-0.5 rounded">{visit.checkInTime?.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</div>
                                                             </div>
 
-                                                            {/* Details */}
-                                                            <div className="ml-7 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-white/5 rounded-xl p-4">
-                                                                {/* Summary */}
-                                                                {visit.summary ? (
-                                                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-3 whitespace-pre-line">"{visit.summary}"</p>
-                                                                ) : (
-                                                                    <p className="text-xs text-slate-400 italic mb-3">No summary recorded.</p>
-                                                                )}
+                                                            {/* Details Card */}
+                                                            <div className="ml-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
+                                                                
+                                                                {/* Scenario A: Detailed Interactions (New System) */}
+                                                                {visit.interactions && visit.interactions.length > 0 ? (
+                                                                    <div className="divide-y divide-slate-100 dark:divide-white/5">
+                                                                        {visit.interactions.map((interaction, iIdx) => (
+                                                                            <div key={iIdx} className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                                                                {/* Interaction Header: Who */}
+                                                                                <div className="flex items-center gap-2 mb-2">
+                                                                                    <div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-300">
+                                                                                        <UserIcon size={12} />
+                                                                                    </div>
+                                                                                    <span className="font-bold text-sm text-slate-900 dark:text-white">{interaction.customerName}</span>
+                                                                                    {interaction.department && <span className="text-xs text-slate-500">({interaction.department})</span>}
+                                                                                </div>
 
-                                                                {/* Met With */}
-                                                                {visit.metWith && visit.metWith.length > 0 && (
-                                                                    <div className="flex flex-wrap gap-2 mb-3">
-                                                                        {visit.metWith.map((contact, ci) => (
-                                                                            <span key={ci} className="flex items-center gap-1 text-[10px] bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 px-2 py-1 rounded border border-purple-100 dark:border-purple-500/20">
-                                                                                <UserIcon size={10}/> {contact}
-                                                                            </span>
+                                                                                {/* Interaction Body: What */}
+                                                                                <div className="pl-8">
+                                                                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                                                                                        {interaction.summary || <span className="italic text-slate-400">No summary recorded.</span>}
+                                                                                    </p>
+
+                                                                                    {/* Interaction Footer: Result (Pipeline) */}
+                                                                                    {interaction.pipeline && (
+                                                                                        <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-500/20 rounded-lg p-3 flex justify-between items-center">
+                                                                                            <div className="flex items-center gap-3">
+                                                                                                <div className="p-1.5 bg-indigo-100 dark:bg-indigo-500/30 rounded text-indigo-600 dark:text-indigo-300">
+                                                                                                    <TrendingUp size={14} />
+                                                                                                </div>
+                                                                                                <div>
+                                                                                                    <div className="text-xs font-bold text-indigo-900 dark:text-indigo-200">{interaction.pipeline.product}</div>
+                                                                                                    <div className="text-[10px] text-indigo-600 dark:text-indigo-400">{interaction.pipeline.stage} • {interaction.pipeline.probability}%</div>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="text-right">
+                                                                                                <div className="font-mono text-sm font-bold text-indigo-700 dark:text-indigo-300">฿{interaction.pipeline.value.toLocaleString()}</div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
                                                                         ))}
                                                                     </div>
-                                                                )}
+                                                                ) : (
+                                                                    /* Scenario B: Legacy / Simple (Aggregated) */
+                                                                    <div className="p-4">
+                                                                        {/* Met With */}
+                                                                        {visit.metWith && visit.metWith.length > 0 && (
+                                                                            <div className="flex flex-wrap gap-2 mb-3 pl-1">
+                                                                                {visit.metWith.map((contact, ci) => (
+                                                                                    <span key={ci} className="flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+                                                                                        <UserIcon size={10} className="text-slate-400"/> {contact}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                        
+                                                                        {/* Summary */}
+                                                                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-4 pl-3 border-l-2 border-slate-200 dark:border-slate-700 ml-1">
+                                                                            {visit.summary || <span className="italic text-slate-400">No summary recorded.</span>}
+                                                                        </p>
 
-                                                                {/* Pipeline */}
-                                                                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/5">
-                                                                    {/* 1. Visit-level Aggregated Pipeline */}
-                                                                    {visit.pipeline && visit.pipeline.map((item: any, pi: number) => (
-                                                                        <div key={pi} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2.5 flex justify-between items-center shadow-sm">
-                                                                            <div><div className="flex items-center gap-2"><span className="font-bold text-xs text-slate-800 dark:text-slate-200">{item.product}</span>{item.customerName && <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1 rounded">{item.customerName}</span>}</div><div className="text-[10px] text-slate-500">{item.stage} • {item.probability}%</div></div>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">฿{item.value.toLocaleString()}</div>
-                                                                                <button onClick={() => handleEditClick(day.id, item, { visitIdx: vIdx, legacyIdx: pi })} className="p-1 text-slate-400 hover:text-cyan-500"><Edit size={12} /></button>
+                                                                        {/* Pipeline */}
+                                                                        {visit.pipeline && visit.pipeline.length > 0 && (
+                                                                            <div className="space-y-2">
+                                                                                {visit.pipeline.map((item, pi) => (
+                                                                                    <div key={pi} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5 rounded-lg p-2.5 flex justify-between items-center shadow-sm">
+                                                                                        <div>
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{item.product}</span>
+                                                                                                {item.customerName && <span className="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-500 px-1.5 rounded">{item.customerName}</span>}
+                                                                                            </div>
+                                                                                            <div className="text-[10px] text-slate-500">{item.stage} • {item.probability}%</div>
+                                                                                        </div>
+                                                                                        <div className="text-right">
+                                                                                            <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">฿{item.value.toLocaleString()}</div>
+                                                                                            <button onClick={() => handleEditClick(day.id, item, { visitIdx: vIdx, legacyIdx: pi })} className="p-1 text-slate-400 hover:text-cyan-500"><Edit size={12} /></button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
                                                                             </div>
-                                                                        </div>
-                                                                    ))}
-                                                                    {/* 2. Detailed Interaction Pipeline */}
-                                                                    {visit.interactions && visit.interactions.map((inter, iIdx) => inter.pipeline && (
-                                                                        <div key={iIdx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2.5 flex justify-between items-center shadow-sm">
-                                                                            <div><div className="flex items-center gap-2"><span className="font-bold text-xs text-slate-800 dark:text-slate-200">{inter.pipeline.product}</span>{inter.customerName && <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1 rounded">{inter.customerName}</span>}</div><div className="text-[10px] text-slate-500">{inter.pipeline.stage} • {inter.pipeline.probability}%</div></div>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">฿{inter.pipeline.value.toLocaleString()}</div>
-                                                                                <button onClick={() => handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx })} className="p-1 text-slate-400 hover:text-cyan-500"><Edit size={12} /></button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -464,11 +517,10 @@ const Reports: React.FC<Props> = ({ user }) => {
                         <div className="space-y-6">
                             {/* KPI Cards */}
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                <GlassCard className="p-4 flex flex-col gap-1 bg-indigo-500 text-white border-none relative overflow-hidden">
-                                    <div className="absolute -right-4 -top-4 w-20 h-20 bg-white/20 rounded-full blur-2xl"></div>
-                                    <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">Total Pipeline</span>
-                                    <span className="text-2xl font-black tracking-tight">฿{(totalValue/1000).toFixed(1)}k</span>
-                                    <span className="text-[10px] opacity-70">{allDeals.length} active deals</span>
+                                <GlassCard className="p-4 flex flex-col gap-1 bg-white dark:bg-slate-800">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Pipeline</span>
+                                    <span className="text-2xl font-black tracking-tight text-indigo-600 dark:text-indigo-400">฿{(totalValue/1000).toFixed(1)}k</span>
+                                    <span className="text-[10px] text-slate-400">{allDeals.length} active deals</span>
                                 </GlassCard>
                                 <GlassCard className="p-4 flex flex-col gap-1 bg-white dark:bg-slate-800">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Weighted Forecast</span>
@@ -556,6 +608,32 @@ const Reports: React.FC<Props> = ({ user }) => {
                                     ))
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* --- FULL PAGE EDIT VIEW --- */}
+                    {editTarget && (
+                        <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
+                            {/* ... Edit View Code (Same as before) ... */}
+                            <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
+                                <button onClick={() => setEditTarget(null)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                    <ArrowLeft size={20} />
+                                </button>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><Edit className="text-cyan-500" size={24}/> Edit Opportunity</h2>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Update details for {editTarget.data.product}</p>
+                                </div>
+                            </div>
+                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] p-6 shadow-sm space-y-6">
+                                <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Product / Solution</label><input value={editTarget.data.product} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base font-medium" /></div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Value (THB)</label><div className="relative"><div className="absolute left-4 top-4 text-slate-400"><DollarSign size={18}/></div><input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base font-mono" /></div></div>
+                                    <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Stage</label><div className="relative"><select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base appearance-none">{pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}</select><ChevronDown className="absolute right-4 top-5 text-slate-400 pointer-events-none" size={16} /></div></div>
+                                </div>
+                                <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Expected Close Date</label><div className="relative"><Calendar className="absolute left-4 top-4 text-slate-400" size={18}/><input type="date" value={editTarget.data.expectedCloseDate || ''} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base" /></div></div>
+                                <div className="space-y-4 pt-2"><div className="flex justify-between items-end"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Probability</label><span className={`text-sm font-bold px-2 py-1 rounded ${getProbColor(editTarget.data.probability)}`}>{editTarget.data.probability}%</span></div><input type="range" min="0" max="100" step="10" value={editTarget.data.probability} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" /><div className="flex justify-between text-xs text-slate-400 px-1"><span>0%</span><span>50%</span><span>100%</span></div></div>
+                            </div>
+                            <div className="flex gap-4 pt-4"><button onClick={handleDelete} disabled={saving} className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors border border-rose-100 dark:border-rose-500/20 shadow-sm"><Trash2 size={24} /></button><button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2 shadow-md">{saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Save Changes</>}</button></div>
                         </div>
                     )}
                 </>
