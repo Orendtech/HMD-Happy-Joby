@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="th" class="dark">
+<html lang="th">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
@@ -16,6 +16,18 @@
     <link rel="manifest" href="/manifest.json" />
 
     <title>Happy Joby - Intelligent Workspace</title>
+    
+    <!-- Theme Initialization Script (Must be in head to prevent flash) -->
+    <script>
+      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#020617');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f8fafc');
+      }
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -25,9 +37,23 @@
       body {
         font-family: 'Sarabun', sans-serif;
         -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      
+      /* Light Mode Defaults */
+      body {
+        background-color: #f8fafc; /* Slate 50 */
+        color: #0f172a; /* Slate 900 */
+      }
+
+      /* Dark Mode Overrides */
+      .dark body {
         background-color: #020617; /* Slate 950 */
-        color: #f8fafc;
-        /* Handle safe area for iPhones with notches */
+        color: #f8fafc; /* Slate 50 */
+      }
+
+      /* Handle safe area for iPhones with notches */
+      body {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
       }
@@ -37,13 +63,22 @@
         width: 6px;
       }
       ::-webkit-scrollbar-track {
-        background: #0f172a;
+        background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: #334155;
+        background: #cbd5e1;
         border-radius: 10px;
       }
+      .dark ::-webkit-scrollbar-track {
+        background: #0f172a;
+      }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #334155;
+      }
       ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
         background: #475569;
       }
 
@@ -52,8 +87,11 @@
         width: 100%;
         height: 100%;
         z-index: 0;
-        background: #0f172a;
+        background: #f1f5f9;
         font-family: 'Sarabun', sans-serif;
+      }
+      .dark .leaflet-container {
+        background: #0f172a;
       }
       
       /* Animations */
@@ -67,12 +105,50 @@
         80% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
         100% { opacity: 0; transform: translate(-50%, -40px) scale(0.9); }
       }
+      @keyframes pulse-ring {
+        0% { transform: scale(0.8); opacity: 0.8; }
+        100% { transform: scale(1.5); opacity: 0; }
+      }
+      /* New Fly Animation: Starts center bottom, flies to top left HUD */
+      @keyframes fly-to-collection {
+        0% { 
+            opacity: 0; 
+            transform: translate(-50%, 0) scale(0.5); 
+            top: 70%; 
+            left: 50%;
+        }
+        20% { 
+            opacity: 1; 
+            transform: translate(-50%, -50%) scale(1.5); 
+            top: 50%; 
+            left: 50%;
+        }
+        40% {
+            transform: translate(-50%, -50%) scale(1.2);
+            top: 50%;
+            left: 50%;
+        }
+        100% { 
+            opacity: 0; 
+            transform: translate(-50%, -50%) scale(0.2); 
+            top: 5%; 
+            left: 10%; /* Targets the approximate area of the Level/XP HUD */
+        }
+      }
+
       .animate-enter {
         animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       .animate-float-up {
         animation: float-up 2s ease-out forwards;
       }
+      .animate-fly-xp {
+        position: fixed;
+        z-index: 9999;
+        animation: fly-to-collection 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        pointer-events: none;
+      }
+
       .delay-100 { animation-delay: 100ms; }
       .delay-200 { animation-delay: 200ms; }
       .delay-300 { animation-delay: 300ms; }

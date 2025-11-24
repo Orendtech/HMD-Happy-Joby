@@ -15,19 +15,22 @@ export interface PipelineData {
     probability: number; // 0-100
     lastUpdated?: string; // ISO Date
     isNew?: boolean; // UI helper
+    customerName?: string; // Link deal to a specific person/customer
+    expectedCloseDate?: string; // NEW: YYYY-MM-DD
 }
 
 export interface UserProfile {
     email: string;
     name?: string;         
     area?: string;         
-    startDate?: string;    
+    startDate?: string;
+    photoBase64?: string;
     lastLogin?: Timestamp;
     hospitals: string[];
     customers: Customer[];
     role?: 'admin' | 'manager' | 'user'; 
     isApproved?: boolean;
-    reportsTo?: string; // UID of the manager this user reports to
+    reportsTo?: string;
     
     // Smart Pipeline Memory
     activePipeline?: PipelineData[];
@@ -36,7 +39,7 @@ export interface UserProfile {
     xp?: number;
     level?: number;
     currentStreak?: number;
-    lastActiveDate?: string; // YYYY-MM-DD to track daily streaks
+    lastActiveDate?: string;
 }
 
 export interface CheckInRecord {
@@ -46,11 +49,23 @@ export interface CheckInRecord {
     longitude: number;
 }
 
-export interface DailyReport {
+// NEW: Granular Report per Visit
+export interface VisitReport {
+    location: string;
+    checkInTime: Timestamp;
     summary: string;
-    metWith: string[]; // Changed to array for multiple contacts
-    hospital: string;
-    pipeline?: PipelineData[]; // Changed to array for multiple opportunities
+    metWith: string[];
+    pipeline: PipelineData[];
+}
+
+export interface DailyReport {
+    // Optional legacy fields for backward compatibility
+    summary?: string; 
+    metWith?: string[] | string;
+    pipeline?: PipelineData[] | PipelineData;
+
+    // New Structure: Array of specific visits matches checkIns
+    visits?: VisitReport[];
 }
 
 export interface AttendanceDay {
@@ -64,7 +79,10 @@ export interface AttendanceDay {
 export interface UserLocationData {
     userId: string;
     email: string;
+    name?: string;
+    photoBase64?: string;
     lastCheckIn: CheckInRecord | null;
+    isCheckedOut?: boolean;
 }
 
 // For Admin User Management

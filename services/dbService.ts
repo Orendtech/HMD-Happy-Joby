@@ -16,7 +16,7 @@ import {
     orderBy,
     documentId
 } from 'firebase/firestore';
-import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData } from '../types';
+import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport } from '../types';
 
 // Helpers to build paths
 const getUserRef = (userId: string) => doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}`);
@@ -172,9 +172,15 @@ export const checkOut = async (userId: string, reportData: DailyReport) => {
     const attRef = getAttendanceRef(userId, today);
     const userRef = getUserRef(userId);
     
-    // 1. Prepare Data
-    const pipelineItems = reportData.pipeline || [];
-    const finalPipelineItems: PipelineData[] = [];
+    // 1. Consolidate ALL Pipeline Items from ALL visits
+    let allNewPipelineItems: PipelineData[] = [];
+    if (reportData.visits) {
+        reportData.visits.forEach(visit => {
+            if (visit.pipeline) {
+                allNewPipelineItems = [...allNewPipelineItems, ...visit.pipeline];
+            }
+        });
+    }
 
     // 2. Process Pipeline Logic (Smart Continuity)
     // We need to merge these items into the User's "activePipeline"
@@ -182,7 +188,7 @@ export const checkOut = async (userId: string, reportData: DailyReport) => {
     const userData = userSnap.data() as UserProfile;
     let activePipeline = userData.activePipeline || [];
 
-    pipelineItems.forEach(item => {
+    allNewPipelineItems.forEach(item => {
         // If no ID (New Deal), generate one
         const finalItem = { ...item };
         if (!finalItem.id) {
@@ -200,13 +206,7 @@ export const checkOut = async (userId: string, reportData: DailyReport) => {
             // Add new deal
             activePipeline.push(finalItem);
         }
-
-        finalPipelineItems.push(finalItem);
     });
-
-    // Optional: Filter out closed deals from active list if we want to hide them in future
-    // activePipeline = activePipeline.filter(p => !['Closed Won', 'Closed Lost'].includes(p.stage));
-    // For now, let's keep them so user sees history in the dropdown, maybe sort by date
 
     // 3. Update User Profile with new Active Pipeline state
     await updateDoc(userRef, {
@@ -214,21 +214,18 @@ export const checkOut = async (userId: string, reportData: DailyReport) => {
     });
 
     // 4. Save Attendance Report (History)
-    const finalReport = { ...reportData, pipeline: finalPipelineItems };
-    
     const updateData: any = {
         checkOut: Timestamp.now(),
-        report: finalReport
+        report: reportData
     };
 
     await updateDoc(attRef, updateData);
 };
 
 export const updatePipelineItem = async (userId: string, dateId: string, updatedPipeline: PipelineData[]) => {
-    const attRef = getAttendanceRef(userId, dateId);
-    await updateDoc(attRef, {
-        "report.pipeline": updatedPipeline
-    });
+    // Note: Deep update for specific visit is complex in Firestore without reading whole doc.
+    // For now, this function might need to be adapted if used for editing past reports.
+    // We will disable editing pipeline in the simple view for this iteration or handle it later.
 };
 
 export const getTodayAttendance = async (userId: string): Promise<AttendanceDay | null> => {
@@ -324,10 +321,10 @@ export const adminCreateUser = async (email: string, pass: string, reportsTo?: s
     }
 };
 
-export const getAllUsersTodayLocations = async (): Promise<any[]> => {
+export const getAllUsersTodayLocations = async (): Promise<UserLocationData[]> => {
     try {
         const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`));
-        const results = [];
+        const results: UserLocationData[] = [];
         const today = getTodayDateId();
 
         for (const userDoc of usersSnap.docs) {
@@ -341,6 +338,8 @@ export const getAllUsersTodayLocations = async (): Promise<any[]> => {
                     results.push({
                         userId,
                         email: userData.email,
+                        name: userData.name,
+                        photoBase64: userData.photoBase64,
                         lastCheckIn: latest,
                         isCheckedOut: !!attData.checkOut
                     });
@@ -360,7 +359,7 @@ export const getGlobalDailyReport = async (dateId: string): Promise<any[]> => {
 export const getGlobalReportRange = async (startDate: string, endDate: string): Promise<any[]> => {
     try {
         const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`));
-        const reportData = [];
+        const reportData: any[] = [];
 
         for (const userDoc of usersSnap.docs) {
             const userId = userDoc.id;
@@ -375,38 +374,63 @@ export const getGlobalReportRange = async (startDate: string, endDate: string): 
 
             attSnaps.forEach(attSnap => {
                  const attData = attSnap.data() as AttendanceDay;
-                const checkInCount = attData.checkIns.length;
-                const locationNames = attData.checkIns.map(c => c.location);
-                const uniqueLocations = new Set(locationNames).size;
+                
+                // Logic to flatten report based on Visits
+                if (attData.report && attData.report.visits && attData.report.visits.length > 0) {
+                    // New Structure: Multiple rows per day if multiple visits
+                    attData.report.visits.forEach((visit) => {
+                        let pipelineStr = '';
+                        if (visit.pipeline) {
+                            pipelineStr = visit.pipeline.map(p => `${p.product} (${p.stage})`).join(' | ');
+                        }
+                        let metWithStr = visit.metWith ? visit.metWith.join(', ') : '';
 
-                let metWithStr = '';
-                if (Array.isArray(attData.report?.metWith)) {
-                    metWithStr = attData.report.metWith.join(' | ');
-                } else if (typeof attData.report?.metWith === 'string') {
-                    metWithStr = attData.report.metWith;
+                        reportData.push({
+                            userEmail: userData.email,
+                            userName: userData.name || userData.email.split('@')[0],
+                            date: attData.id, 
+                            checkInTime: visit.checkInTime ? visit.checkInTime.toDate().toLocaleTimeString('th-TH') : '-',
+                            checkOutTime: attData.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                            locations: visit.location, // Specific location
+                            checkInCount: 1, // Per row
+                            hospitalCount: 1,
+                            reportSummary: visit.summary || '',
+                            metWith: metWithStr,
+                            pipeline: pipelineStr
+                        });
+                    });
+                } else {
+                    // Fallback for old data structure
+                    const checkInCount = attData.checkIns.length;
+                    const locationNames = attData.checkIns.map(c => c.location);
+                    const uniqueLocations = new Set(locationNames).size;
+
+                    let metWithStr = '';
+                    if (Array.isArray(attData.report?.metWith)) {
+                        metWithStr = attData.report.metWith.join(' | ');
+                    } else if (typeof attData.report?.metWith === 'string') {
+                        metWithStr = attData.report.metWith;
+                    }
+
+                    let pipelineStr = '';
+                    if (Array.isArray(attData.report?.pipeline)) {
+                        pipelineStr = attData.report.pipeline.map(p => `${p.product} (${p.stage})`).join(' | ');
+                    }
+
+                    reportData.push({
+                        userEmail: userData.email,
+                        userName: userData.name || userData.email.split('@')[0],
+                        date: attData.id, 
+                        checkInTime: attData.checkIns[0]?.timestamp.toDate().toLocaleTimeString('th-TH') || '-',
+                        checkOutTime: attData.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                        locations: locationNames.join(', '),
+                        checkInCount: checkInCount,
+                        hospitalCount: uniqueLocations,
+                        reportSummary: attData.report?.summary || '',
+                        metWith: metWithStr,
+                        pipeline: pipelineStr
+                    });
                 }
-
-                let pipelineStr = '';
-                if (Array.isArray(attData.report?.pipeline)) {
-                    pipelineStr = attData.report.pipeline.map(p => `${p.product} (${p.stage} - ${p.probability}%)`).join(' | ');
-                } else if (attData.report?.pipeline) {
-                    const p: any = attData.report.pipeline;
-                    pipelineStr = `${p.product} (${p.stage} - ${p.probability}%)`;
-                }
-
-                reportData.push({
-                    userEmail: userData.email,
-                    userName: userData.email.split('@')[0],
-                    date: attData.id, 
-                    checkInTime: attData.checkIns[0]?.timestamp.toDate().toLocaleTimeString('th-TH') || '-',
-                    checkOutTime: attData.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
-                    locations: locationNames.join(', '),
-                    checkInCount: checkInCount,
-                    hospitalCount: uniqueLocations,
-                    reportSummary: attData.report?.summary || '',
-                    metWith: metWithStr,
-                    pipeline: pipelineStr
-                });
             });
         }
         return reportData.sort((a, b) => {
