@@ -3,7 +3,7 @@ import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
 import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers } from '../services/dbService';
 import { AttendanceDay, PipelineData, UserProfile, AdminUser, VisitReport } from '../types';
-import { Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, Edit, X, Save, Loader2, Building, Users, ChevronDown, ExternalLink, BarChart3, List, PieChart, Calendar, Trash2 } from 'lucide-react';
+import { Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, Edit, X, Save, Loader2, Building, Users, ChevronDown, ExternalLink, BarChart3, List, PieChart, Calendar, Trash2, ArrowLeft } from 'lucide-react';
 
 interface Props {
     user: User;
@@ -72,12 +72,12 @@ const Reports: React.FC<Props> = ({ user }) => {
     };
 
     const getProbColor = (prob: number) => {
-        if (prob >= 80) return 'bg-emerald-500';
-        if (prob >= 50) return 'bg-amber-500';
-        return 'bg-rose-500';
+        if (prob >= 80) return 'bg-emerald-500 text-white';
+        if (prob >= 50) return 'bg-amber-500 text-white';
+        return 'bg-rose-500 text-white';
     };
 
-    // Funnel Configuration - Standard Funnel Order (Prospecting Top -> Closed Won Bottom)
+    // Funnel Configuration - Standard Funnel Order
     const funnelConfig = [
         { stage: 'Prospecting', color: 'bg-yellow-400', width: '100%', z: 50 },
         { stage: 'Qualification', color: 'bg-orange-400', width: '85%', z: 40 },
@@ -166,10 +166,128 @@ const Reports: React.FC<Props> = ({ user }) => {
     const weightedValue = allDeals.reduce((sum, item) => sum + ((item.value || 0) * (item.probability / 100)), 0);
     const wonValue = allDeals.filter(i => i.stage === 'Closed Won').reduce((sum, item) => sum + item.value, 0);
 
+    // --- FULL PAGE EDIT VIEW ---
+    if (editTarget) {
+        return (
+            <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
+                {/* Header */}
+                <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
+                    <button 
+                        onClick={() => setEditTarget(null)} 
+                        className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                           <Edit className="text-cyan-500" size={24}/> Edit Opportunity
+                        </h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Update details for {editTarget.data.product}</p>
+                    </div>
+                </div>
+
+                {/* Form Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] p-6 shadow-sm space-y-6">
+                    
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Product / Solution</label>
+                        <input 
+                            value={editTarget.data.product} 
+                            onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} 
+                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base font-medium" 
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Value (THB)</label>
+                            <div className="relative">
+                                <div className="absolute left-4 top-4 text-slate-400"><DollarSign size={18}/></div>
+                                <input 
+                                    type="number" 
+                                    value={editTarget.data.value} 
+                                    onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} 
+                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base font-mono" 
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Stage</label>
+                            <div className="relative">
+                                <select 
+                                    value={editTarget.data.stage} 
+                                    onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} 
+                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base appearance-none"
+                                >
+                                    {pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-5 text-slate-400 pointer-events-none" size={16} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Expected Close Date</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-4 top-4 text-slate-400" size={18}/>
+                            <input 
+                                type="date" 
+                                value={editTarget.data.expectedCloseDate || ''} 
+                                onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} 
+                                className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base" 
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                        <div className="flex justify-between items-end">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Probability</label>
+                            <span className={`text-sm font-bold px-2 py-1 rounded ${getProbColor(editTarget.data.probability)}`}>
+                                {editTarget.data.probability}%
+                            </span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="100" 
+                            step="10" 
+                            value={editTarget.data.probability} 
+                            onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} 
+                            className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" 
+                        />
+                        <div className="flex justify-between text-xs text-slate-400 px-1">
+                            <span>0%</span>
+                            <span>50%</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                    <button 
+                        onClick={handleDelete} 
+                        disabled={saving} 
+                        className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors border border-rose-100 dark:border-rose-500/20 shadow-sm"
+                    >
+                        <Trash2 size={24} />
+                    </button>
+                    <button 
+                        onClick={handleSaveEdit} 
+                        disabled={saving} 
+                        className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2 shadow-md"
+                    >
+                        {saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Save Changes</>}
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // --- MAIN VIEW ---
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-enter pb-24">
             
-            {/* Header & Filter */}
+            {/* Header & Filter Area */}
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-start">
                     <div>
@@ -245,7 +363,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                                 if (day.report?.visits) {
                                     visits = day.report.visits;
                                 } else {
-                                    // Legacy Support fallback handled in logic
+                                    // Legacy Support logic omitted for brevity but preserved in system
                                 }
 
                                 return (
@@ -425,7 +543,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                                                 <div className="text-right">
                                                     <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-base">฿{deal.value.toLocaleString()}</div>
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <div className={`text-[10px] px-2 py-0.5 rounded mt-1 inline-block font-bold ${getProbColor(deal.probability)} text-white shadow-sm`}>{deal.probability}%</div>
+                                                        <div className={`text-[10px] px-2 py-0.5 rounded mt-1 inline-block font-bold ${getProbColor(deal.probability)} shadow-sm`}>{deal.probability}%</div>
                                                         <button onClick={() => handleEditClick(deal.editMetadata.dateId, deal, deal.editMetadata.location)} className="p-1 bg-slate-100 dark:bg-slate-800 rounded mt-1 text-slate-400 hover:text-cyan-500"><Edit size={12}/></button>
                                                     </div>
                                                 </div>
@@ -438,48 +556,6 @@ const Reports: React.FC<Props> = ({ user }) => {
                                     ))
                                 )}
                             </div>
-                        </div>
-                    )}
-
-                    {/* --- EDIT MODAL --- */}
-                    {editTarget && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-enter">
-                            <GlassCard className="w-full max-w-md relative bg-white dark:bg-slate-900 border-cyan-500/30 shadow-2xl">
-                                <button onClick={() => setEditTarget(null)} className="absolute top-4 right-4 text-slate-400 hover:text-rose-500"><X size={20} /></button>
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Edit Opportunity</h3>
-                                
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Product</label>
-                                        <input value={editTarget.data.product} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Value (THB)</label>
-                                            <input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none" />
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Stage</label>
-                                            <select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none appearance-none">
-                                                {pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Expected Close Date</label>
-                                        <input type="date" value={editTarget.data.expectedCloseDate || ''} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none" />
-                                    </div>
-                                    <div>
-                                        <div className="flex justify-between text-xs text-slate-500 mb-2"><span>Probability</span><span className="font-bold text-indigo-500">{editTarget.data.probability}%</span></div>
-                                        <input type="range" min="0" max="100" step="10" value={editTarget.data.probability} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3 mt-6">
-                                    <button onClick={handleDelete} disabled={saving} className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors border border-rose-100 dark:border-rose-500/20"><Trash2 size={20} /></button>
-                                    <button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-3 rounded-xl bg-cyan-600 text-white font-bold hover:bg-cyan-500 transition-colors flex items-center justify-center gap-2 shadow-lg">{saving ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save Changes</>}</button>
-                                </div>
-                            </GlassCard>
                         </div>
                     )}
                 </>
