@@ -10,7 +10,7 @@ interface Props {
     user: User;
 }
 
-// New Draft Structure: Collection of Interactions per Visit
+// Internal State for a single visit report draft
 interface InteractionDraft {
     customerName: string;
     department: string;
@@ -22,9 +22,19 @@ interface VisitDraft {
     interactions: InteractionDraft[];
 }
 
-// ... (Gamification and Props same as before)
-interface XpParticle { id: number; xp: number; }
-const getRankTitle = (level: number) => { if (level >= 9) return { title: 'LEGEND', color: 'text-amber-500 dark:text-amber-400' }; if (level >= 7) return { title: 'ELITE', color: 'text-rose-500 dark:text-rose-400' }; if (level >= 5) return { title: 'RANGER', color: 'text-purple-500 dark:text-purple-400' }; if (level >= 3) return { title: 'SCOUT', color: 'text-cyan-500 dark:text-cyan-400' }; return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400' }; };
+// Particle Interface for Animation
+interface XpParticle {
+    id: number;
+    xp: number;
+}
+
+const getRankTitle = (level: number) => {
+    if (level >= 9) return { title: 'LEGEND', color: 'text-amber-500 dark:text-amber-400' };
+    if (level >= 7) return { title: 'ELITE', color: 'text-rose-500 dark:text-rose-400' };
+    if (level >= 5) return { title: 'RANGER', color: 'text-purple-500 dark:text-purple-400' };
+    if (level >= 3) return { title: 'SCOUT', color: 'text-cyan-500 dark:text-cyan-400' };
+    return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400' };
+};
 
 const TimeAttendance: React.FC<Props> = ({ user }) => {
     const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -32,38 +42,42 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
     const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
     const [loadingLoc, setLoadingLoc] = useState(false);
     
-    // Location State
+    // Location Selection State
     const [selectedPlace, setSelectedPlace] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
     const [statusMsg, setStatusMsg] = useState('');
     const [time, setTime] = useState(new Date());
     
-    // --- CHECKOUT REPORT STATE ---
+    // --- CHECKOUT REPORT STATE (MULTI-VISIT) ---
     const [showReportModal, setShowReportModal] = useState(false);
     const [visitDrafts, setVisitDrafts] = useState<Record<number, VisitDraft>>({});
-    const [expandedVisitIdx, setExpandedVisitIdx] = useState<number>(0);
+    const [expandedVisitIdx, setExpandedVisitIdx] = useState<number>(0); 
     
-    // Form State for CURRENT Interaction
+    // Contact Search & Add State
     const [contactSearch, setContactSearch] = useState('');
     const [isContactDropdownOpen, setIsContactDropdownOpen] = useState(false);
-    const [showAddContactView, setShowAddContactView] = useState(false);
+    const [showAddContactView, setShowAddContactView] = useState(false); // Full Page Toggle
     const [newContact, setNewContact] = useState({ name: '', department: '', phone: '' });
+    const contactDropdownRef = useRef<HTMLDivElement>(null);
     
     // Interaction Form State
     const [selectedCustomer, setSelectedCustomer] = useState<{name: string, department: string} | null>(null);
     const [currentSummary, setCurrentSummary] = useState('');
     const [hasOpp, setHasOpp] = useState(false);
     
-    // Pipeline Form State
+    // Pipeline Form State (Shared)
+    const [dealMode, setDealMode] = useState<'new' | 'update'>('new');
+    const [selectedExistingDealId, setSelectedExistingDealId] = useState('');
     const [pipelineProduct, setPipelineProduct] = useState('');
     const [pipelineValue, setPipelineValue] = useState('');
     const [pipelineStage, setPipelineStage] = useState('Prospecting');
     const [pipelineProb, setPipelineProb] = useState(20);
     const [pipelineDate, setPipelineDate] = useState(''); // NEW: Expected Close Date
 
-    // Gamification State
+    // Gamification
     const [xpParticles, setXpParticles] = useState<XpParticle[]>([]);
     const [isHudBouncing, setIsHudBouncing] = useState(false);
     const [showLevelUp, setShowLevelUp] = useState(false);
@@ -74,11 +88,15 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
         const a = await getTodayAttendance(user.uid);
         setProfile(p);
         setTodayData(a);
+
+        // Initialize Drafts
         if (a && a.checkIns.length > 0) {
             setVisitDrafts(prev => {
                 const newDrafts = { ...prev };
                 a.checkIns.forEach((_, idx) => {
-                    if (!newDrafts[idx]) newDrafts[idx] = { interactions: [] };
+                    if (!newDrafts[idx]) {
+                        newDrafts[idx] = { interactions: [] };
+                    }
                 });
                 return newDrafts;
             });
@@ -91,6 +109,7 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
         const timer = setInterval(() => setTime(new Date()), 1000);
         const handleClickOutside = (event: MouseEvent) => { 
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsDropdownOpen(false); 
+            if (contactDropdownRef.current && !contactDropdownRef.current.contains(event.target as Node)) setIsContactDropdownOpen(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => { clearInterval(timer); document.removeEventListener('mousedown', handleClickOutside); };
@@ -101,7 +120,8 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => { setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setLoadingLoc(false); },
-                (err) => { setStatusMsg('GPS Access Denied'); setLoadingLoc(false); }, { enableHighAccuracy: true }
+                (err) => { setStatusMsg('GPS Access Denied'); setLoadingLoc(false); },
+                { enableHighAccuracy: true }
             );
         } else { setStatusMsg('GPS Not Supported'); setLoadingLoc(false); }
     };
@@ -137,7 +157,9 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
             handleSelectCustomer(newContact.name, newContact.department);
             setShowAddContactView(false);
             setNewContact({ name: '', department: '', phone: '' });
-        } catch (e) { console.error("Failed to add customer", e); }
+        } catch (e) {
+            console.error("Failed to add customer", e);
+        }
     };
 
     const addInteractionToDraft = (idx: number) => {
@@ -148,14 +170,14 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
             department: selectedCustomer.department,
             summary: currentSummary,
             pipeline: hasOpp ? {
-                id: crypto.randomUUID(),
+                id: dealMode === 'update' ? selectedExistingDealId : crypto.randomUUID(),
                 product: pipelineProduct,
                 value: parseFloat(pipelineValue) || 0,
                 stage: pipelineStage,
                 probability: pipelineProb,
-                isNew: true,
+                isNew: dealMode === 'new',
                 customerName: selectedCustomer.name,
-                expectedCloseDate: pipelineDate // Save Date
+                expectedCloseDate: pipelineDate
             } : null
         };
 
@@ -170,7 +192,14 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
         setContactSearch('');
         setCurrentSummary('');
         setHasOpp(false);
-        setPipelineProduct(''); setPipelineValue(''); setPipelineStage('Prospecting'); setPipelineProb(20); setPipelineDate('');
+        // Reset Pipeline Form
+        setPipelineProduct(''); 
+        setPipelineValue(''); 
+        setPipelineStage('Prospecting'); 
+        setPipelineProb(20); 
+        setDealMode('new'); 
+        setSelectedExistingDealId('');
+        setPipelineDate('');
     };
 
     const removeInteraction = (visitIdx: number, interactIdx: number) => {
@@ -180,6 +209,18 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
             ...prev,
             [visitIdx]: { ...prev[visitIdx], interactions: currentInteractions }
         }));
+    };
+
+    const handleExistingDealSelect = (dealId: string) => {
+        const deal = profile?.activePipeline?.find(p => p.id === dealId);
+        setSelectedExistingDealId(dealId);
+        if (deal) { 
+            setPipelineProduct(deal.product); 
+            setPipelineValue(deal.value.toString()); 
+            setPipelineStage(deal.stage); 
+            setPipelineProb(deal.probability);
+            if (deal.expectedCloseDate) setPipelineDate(deal.expectedCloseDate);
+        }
     };
 
     const confirmCheckOut = async () => {
@@ -195,6 +236,7 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
                     pipeline: d.pipeline || undefined
                 }));
 
+                // Aggregate for backward compatibility
                 const aggregatedSummary = interactions.map(i => `${i.customerName}: ${i.summary}`).join('\n');
                 const aggregatedMetWith = interactions.map(i => i.customerName);
                 const aggregatedPipeline: PipelineData[] = interactions
@@ -213,48 +255,110 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
 
             const reportData: DailyReport = { visits };
             await checkOut(user.uid, reportData);
+            
             setStatusMsg('Shift ended & reports saved.');
             setShowReportModal(false);
             refreshData();
         } catch (e) { setStatusMsg('Check-out failed'); }
     };
 
-    // ... (Helper functions)
+    // Helpers
     const filteredLocations = profile?.hospitals.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase())) || [];
     const handleSelectLocation = (loc: string) => { setSelectedPlace(loc); setSearchQuery(loc); setIsDropdownOpen(false); };
     const handleAddNewLocation = async () => { if (!searchQuery.trim()) return; try { await addHospital(user.uid, searchQuery.trim()); await refreshData(); handleSelectLocation(searchQuery.trim()); } catch (e) { setStatusMsg('Failed to add new location'); } };
+
     const isCheckedInToday = todayData && todayData.checkIns.length > 0;
     const isCheckedOut = todayData && !!todayData.checkOut;
     const currentStage = isCheckedOut ? 'completed' : isCheckedInToday ? 'working' : 'idle';
+    const lastCheckInLocation = todayData?.checkIns.length ? todayData.checkIns[todayData.checkIns.length - 1].location : selectedPlace;
+    
     const getFilteredCustomers = (visitLocation: string) => {
         const all = (profile?.customers || []).filter(c => c.hospital === visitLocation || c.hospital === 'All');
         if (!contactSearch) return all;
         return all.filter(c => c.name.toLowerCase().includes(contactSearch.toLowerCase()));
     };
-    const currentLevel = profile?.level || 1; const currentXP = profile?.xp || 0; const nextLevelXP = currentLevel === 1 ? 100 : currentLevel * currentLevel * 100; const progressPercent = Math.min(100, Math.max(0, ((currentXP - ((currentLevel - 1) === 0 ? 0 : (currentLevel-1)*(currentLevel-1)*100)) / (nextLevelXP - ((currentLevel - 1) === 0 ? 0 : (currentLevel-1)*(currentLevel-1)*100))) * 100)); const rank = getRankTitle(currentLevel); const pipelineStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
-    // --- CHECKOUT REPORT UI ---
+    const activeDeals = profile?.activePipeline || [];
+    const currentLevel = profile?.level || 1;
+    const currentXP = profile?.xp || 0;
+    const getNextLevelXP = (lvl: number) => { return lvl === 1 ? 100 : lvl * lvl * 100; };
+    const nextLevelXP = getNextLevelXP(currentLevel);
+    const progressPercent = Math.min(100, Math.max(0, ((currentXP - (getNextLevelXP(currentLevel - 1) || 0)) / (nextLevelXP - (getNextLevelXP(currentLevel - 1) || 0))) * 100));
+    const rank = getRankTitle(currentLevel);
+    const pipelineStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+
+    // --- CHECKOUT REPORT WIZARD ---
     if (showReportModal) {
-        if (showAddContactView) { 
-             return (
+        
+        // SUB-VIEW: ADD CONTACT FULL PAGE
+        if (showAddContactView) {
+            return (
                 <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
+                    {/* Header */}
                     <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
-                        <button onClick={() => setShowAddContactView(false)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"><ArrowLeft size={20} /></button>
-                        <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><UserPlus className="text-purple-500" size={24}/> New Contact</h2><p className="text-sm text-slate-500 dark:text-slate-400">Adding person at {todayData?.checkIns[expandedVisitIdx]?.location}</p></div>
+                        <button 
+                            onClick={() => setShowAddContactView(false)} 
+                            className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                               <UserPlus className="text-purple-500" size={24}/> New Contact
+                            </h2>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Adding person at {todayData?.checkIns[expandedVisitIdx]?.location}</p>
+                        </div>
                     </div>
+
+                    {/* Form Card */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] p-6 shadow-sm space-y-5">
-                        <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Full Name</label><input value={newContact.name} onChange={e => setNewContact({...newContact, name: e.target.value})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-purple-500 text-base font-medium" placeholder="e.g. Dr. Somsak" autoFocus /></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Department / Role</label><input value={newContact.department} onChange={e => setNewContact({...newContact, department: e.target.value})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-purple-500 text-base" placeholder="e.g. OPD, Purchasing" /></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Phone Number</label><input value={newContact.phone} onChange={e => setNewContact({...newContact, phone: e.target.value})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-purple-500 text-base" placeholder="08x-xxx-xxxx (Optional)" /></div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Full Name</label>
+                            <input 
+                                value={newContact.name} 
+                                onChange={e => setNewContact({...newContact, name: e.target.value})} 
+                                className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-purple-500 text-base font-medium" 
+                                placeholder="e.g. Dr. Somsak" 
+                                autoFocus
+                            />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Department / Role</label>
+                            <input 
+                                value={newContact.department} 
+                                onChange={e => setNewContact({...newContact, department: e.target.value})} 
+                                className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-purple-500 text-base" 
+                                placeholder="e.g. OPD, Purchasing" 
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Phone Number</label>
+                            <input 
+                                value={newContact.phone} 
+                                onChange={e => setNewContact({...newContact, phone: e.target.value})} 
+                                className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-purple-500 text-base" 
+                                placeholder="08x-xxx-xxxx (Optional)" 
+                            />
+                        </div>
                     </div>
-                    <button onClick={handleSaveNewContact} disabled={!newContact.name} className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"><Save size={20} /> Save & Select Contact</button>
+
+                    <button 
+                        onClick={handleSaveNewContact} 
+                        disabled={!newContact.name} 
+                        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all disabled:opacity-50 disabled:scale-100"
+                    >
+                        <Save size={20} /> Save & Select Contact
+                    </button>
                 </div>
             );
         }
 
+        // MAIN VIEW: VISIT LIST
         return (
             <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-32 pt-4 px-4">
-                {/* Header */}
+                 {/* Header */}
                 <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
                     <button onClick={() => setShowReportModal(false)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         <ArrowLeft size={20} />
@@ -275,17 +379,24 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
 
                         return (
                             <div key={idx} className={`bg-white dark:bg-slate-900 border transition-all duration-300 rounded-[24px] overflow-hidden ${isExpanded ? 'border-cyan-400 dark:border-cyan-500 shadow-xl scale-[1.01]' : 'border-slate-200 dark:border-white/10 opacity-80 hover:opacity-100'}`}>
+                                {/* Header of Card */}
                                 <div 
                                     onClick={() => { setExpandedVisitIdx(isExpanded ? -1 : idx); setContactSearch(''); setIsContactDropdownOpen(false); setSelectedCustomer(null); }}
                                     className="p-4 flex items-center justify-between cursor-pointer bg-slate-50 dark:bg-white/5"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${isExpanded ? 'bg-cyan-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>{idx + 1}</div>
-                                        <div><div className="font-bold text-slate-900 dark:text-white text-base">{ci.location}</div><div className="text-xs text-slate-500">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</div></div>
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${isExpanded ? 'bg-cyan-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
+                                            {idx + 1}
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-slate-900 dark:text-white text-base">{ci.location}</div>
+                                            <div className="text-xs text-slate-500">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</div>
+                                        </div>
                                     </div>
                                     {isExpanded ? <ChevronUp className="text-cyan-500"/> : <ChevronDown className="text-slate-400"/>}
                                 </div>
 
+                                {/* Expanded Content */}
                                 {isExpanded && (
                                     <div className="p-5 space-y-6 animate-enter bg-slate-50/50 dark:bg-slate-950/30">
                                         
@@ -369,6 +480,45 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
 
                                                 {hasOpp && (
                                                     <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-500/20 space-y-2 animate-enter">
+                                                        
+                                                        {/* Toggle Deal Mode */}
+                                                        <div className="flex p-1 bg-white/50 dark:bg-black/20 rounded-lg mb-2">
+                                                            <button 
+                                                                onClick={() => { setDealMode('new'); setPipelineProduct(''); setPipelineValue(''); setSelectedExistingDealId(''); }}
+                                                                className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'new' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-500'}`}
+                                                            >
+                                                                New Deal
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => setDealMode('update')}
+                                                                className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'update' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-amber-500'}`}
+                                                            >
+                                                                Update Existing
+                                                            </button>
+                                                        </div>
+
+                                                        {/* Existing Deal Selector */}
+                                                        {dealMode === 'update' && (
+                                                            <div className="space-y-1 animate-enter">
+                                                                <label className="text-[9px] text-slate-400 font-bold uppercase">Select Active Deal</label>
+                                                                <div className="relative">
+                                                                    <select 
+                                                                        value={selectedExistingDealId}
+                                                                        onChange={(e) => handleExistingDealSelect(e.target.value)}
+                                                                        className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-amber-200 dark:border-amber-500/30 text-xs outline-none focus:border-amber-500 text-slate-700 dark:text-white appearance-none"
+                                                                    >
+                                                                        <option value="">-- Select Deal --</option>
+                                                                        {activeDeals.map(deal => (
+                                                                            <option key={deal.id} value={deal.id}>
+                                                                                {deal.product} ({deal.stage}) - ฿{deal.value.toLocaleString()}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <ChevronDown className="absolute right-2 top-2.5 text-slate-400 pointer-events-none" size={12} />
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         <div className="grid grid-cols-2 gap-2">
                                                             <input value={pipelineProduct} onChange={e => setPipelineProduct(e.target.value)} placeholder="Product" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/>
                                                             <input type="number" value={pipelineValue} onChange={e => setPipelineValue(e.target.value)} placeholder="Value (THB)" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/>
@@ -411,19 +561,22 @@ const TimeAttendance: React.FC<Props> = ({ user }) => {
                 </div>
 
                 <div className="pt-4 pb-10">
-                    <button onClick={confirmCheckOut} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all">
+                    <button 
+                        onClick={confirmCheckOut}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all"
+                    >
                         <Check size={24} /> Submit All Reports & Check Out
                     </button>
+                    <p className="text-center text-xs text-slate-400 mt-3">This will end your shift and save reports for {todayData?.checkIns.length} locations.</p>
                 </div>
             </div>
         );
     }
 
-    return ( /* ... Main Screen UI Logic kept same ... */
+    // ... (Main UI Logic kept same)
+    return (
         <div className="max-w-lg mx-auto space-y-5 animate-enter pb-24">
-            {/* ... (HUD, Map, Buttons Code from previous implementation) ... */}
-            {/* To keep response concise, assuming main screen render logic is preserved */}
-             <div className={`bg-white dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[32px] p-4 shadow-sm dark:shadow-xl transition-all duration-300 ${isHudBouncing ? 'scale-105 ring-2 ring-cyan-400/50' : ''}`}>
+            <div className={`bg-white dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-[32px] p-4 shadow-sm dark:shadow-xl transition-all duration-300 ${isHudBouncing ? 'scale-105 ring-2 ring-cyan-400/50' : ''}`}>
                 <div className="flex items-center gap-4">
                     <div className="flex-shrink-0 w-14 h-14 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-200 dark:border-white/5 relative shadow-inner"><span className="text-2xl font-black text-slate-800 dark:text-white">{currentLevel}</span><div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-cyan-500 ${isHudBouncing ? 'animate-ping' : ''}`}></div></div>
                     <div className="flex-1 min-w-0"><div className="flex items-baseline gap-2 mb-1.5"><span className={`text-xs font-black tracking-widest uppercase ${rank.color}`}>{rank.title}</span><span className={`text-[10px] text-slate-500 dark:text-slate-400 font-medium transition-colors ${isHudBouncing ? 'text-cyan-500 font-bold' : ''}`}>{currentXP} XP</span></div><div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative border border-slate-200 dark:border-transparent"><div style={{width: `${progressPercent}%`}} className={`h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full shadow-sm transition-all duration-1000 ${isHudBouncing ? 'brightness-125' : ''}`}></div></div><div className="text-[9px] text-slate-400 mt-1 font-medium text-right">{Math.floor(nextLevelXP - currentXP)} XP to next level</div></div>
