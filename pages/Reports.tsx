@@ -1,29 +1,35 @@
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
-import { getUserHistory, updatePipelineItem, getUserProfile, getAllUsers, getTeamMembers } from '../services/dbService';
+import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers } from '../services/dbService';
 import { AttendanceDay, PipelineData, UserProfile, AdminUser, VisitReport } from '../types';
-import { Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, Edit, X, Save, Loader2, Building, Users, ChevronDown, ExternalLink, BarChart3, List, PieChart } from 'lucide-react';
+import { Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, Edit, X, Save, Loader2, Building, Users, ChevronDown, ExternalLink, BarChart3, List, PieChart, Calendar, Trash2 } from 'lucide-react';
 
 interface Props {
     user: User;
 }
 
-const Reports: React.FC<Props> = ({ user }) => {
-    // Tab State
-    const [activeTab, setActiveTab] = useState<'reports' | 'dashboard'>('dashboard');
+interface EditTarget {
+    dateId: string;
+    data: PipelineData;
+    location: {
+        visitIdx?: number;
+        interactionIdx?: number;
+        legacyIdx?: number;
+    };
+}
 
+const Reports: React.FC<Props> = ({ user }) => {
+    const [activeTab, setActiveTab] = useState<'reports' | 'dashboard'>('dashboard');
     const [history, setHistory] = useState<AttendanceDay[]>([]);
     const [loading, setLoading] = useState(true);
-    
-    // Manager/Admin View State
     const [isPrivileged, setIsPrivileged] = useState(false);
     const [teamMembers, setTeamMembers] = useState<AdminUser[]>([]);
     const [targetUserId, setTargetUserId] = useState<string>(user.uid);
     const [targetUserName, setTargetUserName] = useState<string>('My Reports');
 
-    // Editing State
-    const [editingPipeline, setEditingPipeline] = useState<{dateId: string, index: number, data: PipelineData} | null>(null);
+    // Edit State
+    const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
     const [saving, setSaving] = useState(false);
 
     // Initial Load: Check Role & Fetch Data
@@ -79,33 +85,77 @@ const Reports: React.FC<Props> = ({ user }) => {
         { stage: 'Negotiation', color: 'bg-purple-500', width: '55%', z: 20 },
         { stage: 'Closed Won', color: 'bg-emerald-500', width: '40%', z: 10 }
     ];
+    const pipelineStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
-    // --- DASHBOARD LOGIC ---
+    // --- ACTION HANDLERS ---
+    const handleEditClick = (dateId: string, item: PipelineData, location: { visitIdx?: number; interactionIdx?: number; legacyIdx?: number; }) => {
+        setEditTarget({ dateId, data: { ...item }, location });
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editTarget) return;
+        setSaving(true);
+        try {
+            await updateOpportunity(targetUserId, editTarget.dateId, editTarget.location, editTarget.data);
+            await fetchHistory(targetUserId);
+            setEditTarget(null);
+        } catch (e) { console.error(e); alert("Failed to update opportunity"); } finally { setSaving(false); }
+    };
+
+    const handleDelete = async () => {
+        if (!editTarget) return;
+        if (!window.confirm("Are you sure you want to delete this opportunity?")) return;
+        setSaving(true);
+        try {
+            await updateOpportunity(targetUserId, editTarget.dateId, editTarget.location, null); // null = delete
+            await fetchHistory(targetUserId);
+            setEditTarget(null);
+        } catch (e) { console.error(e); alert("Failed to delete opportunity"); } finally { setSaving(false); }
+    };
+
+    // --- DASHBOARD HELPERS ---
     const getAllOpportunities = () => {
-        const opportunities: Array<PipelineData & { date: string, location: string }> = [];
+        const opportunities: Array<PipelineData & { date: string, locationName: string, editMetadata: { dateId: string, location: any } }> = [];
         history.forEach(day => {
             if (day.report?.visits) {
-                day.report.visits.forEach(visit => {
-                    // Aggregated Pipeline Array
+                day.report.visits.forEach((visit, vIdx) => {
+                    // 1. Aggregated Pipeline Array in Visit
                     if (visit.pipeline && visit.pipeline.length > 0) {
-                        visit.pipeline.forEach(p => {
-                            opportunities.push({ ...p, date: day.id, location: visit.location });
+                        visit.pipeline.forEach((p, pIdx) => {
+                            opportunities.push({ 
+                                ...p, 
+                                date: day.id, 
+                                locationName: visit.location,
+                                editMetadata: { dateId: day.id, location: { visitIdx: vIdx, legacyIdx: pIdx } }
+                            });
                         });
-                    }
-                    // Detailed Interactions Pipeline
+                    } 
+                    // 2. Detailed Interactions Pipeline
                     else if (visit.interactions) {
-                        visit.interactions.forEach(i => {
-                            if (i.pipeline) {
-                                opportunities.push({ ...i.pipeline, date: day.id, location: visit.location });
+                        visit.interactions.forEach((inter, iIdx) => {
+                            if (inter.pipeline) {
+                                opportunities.push({ 
+                                    ...inter.pipeline, 
+                                    date: day.id, 
+                                    locationName: visit.location,
+                                    editMetadata: { dateId: day.id, location: { visitIdx: vIdx, interactionIdx: iIdx } }
+                                });
                             }
                         });
                     }
                 });
             } 
-            // Legacy Support
+            // 3. Legacy Root Pipeline
             else if (day.report?.pipeline) {
                 const pipes = Array.isArray(day.report.pipeline) ? day.report.pipeline : [day.report.pipeline];
-                pipes.forEach(p => opportunities.push({ ...p, date: day.id, location: day.checkIns[0]?.location || 'Unknown' }));
+                pipes.forEach((p, pIdx) => {
+                    opportunities.push({ 
+                        ...p, 
+                        date: day.id, 
+                        locationName: day.checkIns[0]?.location || 'Unknown',
+                        editMetadata: { dateId: day.id, location: { legacyIdx: pIdx } }
+                    });
+                });
             }
         });
         return opportunities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -119,7 +169,7 @@ const Reports: React.FC<Props> = ({ user }) => {
     return (
         <div className="max-w-3xl mx-auto space-y-6 animate-enter pb-24">
             
-            {/* Header & Filter Area */}
+            {/* Header & Filter */}
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between items-start">
                     <div>
@@ -190,25 +240,12 @@ const Reports: React.FC<Props> = ({ user }) => {
 
                             {history.map((day, idx) => {
                                 const dateObj = new Date(day.id);
-                                
-                                // Handle New vs Old Data Structure
                                 let visits: VisitReport[] = [];
                                 
                                 if (day.report?.visits) {
                                     visits = day.report.visits;
                                 } else {
-                                    // Legacy Support
-                                    const flatPipeline = Array.isArray(day.report?.pipeline) ? day.report?.pipeline : day.report?.pipeline ? [day.report.pipeline] : [];
-                                    const flatMetWith = Array.isArray(day.report?.metWith) ? day.report?.metWith : day.report?.metWith ? [day.report.metWith] : [];
-                                    if (day.checkIns.length > 0) {
-                                        visits = day.checkIns.map((ci, i) => ({
-                                            location: ci.location,
-                                            checkInTime: ci.timestamp,
-                                            summary: i === day.checkIns.length - 1 ? day.report?.summary || '' : '',
-                                            metWith: i === day.checkIns.length - 1 ? flatMetWith : [],
-                                            pipeline: i === day.checkIns.length - 1 ? flatPipeline : []
-                                        }));
-                                    }
+                                    // Legacy Support fallback handled in logic
                                 }
 
                                 return (
@@ -270,25 +307,28 @@ const Reports: React.FC<Props> = ({ user }) => {
                                                                 )}
 
                                                                 {/* Pipeline */}
-                                                                {visit.pipeline && visit.pipeline.length > 0 && (
-                                                                    <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/5">
-                                                                         <div className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1"><TrendingUp size={10}/> Opportunities</div>
-                                                                        {visit.pipeline.map((item: any, pi: number) => (
-                                                                            <div key={pi} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2.5 flex justify-between items-center shadow-sm">
-                                                                                <div>
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{item.product}</span>
-                                                                                        {item.customerName && <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1 rounded">{item.customerName}</span>}
-                                                                                    </div>
-                                                                                    <div className="text-[10px] text-slate-500">{item.stage} • {item.probability}%</div>
-                                                                                </div>
-                                                                                <div className="text-right">
-                                                                                    <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">฿{item.value.toLocaleString()}</div>
-                                                                                </div>
+                                                                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/5">
+                                                                    {/* 1. Visit-level Aggregated Pipeline */}
+                                                                    {visit.pipeline && visit.pipeline.map((item: any, pi: number) => (
+                                                                        <div key={pi} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2.5 flex justify-between items-center shadow-sm">
+                                                                            <div><div className="flex items-center gap-2"><span className="font-bold text-xs text-slate-800 dark:text-slate-200">{item.product}</span>{item.customerName && <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1 rounded">{item.customerName}</span>}</div><div className="text-[10px] text-slate-500">{item.stage} • {item.probability}%</div></div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">฿{item.value.toLocaleString()}</div>
+                                                                                <button onClick={() => handleEditClick(day.id, item, { visitIdx: vIdx, legacyIdx: pi })} className="p-1 text-slate-400 hover:text-cyan-500"><Edit size={12} /></button>
                                                                             </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
+                                                                        </div>
+                                                                    ))}
+                                                                    {/* 2. Detailed Interaction Pipeline */}
+                                                                    {visit.interactions && visit.interactions.map((inter, iIdx) => inter.pipeline && (
+                                                                        <div key={iIdx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg p-2.5 flex justify-between items-center shadow-sm">
+                                                                            <div><div className="flex items-center gap-2"><span className="font-bold text-xs text-slate-800 dark:text-slate-200">{inter.pipeline.product}</span>{inter.customerName && <span className="text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-500 px-1 rounded">{inter.customerName}</span>}</div><div className="text-[10px] text-slate-500">{inter.pipeline.stage} • {inter.pipeline.probability}%</div></div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">฿{inter.pipeline.value.toLocaleString()}</div>
+                                                                                <button onClick={() => handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx })} className="p-1 text-slate-400 hover:text-cyan-500"><Edit size={12} /></button>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -378,25 +418,68 @@ const Reports: React.FC<Props> = ({ user }) => {
                                                 <div>
                                                     <div className="font-bold text-slate-900 dark:text-white text-base">{deal.product}</div>
                                                     <div className="text-xs text-slate-500 flex items-center gap-1.5 mt-1">
-                                                        <Building size={10} className="text-slate-400"/> {deal.location}
+                                                        <Building size={10} className="text-slate-400"/> {deal.locationName}
                                                         {deal.customerName && <><span className="text-slate-300">•</span> <UserIcon size={10} className="text-slate-400"/> {deal.customerName}</>}
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
                                                     <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-base">฿{deal.value.toLocaleString()}</div>
-                                                    <div className={`text-[10px] px-2 py-0.5 rounded mt-1 inline-block font-bold ${getProbColor(deal.probability)} text-white shadow-sm`}>
-                                                        {deal.probability}% Prob.
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <div className={`text-[10px] px-2 py-0.5 rounded mt-1 inline-block font-bold ${getProbColor(deal.probability)} text-white shadow-sm`}>{deal.probability}%</div>
+                                                        <button onClick={() => handleEditClick(deal.editMetadata.dateId, deal, deal.editMetadata.location)} className="p-1 bg-slate-100 dark:bg-slate-800 rounded mt-1 text-slate-400 hover:text-cyan-500"><Edit size={12}/></button>
                                                     </div>
                                                 </div>
                                             </div>
                                             <div className="flex justify-between items-center pt-3 border-t border-slate-50 dark:border-white/5 mt-1">
                                                 <span className="text-[10px] px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 font-bold uppercase tracking-wide border border-indigo-100 dark:border-indigo-500/20">{deal.stage}</span>
-                                                <span className="text-[10px] text-slate-400">{new Date(deal.date).toLocaleDateString('th-TH')}</span>
+                                                <span className="text-[10px] text-slate-400 flex items-center gap-1"><Calendar size={10}/> {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('th-TH') : '-'}</span>
                                             </div>
                                         </div>
                                     ))
                                 )}
                             </div>
+                        </div>
+                    )}
+
+                    {/* --- EDIT MODAL --- */}
+                    {editTarget && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-enter">
+                            <GlassCard className="w-full max-w-md relative bg-white dark:bg-slate-900 border-cyan-500/30 shadow-2xl">
+                                <button onClick={() => setEditTarget(null)} className="absolute top-4 right-4 text-slate-400 hover:text-rose-500"><X size={20} /></button>
+                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Edit Opportunity</h3>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Product</label>
+                                        <input value={editTarget.data.product} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Value (THB)</label>
+                                            <input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase">Stage</label>
+                                            <select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none appearance-none">
+                                                {pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Expected Close Date</label>
+                                        <input type="date" value={editTarget.data.expectedCloseDate || ''} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} className="w-full p-3 rounded-xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 text-sm font-medium outline-none" />
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between text-xs text-slate-500 mb-2"><span>Probability</span><span className="font-bold text-indigo-500">{editTarget.data.probability}%</span></div>
+                                        <input type="range" min="0" max="100" step="10" value={editTarget.data.probability} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button onClick={handleDelete} disabled={saving} className="p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors border border-rose-100 dark:border-rose-500/20"><Trash2 size={20} /></button>
+                                    <button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-3 rounded-xl bg-cyan-600 text-white font-bold hover:bg-cyan-500 transition-colors flex items-center justify-center gap-2 shadow-lg">{saving ? <Loader2 className="animate-spin" /> : <><Save size={18} /> Save Changes</>}</button>
+                                </div>
+                            </GlassCard>
                         </div>
                     )}
                 </>
