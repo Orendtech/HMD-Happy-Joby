@@ -71,13 +71,13 @@ const Reports: React.FC<Props> = ({ user }) => {
         return 'bg-rose-500';
     };
 
-    // Funnel Configuration
+    // Funnel Configuration - Standard Funnel Order (Prospecting Top -> Closed Won Bottom)
     const funnelConfig = [
         { stage: 'Prospecting', color: 'bg-yellow-400', width: '100%', z: 50 },
         { stage: 'Qualification', color: 'bg-orange-400', width: '85%', z: 40 },
         { stage: 'Proposal', color: 'bg-rose-400', width: '70%', z: 30 },
         { stage: 'Negotiation', color: 'bg-purple-500', width: '55%', z: 20 },
-        { stage: 'Won', color: 'bg-emerald-500', width: '40%', z: 10 }
+        { stage: 'Closed Won', color: 'bg-emerald-500', width: '40%', z: 10 }
     ];
 
     // --- DASHBOARD LOGIC ---
@@ -86,11 +86,14 @@ const Reports: React.FC<Props> = ({ user }) => {
         history.forEach(day => {
             if (day.report?.visits) {
                 day.report.visits.forEach(visit => {
+                    // Aggregated Pipeline Array
                     if (visit.pipeline && visit.pipeline.length > 0) {
                         visit.pipeline.forEach(p => {
                             opportunities.push({ ...p, date: day.id, location: visit.location });
                         });
-                    } else if (visit.interactions) {
+                    }
+                    // Detailed Interactions Pipeline
+                    else if (visit.interactions) {
                         visit.interactions.forEach(i => {
                             if (i.pipeline) {
                                 opportunities.push({ ...i.pipeline, date: day.id, location: visit.location });
@@ -321,7 +324,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                                 </GlassCard>
                             </div>
 
-                            {/* Funnel Chart (Updated Visualization) */}
+                            {/* Funnel Chart (Standard Funnel Order) */}
                             <GlassCard className="overflow-visible relative">
                                 <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2"><BarChart3 size={16} className="text-cyan-500"/> Pipeline Funnel</h3>
                                 <div className="flex flex-col items-center w-full gap-0.5 relative z-0">
@@ -381,7 +384,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                                                 </div>
                                                 <div className="text-right">
                                                     <div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-base">฿{deal.value.toLocaleString()}</div>
-                                                    <div className={`text-[10px] px-2 py-0.5 rounded mt-1 inline-block font-bold ${getProbColor(deal.probability).replace('bg-', 'text-')} bg-slate-100 dark:bg-slate-800`}>
+                                                    <div className={`text-[10px] px-2 py-0.5 rounded mt-1 inline-block font-bold ${getProbColor(deal.probability)} text-white shadow-sm`}>
                                                         {deal.probability}% Prob.
                                                     </div>
                                                 </div>
