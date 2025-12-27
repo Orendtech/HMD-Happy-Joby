@@ -7,7 +7,7 @@ import { WorkPlan, UserProfile } from '../types';
 import { 
     Plus, Trash2, Calendar, MapPin, 
     X, Loader2, MessageSquare, User as UserIcon, 
-    ChevronRight, Info, Save, Clock, ChevronLeft, Building, Search
+    ChevronRight, Info, Save, Clock, ChevronLeft, Building, Search, Download
 } from 'lucide-react';
 
 interface Props {
@@ -31,6 +31,11 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
     // ตั้งค่าเริ่มต้นวันที่เลือกให้เป็นวันนี้แบบ Local
     const [selectedDate, setSelectedDate] = useState(formatLocalDate(new Date()));
     
+    // Export Range State
+    const [exportStart, setExportStart] = useState(formatLocalDate(new Date()));
+    const [exportEnd, setExportEnd] = useState(formatLocalDate(new Date()));
+    const [showExportOptions, setShowExportOptions] = useState(false);
+
     // Profile state to handle dynamic hospital updates
     const [localProfile, setLocalProfile] = useState<UserProfile | null>(userProfile);
 
@@ -149,6 +154,34 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
         await fetchPlans();
     };
 
+    const exportPlansToCSV = () => {
+        const filtered = plans.filter(p => p.date >= exportStart && p.date <= exportEnd);
+        if (filtered.length === 0) {
+            alert("ไม่พบแผนงานในช่วงวันที่เลือก");
+            return;
+        }
+
+        const headers = ["วันที่", "พนักงาน", "หัวข้อแผนงาน", "รายละเอียด", "จุดนัดพบ/เป้าหมาย"];
+        const rows = filtered.map(p => {
+            const itineraryStr = p.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ');
+            return [
+                p.date,
+                `"${p.userName}"`,
+                `"${p.title.replace(/"/g, '""')}"`,
+                `"${p.content.replace(/"/g, '""')}"`,
+                `"${itineraryStr.replace(/"/g, '""')}"`
+            ];
+        });
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const link = document.createElement("a");
+        link.href = encodeURI("data:text/csv;charset=utf-8,\uFEFF" + csvContent);
+        link.download = `workplans_${exportStart}_to_${exportEnd}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     // Location suggestions filtering - Show all on empty if focused
     const filteredHospitals = newLoc === '' 
         ? (localProfile?.hospitals || [])
@@ -162,17 +195,48 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                     <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">ปฏิทินแผนงาน</h2>
                     <p className="text-slate-500 text-sm font-medium">จัดตารางและเป้าหมายของคุณ</p>
                 </div>
-                <button 
-                    onClick={() => setShowForm(!showForm)}
-                    className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${
-                        showForm 
-                        ? 'bg-rose-500 text-white shadow-rose-500/20' 
-                        : 'bg-indigo-600 text-white shadow-indigo-500/20'
-                    }`}
-                >
-                    {showForm ? <X size={24} /> : <Plus size={24} />}
-                </button>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setShowExportOptions(!showExportOptions)}
+                        className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${
+                            showExportOptions 
+                            ? 'bg-emerald-500 text-white' 
+                            : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-white/5'
+                        }`}
+                        title="Download CSV"
+                    >
+                        <Download size={24} />
+                    </button>
+                    <button 
+                        onClick={() => setShowForm(!showForm)}
+                        className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${
+                            showForm 
+                            ? 'bg-rose-500 text-white shadow-rose-500/20' 
+                            : 'bg-indigo-600 text-white shadow-indigo-500/20'
+                        }`}
+                    >
+                        {showForm ? <X size={24} /> : <Plus size={24} />}
+                    </button>
+                </div>
             </div>
+
+            {/* Export Section */}
+            {showExportOptions && (
+                <GlassCard className="p-6 border-emerald-500/20 animate-enter">
+                    <div className="flex flex-col md:flex-row items-end gap-4">
+                        <div className="flex-1 w-full space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ดาวน์โหลดแผนงานช่วงวันที่</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm text-slate-900 dark:text-white" />
+                                <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm text-slate-900 dark:text-white" />
+                            </div>
+                        </div>
+                        <button onClick={exportPlansToCSV} className="w-full md:w-auto bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
+                            <Download size={18} /> Export
+                        </button>
+                    </div>
+                </GlassCard>
+            )}
 
             {/* Calendar Card */}
             <GlassCard className="p-6">
@@ -330,7 +394,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                             <button 
                                 onClick={handleSavePlan}
                                 disabled={isSaving || !title || !content}
-                                className="w-full bg-indigo-600 py-4 rounded-2xl font-black text-white hover:opacity-90 flex items-center justify-center gap-2 shadow-xl disabled:opacity-50 active:scale-95 transition-all"
+                                className="w-full bg-indigo-600 py-4 rounded-2xl font-black text-white dark:text-slate-900 hover:opacity-90 flex items-center justify-center gap-2 shadow-xl disabled:opacity-50 active:scale-95 transition-all"
                             >
                                 {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={20}/> บันทึกแผนงาน</>}
                             </button>

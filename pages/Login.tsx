@@ -26,17 +26,13 @@ const Login: React.FC = () => {
             }
         } catch (err: any) {
             console.error(err);
-            // Firebase now uses 'auth/invalid-credential' for both wrong email and wrong password
-            if (err.code === 'auth/invalid-credential') {
+            // Firebase now uses 'auth/invalid-credential' for generic login failures
+            if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
                 setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
             } else if (err.code === 'auth/email-already-in-use') {
                 setError('อีเมลนี้ถูกใช้งานแล้ว');
             } else if (err.code === 'auth/weak-password') {
                 setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
-            } else if (err.code === 'auth/user-not-found') {
-                setError('ไม่พบผู้ใช้งานรายนี้ในระบบ');
-            } else if (err.code === 'auth/wrong-password') {
-                setError('รหัสผ่านไม่ถูกต้อง');
             } else {
                 setError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่ภายหลัง');
             }

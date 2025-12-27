@@ -217,23 +217,33 @@ const Reports: React.FC<Props> = ({ user }) => {
                 "รายงาน: สรุปกิจกรรม"
             ];
             
-            // Create a set of all dates in the range to iterate
-            const startDateObj = new Date(filterStartDate);
-            const endDateObj = new Date(filterEndDate);
-            const dateCursor = new Date(startDateObj);
+            // Generate list of dates in the range
+            const getDates = (start: string, end: string) => {
+                const dates = [];
+                let curr = new Date(start);
+                const endD = new Date(end);
+                while (curr <= endD) {
+                    dates.push(new Date(curr).toISOString().split('T')[0]);
+                    curr.setDate(curr.getDate() + 1);
+                }
+                return dates;
+            };
 
-            while (dateCursor <= endDateObj) {
-                const dateStr = dateCursor.toISOString().split('T')[0];
-                
-                // Find Plan and Report for this date
+            const selectedDates = getDates(filterStartDate, filterEndDate);
+
+            selectedDates.forEach(dateStr => {
+                // Find Plan and Report for this specific date
                 const dayPlan = plans.find(p => p.date === dateStr);
                 const dayReport = history.find(h => h.id === dateStr);
 
-                // Format Plan Itinerary
+                // Plan columns
+                const planTitle = dayPlan?.title || '-';
+                const planContent = dayPlan?.content || '-';
                 const planItineraryStr = dayPlan?.itinerary 
                     ? dayPlan.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ') 
                     : '-';
 
+                // If there's a report with visits, we might have multiple rows per day
                 if (dayReport?.report?.visits && dayReport.report.visits.length > 0) {
                     dayReport.report.visits.forEach((v: any) => {
                         if (v.interactions && v.interactions.length > 0) {
@@ -241,8 +251,8 @@ const Reports: React.FC<Props> = ({ user }) => {
                                 rows.push([
                                     dateStr,
                                     `"${targetUserName}"`,
-                                    `"${(dayPlan?.title || '-').replace(/"/g, '""')}"`,
-                                    `"${(dayPlan?.content || '-').replace(/"/g, '""')}"`,
+                                    `"${planTitle.replace(/"/g, '""')}"`,
+                                    `"${planContent.replace(/"/g, '""')}"`,
                                     `"${planItineraryStr.replace(/"/g, '""')}"`,
                                     `"${v.location}"`,
                                     v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
@@ -253,12 +263,11 @@ const Reports: React.FC<Props> = ({ user }) => {
                                 ]);
                             });
                         } else {
-                            // Visit without interaction notes
                             rows.push([
                                 dateStr,
                                 `"${targetUserName}"`,
-                                `"${(dayPlan?.title || '-').replace(/"/g, '""')}"`,
-                                `"${(dayPlan?.content || '-').replace(/"/g, '""')}"`,
+                                `"${planTitle.replace(/"/g, '""')}"`,
+                                `"${planContent.replace(/"/g, '""')}"`,
                                 `"${planItineraryStr.replace(/"/g, '""')}"`,
                                 `"${v.location}"`,
                                 v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
@@ -270,25 +279,24 @@ const Reports: React.FC<Props> = ({ user }) => {
                         }
                     });
                 } else if (dayPlan) {
-                    // Only plan, no report
+                    // Plan exists but no check-in yet
                     rows.push([
                         dateStr,
                         `"${targetUserName}"`,
-                        `"${dayPlan.title.replace(/"/g, '""')}"`,
-                        `"${dayPlan.content.replace(/"/g, '""')}"`,
+                        `"${planTitle.replace(/"/g, '""')}"`,
+                        `"${planContent.replace(/"/g, '""')}"`,
                         `"${planItineraryStr.replace(/"/g, '""')}"`,
                         '-',
                         '-',
                         '-',
                         '-',
                         '-',
-                        '"(ไม่มีการเช็คอินเข้างาน)"'
+                        '"(ยังไม่มีข้อมูลรายงาน)"'
                     ]);
                 }
+            });
 
-                dateCursor.setDate(dateCursor.getDate() + 1);
-            }
-            filename = `performance_log_${targetUserName}_${filterStartDate}_to_${filterEndDate}.csv`;
+            filename = `performance_summary_${targetUserName}_${filterStartDate}_to_${filterEndDate}.csv`;
         }
 
         if (rows.length === 0) {
