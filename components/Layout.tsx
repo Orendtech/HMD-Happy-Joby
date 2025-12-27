@@ -17,7 +17,17 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const isHomePage = location.pathname === '/';
     const [pendingCount, setPendingCount] = useState(0);
 
-    // Notification Observer Logic
+    // Reset theme color when not on homepage
+    useEffect(() => {
+        if (!isHomePage) {
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+                const isDark = document.documentElement.classList.contains('dark');
+                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+            }
+        }
+    }, [location.pathname]);
+
     useEffect(() => {
         if (!user) return;
 
@@ -25,13 +35,11 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             const list = await getReminders(user.uid);
             const now = new Date();
             
-            // กรองเฉพาะรายการที่ยังไม่เสร็จเพื่อแสดงตัวเลขที่ Badge
             const uncompletedList = list.filter(r => !r.isCompleted);
             setPendingCount(uncompletedList.length);
             
             list.forEach(async (r) => {
                 const due = new Date(r.dueTime);
-                // Notify if due time is reached (within a 5-minute window) and not notified yet
                 if (!r.isCompleted && !r.notified && due <= now) {
                     if ("Notification" in window && Notification.permission === "granted") {
                         new Notification("Happy Joby Reminder", {
@@ -44,8 +52,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             });
         };
 
-        const interval = setInterval(checkReminders, 60000); // Check every minute
-        checkReminders(); // Initial check
+        const interval = setInterval(checkReminders, 60000); 
+        checkReminders(); 
 
         return () => clearInterval(interval);
     }, [user]);

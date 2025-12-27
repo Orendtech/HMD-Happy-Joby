@@ -30,11 +30,11 @@ interface XpParticle {
 }
 
 const getRankTitle = (level: number) => {
-    if (level >= 9) return { title: 'LEGEND', color: 'text-white' };
-    if (level >= 7) return { title: 'ELITE', color: 'text-white' };
-    if (level >= 5) return { title: 'RANGER', color: 'text-white' };
-    if (level >= 3) return { title: 'SCOUT', color: 'text-white' };
-    return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400' };
+    if (level >= 9) return { title: 'LEGEND', color: 'text-white', themeColor: '#f59e0b' }; // Amber 500
+    if (level >= 7) return { title: 'ELITE', color: 'text-white', themeColor: '#e11d48' };  // Rose 600
+    if (level >= 5) return { title: 'RANGER', color: 'text-white', themeColor: '#4f46e5' }; // Indigo 600
+    if (level >= 3) return { title: 'SCOUT', color: 'text-white', themeColor: '#2563eb' };  // Blue 600
+    return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400', themeColor: '#0f172a' }; // Slate 900
 };
 
 const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) => {
@@ -86,7 +86,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         const a = await getTodayAttendance(user.uid);
         const r = await getReminders(user.uid);
         
-        // Fetch Today's Plan
         const plans = await getWorkPlans(user.uid);
         const todayStr = getTodayDateId();
         const foundPlan = plans.find(plan => plan.date === todayStr);
@@ -106,6 +105,17 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         }
     };
 
+    const currentLevel = profile?.level || 1; 
+    const rank = getRankTitle(currentLevel);
+
+    // Dynamic Theme Color for Mobile Status Bar
+    useEffect(() => {
+        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', rank.themeColor);
+        }
+    }, [currentLevel]);
+
     useEffect(() => {
         refreshData();
         getLocation();
@@ -115,7 +125,16 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
             if (contactDropdownRef.current && !contactDropdownRef.current.contains(event.target as Node)) setIsContactDropdownOpen(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
-        return () => { clearInterval(timer); document.removeEventListener('mousedown', handleClickOutside); };
+        return () => { 
+            clearInterval(timer); 
+            document.removeEventListener('mousedown', handleClickOutside);
+            // Reset theme color when leaving page
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (metaThemeColor) {
+                const isDark = document.documentElement.classList.contains('dark');
+                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+            }
+        };
     }, [user]);
 
     const getLocation = () => {
@@ -151,7 +170,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const handleExistingDealSelect = (dealId: string) => { const deal = profile?.activePipeline?.find(p => p.id === dealId); setSelectedExistingDealId(dealId); if (deal) { setPipelineProduct(deal.product); setPipelineValue(deal.value.toString()); setPipelineStage(deal.stage); setPipelineProb(deal.probability); if (deal.expectedCloseDate) setPipelineDate(deal.expectedCloseDate); } };
     const confirmCheckOut = async () => { try { if (!todayData?.checkIns) return; const visits: VisitReport[] = todayData.checkIns.map((ci, idx) => { const draft = visitDrafts[idx]; const interactions = draft.interactions.map(d => ({ customerName: d.customerName, department: d.department, summary: d.summary, pipeline: d.pipeline || undefined })); const aggregatedSummary = interactions.map(i => `${i.customerName}: ${i.summary}`).join('\n'); const aggregatedMetWith = interactions.map(i => i.customerName); const aggregatedPipeline = interactions.filter(i => i.pipeline).map(i => i.pipeline!); return { location: ci.location, checkInTime: ci.timestamp, summary: aggregatedSummary, metWith: aggregatedMetWith, pipeline: aggregatedPipeline, interactions: interactions }; }); const reportData: DailyReport = { visits }; await checkOut(user.uid, reportData); setStatusMsg('บันทึกรายงานและเช็คเอาท์เรียบร้อย'); setShowReportModal(false); refreshData(); } catch (e) { setStatusMsg('Check-out failed'); } };
     
-    // Improved Location Logic - Show all if query is empty on focus
     const filteredLocations = searchQuery === '' 
         ? (profile?.hospitals || []) 
         : (profile?.hospitals.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase())) || []);
@@ -165,11 +183,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const getFilteredCustomers = (visitLocation: string) => { const all = (profile?.customers || []).filter(c => c.hospital === visitLocation || c.hospital === 'All'); if (!contactSearch) return all; return all.filter(c => c.name.toLowerCase().includes(contactSearch.toLowerCase())); };
     const activeDeals = profile?.activePipeline || [];
     
-    const currentLevel = profile?.level || 1; 
     const currentXP = profile?.xp || 0; 
     const nextLevelXP = currentLevel === 1 ? 100 : currentLevel * currentLevel * 100; 
     const progressPercent = Math.min(100, Math.max(0, ((currentXP - ((currentLevel - 1) === 0 ? 0 : (currentLevel-1)*(currentLevel-1)*100)) / (nextLevelXP - ((currentLevel - 1) === 0 ? 0 : (currentLevel-1)*(currentLevel-1)*100))) * 100)); 
-    const rank = getRankTitle(currentLevel); 
     const pipelineStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
     const getTheme = (level: number) => {
@@ -215,274 +231,273 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     return (
         <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617]">
-            <div className={`relative rounded-b-[40px] shadow-xl pb-8 pt-[max(2rem,env(safe-area-inset-top))] px-6 z-20 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+            <div className="w-full max-w-2xl mx-auto flex flex-col min-h-full">
+                <div className={`relative rounded-b-[40px] shadow-xl pb-8 pt-[max(2rem,env(safe-area-inset-top))] px-6 z-20 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+                    
+                    <div className="flex justify-between items-start mb-6 relative z-10">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm overflow-hidden border-2 ${theme.avatarBorder}`}>
+                                {profile?.photoBase64 ? (
+                                    <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-white text-xl font-bold">
+                                        {profile?.name?.[0] || user.email?.[0]?.toUpperCase()}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className={`text-xl font-bold leading-tight ${theme.textPrimary}`}>
+                                        {profile?.name || user.email?.split('@')[0]}
+                                    </h1>
+                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase ${badge.bg}`}>
+                                        {badge.label}
+                                    </span>
+                                </div>
+                                <p className={`text-sm font-medium ${theme.textSecondary}`}>
+                                    {profile?.area || 'Happy Joby Workspace'}
+                                </p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => navigate('/settings')}
+                            className={`p-2.5 rounded-full transition-colors ${theme.settingsBtn}`}
+                        >
+                            <Settings size={22} />
+                        </button>
+                    </div>
+
+                    <div className="flex items-center gap-4 relative z-10">
+                        <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden backdrop-blur-md bg-black/5 border border-white/10 shadow-inner">
+                             <span className={`text-2xl font-black ${theme.textPrimary}`}>{currentLevel}</span>
+                             {isHudBouncing && <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full animate-ping"></div>}
+                        </div>
+                        
+                        <div className="flex-1">
+                             <div className="flex justify-between items-end mb-1.5">
+                                 <span className={`text-[10px] font-black tracking-widest uppercase opacity-80 ${theme.textPrimary}`}>{rank.title}</span>
+                                 <div className="flex items-baseline gap-1">
+                                    <span className={`text-sm font-bold ${theme.textPrimary}`}>{currentXP}</span>
+                                    <span className={`text-[10px] ${theme.textSecondary}`}>XP</span>
+                                 </div>
+                             </div>
+                             <div className={`h-2.5 w-full rounded-full overflow-hidden ${theme.progressTrack}`}>
+                                <div style={{ width: `${progressPercent}%` }} className={`h-full rounded-full transition-all duration-700 ${theme.progressFill}`}></div>
+                             </div>
+                        </div>
+
+                        <div className={`flex flex-col items-center pl-3 border-l ${theme.divider}`}>
+                            <div className={`flex items-center gap-1 ${theme.statIcon}`}>
+                                <Flame size={20} className={theme.statIcon.split(' ')[1]} />
+                                <span className={`text-xl font-bold ${theme.textPrimary}`}>{profile?.currentStreak || 0}</span>
+                            </div>
+                            <span className={`text-[8px] font-bold uppercase tracking-wider ${theme.textSecondary}`}>Streak</span>
+                        </div>
+                    </div>
+                </div>
                 
-                <div className="flex justify-between items-start mb-6 relative z-10">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm overflow-hidden border-2 ${theme.avatarBorder}`}>
-                            {profile?.photoBase64 ? (
-                                <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
+                <div className="flex-1 overflow-y-auto px-4 pt-6 pb-28 space-y-6">
+                    {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-3xl px-6 py-3 rounded-full shadow-lg border-2 border-white/40"><Zap className="fill-white" size={28} /> +{p.xp}</div></div>))}
+
+                    <div className="flex justify-between items-end px-2">
+                        <div>
+                            <div className="text-4xl font-bold text-slate-900 dark:text-white tracking-tighter leading-none">{time.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
+                            <div className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">{time.toLocaleDateString('en-US', {weekday: 'long', day: 'numeric', month: 'short'})}</div>
+                        </div>
+                        <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold border uppercase tracking-wider shadow-sm ${
+                            currentStage === 'working' ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/50 text-emerald-700 dark:text-emerald-400' :
+                            currentStage === 'completed' ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500' :
+                            'bg-cyan-100 dark:bg-cyan-500/20 border-cyan-200 dark:border-cyan-500/50 text-cyan-700 dark:text-cyan-400'
+                        }`}>
+                            {currentStage === 'working' ? 'ON DUTY' : currentStage === 'completed' ? 'OFF DUTY' : 'READY'}
+                        </div>
+                    </div>
+
+                    {reminders.length > 0 && (
+                        <div className="animate-enter delay-100">
+                            <div className="flex items-center justify-between mb-3 px-2">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <Bell size={12} className="text-cyan-500" /> Smart Alerts
+                                </h3>
+                                <button onClick={() => navigate('/reminders')} className="text-[10px] font-black text-cyan-500 flex items-center gap-1 uppercase">ดูทั้งหมด <ChevronRight size={12} /></button>
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                                {reminders.map((r) => (
+                                    <div 
+                                        key={r.id} 
+                                        onClick={() => navigate('/reminders')}
+                                        className="min-w-[160px] bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md active:scale-95 transition-all cursor-pointer"
+                                    >
+                                        <div className="font-bold text-slate-900 dark:text-white text-xs truncate mb-1">{r.title}</div>
+                                        <div className="text-[9px] font-black text-cyan-600 dark:text-cyan-400 uppercase flex items-center gap-1">
+                                            <Clock size={10} /> 
+                                            {new Date(r.dueTime).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="relative rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xl overflow-visible" ref={dropdownRef}>
+                        <div className="h-48 w-full relative overflow-hidden rounded-t-[32px]">
+                            {location ? (
+                                <MapDisplay 
+                                    lat={location.lat} 
+                                    lng={location.lng} 
+                                    markers={[{
+                                        lat: location.lat,
+                                        lng: location.lng,
+                                        text: profile?.name || user.email || 'My Location',
+                                        photo: profile?.photoBase64
+                                    }]}
+                                    className="h-full w-full opacity-90 transition-all duration-500" 
+                                    zoom={15} 
+                                />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white text-xl font-bold">
-                                    {profile?.name?.[0] || user.email?.[0]?.toUpperCase()}
+                                <div className="h-full w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center text-slate-500 text-xs gap-2">
+                                    <Navigation size={14} className="animate-spin" /> Acquiring GPS...
                                 </div>
                             )}
+                            <button onClick={getLocation} className="absolute top-3 right-3 bg-white dark:bg-slate-900/80 p-2 rounded-full text-slate-500 shadow-md border border-slate-100 dark:border-white/10 z-10">
+                                <Navigation size={16} />
+                            </button>
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className={`text-xl font-bold leading-tight ${theme.textPrimary}`}>
-                                    {profile?.name || user.email?.split('@')[0]}
-                                </h1>
-                                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase ${badge.bg}`}>
-                                    {badge.label}
-                                </span>
+                        
+                        <div className="p-4 space-y-4">
+                            {todayPlan && todayPlan.itinerary && todayPlan.itinerary.length > 0 && !isCheckedOut && (
+                                <div className="animate-enter">
+                                    <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2 mb-2 ml-1">
+                                        <Target size={12} /> เป้าหมายวันนี้จากแผนงาน
+                                    </label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {todayPlan.itinerary.map((it, idx) => {
+                                            const isCheckedIn = todayData?.checkIns.some(ci => ci.location === it.location);
+                                            return (
+                                                <button 
+                                                    key={idx}
+                                                    onClick={() => handleSelectLocation(it.location)}
+                                                    className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border shadow-sm active:scale-95 ${
+                                                        selectedPlace === it.location
+                                                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/20'
+                                                        : isCheckedIn
+                                                            ? 'bg-slate-50 dark:bg-slate-800 border-emerald-500/30 text-emerald-500 opacity-60'
+                                                            : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-indigo-500'
+                                                    }`}
+                                                >
+                                                    {isCheckedIn ? <Check size={14} /> : <MapPin size={14} />}
+                                                    {it.location}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="relative group shadow-lg rounded-2xl">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Search size={18} className="text-slate-400" />
+                                </div>
+                                <input 
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSearchQuery(val);
+                                        setIsDropdownOpen(true);
+                                        if(val === '') setSelectedPlace('');
+                                    }}
+                                    onFocus={() => setIsDropdownOpen(true)}
+                                    placeholder="เลือกสถานที่เพื่อเช็คอิน..."
+                                    className="block w-full pl-11 pr-4 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all text-sm font-medium"
+                                />
+                                
+                                {isDropdownOpen && (
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] max-h-52 overflow-y-auto ring-1 ring-black/5">
+                                        {filteredLocations.length > 0 ? (
+                                            filteredLocations.map((loc, idx) => (
+                                                <button 
+                                                    key={idx} 
+                                                    onClick={() => handleSelectLocation(loc)} 
+                                                    className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-sm flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Building size={16} className="text-slate-400" />
+                                                        <span className="font-bold">{loc}</span>
+                                                    </div>
+                                                    {selectedPlace === loc && <Check size={14} className="text-cyan-500" />}
+                                                </button>
+                                            ))
+                                        ) : (
+                                            <div className="px-5 py-8 text-center text-slate-400 text-sm italic">
+                                                ไม่พบสถานที่ที่ตรงกับคำค้นหา
+                                            </div>
+                                        )}
+                                        {searchQuery && !profile?.hospitals.some(h => h.toLowerCase() === searchQuery.toLowerCase()) && (
+                                            <button 
+                                                onClick={handleAddNewLocation} 
+                                                className="w-full text-left px-5 py-4 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 text-sm flex items-center gap-3 border-t-2 border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-slate-900 font-black"
+                                            >
+                                                <div className="bg-cyan-500 text-white p-1 rounded-full">
+                                                    <Plus size={14} />
+                                                </div>
+                                                เพิ่มรายชื่อใหม่: "{searchQuery}"
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            <p className={`text-sm font-medium ${theme.textSecondary}`}>
-                                {profile?.area || 'Happy Joby Workspace'}
-                            </p>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => navigate('/settings')}
-                        className={`p-2.5 rounded-full transition-colors ${theme.settingsBtn}`}
-                    >
-                        <Settings size={22} />
-                    </button>
-                </div>
 
-                <div className="flex items-center gap-4 relative z-10">
-                    <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden backdrop-blur-md bg-black/5 border border-white/10 shadow-inner">
-                         <span className={`text-2xl font-black ${theme.textPrimary}`}>{currentLevel}</span>
-                         {isHudBouncing && <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full animate-ping"></div>}
+                    <div className="grid grid-cols-2 gap-4">
+                        <button 
+                            onClick={handleCheckIn}
+                            disabled={isCheckedOut || !selectedPlace}
+                            className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
+                                isCheckedOut || !selectedPlace
+                                ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' 
+                                : 'bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-600 dark:to-emerald-800 shadow-[0_10px_30px_-10px_rgba(52,211,153,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(52,211,153,0.6)] active:scale-95'
+                            }`}
+                        >
+                            <Plus size={36} className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} mb-2`} />
+                            <span className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK IN</span>
+                        </button>
+
+                        <button 
+                            onClick={() => setShowReportModal(true)}
+                            disabled={!isCheckedInToday || isCheckedOut}
+                            className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
+                                !isCheckedInToday || isCheckedOut 
+                                ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' 
+                                : 'bg-gradient-to-br from-rose-400 to-rose-600 dark:from-rose-600 dark:to-rose-800 shadow-[0_10px_30px_-10px_rgba(244,63,94,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(244,63,94,0.6)] active:scale-95'
+                            }`}
+                        >
+                            <LogOut size={36} className={`${!isCheckedInToday || isCheckedOut ? 'text-slate-400' : 'text-white'} mb-2`} />
+                            <span className={`${!isCheckedInToday || isCheckedOut ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK OUT</span>
+                        </button>
                     </div>
                     
-                    <div className="flex-1">
-                         <div className="flex justify-between items-end mb-1.5">
-                             <span className={`text-[10px] font-black tracking-widest uppercase opacity-80 ${theme.textPrimary}`}>{rank.title}</span>
-                             <div className="flex items-baseline gap-1">
-                                <span className={`text-sm font-bold ${theme.textPrimary}`}>{currentXP}</span>
-                                <span className={`text-[10px] ${theme.textSecondary}`}>XP</span>
-                             </div>
-                         </div>
-                         <div className={`h-2.5 w-full rounded-full overflow-hidden ${theme.progressTrack}`}>
-                            <div style={{ width: `${progressPercent}%` }} className={`h-full rounded-full transition-all duration-700 ${theme.progressFill}`}></div>
-                         </div>
-                    </div>
+                    {statusMsg && <div className="text-center text-cyan-600 text-sm py-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-2xl border border-cyan-100 dark:border-cyan-500/20">{statusMsg}</div>}
 
-                    <div className={`flex flex-col items-center pl-3 border-l ${theme.divider}`}>
-                        <div className={`flex items-center gap-1 ${theme.statIcon}`}>
-                            <Flame size={20} className={theme.statIcon.split(' ')[1]} />
-                            <span className={`text-xl font-bold ${theme.textPrimary}`}>{profile?.currentStreak || 0}</span>
+                    <div className="pt-2 pb-10">
+                        <div className="flex items-center gap-2 mb-4 px-2 opacity-60">
+                            <Calendar size={14} className="text-slate-500" />
+                            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">เส้นทางวันนี้</h3>
                         </div>
-                        <span className={`text-[8px] font-bold uppercase tracking-wider ${theme.textSecondary}`}>Streak</span>
-                    </div>
-                </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto px-4 pt-6 pb-28 space-y-6">
-                {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-3xl px-6 py-3 rounded-full shadow-lg border-2 border-white/40"><Zap className="fill-white" size={28} /> +{p.xp}</div></div>))}
-
-                <div className="flex justify-between items-end px-2">
-                    <div>
-                        <div className="text-4xl font-bold text-slate-900 dark:text-white tracking-tighter leading-none">{time.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">{time.toLocaleDateString('en-US', {weekday: 'long', day: 'numeric', month: 'short'})}</div>
-                    </div>
-                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold border uppercase tracking-wider shadow-sm ${
-                        currentStage === 'working' ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/50 text-emerald-700 dark:text-emerald-400' :
-                        currentStage === 'completed' ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500' :
-                        'bg-cyan-100 dark:bg-cyan-500/20 border-cyan-200 dark:border-cyan-500/50 text-cyan-700 dark:text-cyan-400'
-                    }`}>
-                        {currentStage === 'working' ? 'ON DUTY' : currentStage === 'completed' ? 'OFF DUTY' : 'READY'}
-                    </div>
-                </div>
-
-                {/* --- SMART REMINDERS WIDGET --- */}
-                {reminders.length > 0 && (
-                    <div className="animate-enter delay-100">
-                        <div className="flex items-center justify-between mb-3 px-2">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                <Bell size={12} className="text-cyan-500" /> Smart Alerts
-                            </h3>
-                            <button onClick={() => navigate('/reminders')} className="text-[10px] font-black text-cyan-500 flex items-center gap-1 uppercase">ดูทั้งหมด <ChevronRight size={12} /></button>
-                        </div>
-                        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                            {reminders.map((r) => (
-                                <div 
-                                    key={r.id} 
-                                    onClick={() => navigate('/reminders')}
-                                    className="min-w-[160px] bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md active:scale-95 transition-all cursor-pointer"
-                                >
-                                    <div className="font-bold text-slate-900 dark:text-white text-xs truncate mb-1">{r.title}</div>
-                                    <div className="text-[9px] font-black text-cyan-600 dark:text-cyan-400 uppercase flex items-center gap-1">
-                                        <Clock size={10} /> 
-                                        {new Date(r.dueTime).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+                        
+                        <div className="relative pl-4 space-y-4 border-l border-slate-200 dark:border-slate-800 ml-3">
+                            {todayData?.checkIns.map((ci, idx) => (
+                                <div key={idx} className="relative pl-6">
+                                    <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg ring-4 ring-white dark:ring-slate-950"></div>
+                                    <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-sm">
+                                        <div className="text-slate-900 dark:text-white font-bold text-sm">{ci.location}</div>
+                                        <div className="text-slate-500 dark:text-slate-400 font-mono text-xs">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </div>
-                )}
-
-                <div className="relative rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xl overflow-visible" ref={dropdownRef}>
-                    <div className="h-48 w-full relative overflow-hidden rounded-t-[32px]">
-                        {location ? (
-                            <MapDisplay 
-                                lat={location.lat} 
-                                lng={location.lng} 
-                                markers={[{
-                                    lat: location.lat,
-                                    lng: location.lng,
-                                    text: profile?.name || user.email || 'My Location',
-                                    photo: profile?.photoBase64
-                                }]}
-                                className="h-full w-full opacity-90 transition-all duration-500" 
-                                zoom={15} 
-                            />
-                        ) : (
-                            <div className="h-full w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center text-slate-500 text-xs gap-2">
-                                <Navigation size={14} className="animate-spin" /> Acquiring GPS...
-                            </div>
-                        )}
-                        <button onClick={getLocation} className="absolute top-3 right-3 bg-white dark:bg-slate-900/80 p-2 rounded-full text-slate-500 shadow-md border border-slate-100 dark:border-white/10 z-10">
-                            <Navigation size={16} />
-                        </button>
-                    </div>
-                    
-                    <div className="p-4 space-y-4">
-                        {/* Planned Today Chips */}
-                        {todayPlan && todayPlan.itinerary && todayPlan.itinerary.length > 0 && !isCheckedOut && (
-                            <div className="animate-enter">
-                                <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2 mb-2 ml-1">
-                                    <Target size={12} /> เป้าหมายวันนี้จากแผนงาน
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {todayPlan.itinerary.map((it, idx) => {
-                                        // ตรวจสอบว่าเช็คอินไปแล้วหรือยัง
-                                        const isCheckedIn = todayData?.checkIns.some(ci => ci.location === it.location);
-                                        return (
-                                            <button 
-                                                key={idx}
-                                                onClick={() => handleSelectLocation(it.location)}
-                                                className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border shadow-sm active:scale-95 ${
-                                                    selectedPlace === it.location
-                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/20'
-                                                    : isCheckedIn
-                                                        ? 'bg-slate-50 dark:bg-slate-800 border-emerald-500/30 text-emerald-500 opacity-60'
-                                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-indigo-500'
-                                                }`}
-                                            >
-                                                {isCheckedIn ? <Check size={14} /> : <MapPin size={14} />}
-                                                {it.location}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="relative group shadow-lg rounded-2xl">
-                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                <Search size={18} className="text-slate-400" />
-                            </div>
-                            <input 
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    setSearchQuery(val);
-                                    setIsDropdownOpen(true);
-                                    if(val === '') setSelectedPlace('');
-                                }}
-                                onFocus={() => setIsDropdownOpen(true)}
-                                placeholder="เลือกสถานที่เพื่อเช็คอิน..."
-                                className="block w-full pl-11 pr-4 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all text-sm font-medium"
-                            />
-                            
-                            {isDropdownOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] max-h-52 overflow-y-auto ring-1 ring-black/5">
-                                    {filteredLocations.length > 0 ? (
-                                        filteredLocations.map((loc, idx) => (
-                                            <button 
-                                                key={idx} 
-                                                onClick={() => handleSelectLocation(loc)} 
-                                                className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-sm flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <Building size={16} className="text-slate-400" />
-                                                    <span className="font-bold">{loc}</span>
-                                                </div>
-                                                {selectedPlace === loc && <Check size={14} className="text-cyan-500" />}
-                                            </button>
-                                        ))
-                                    ) : (
-                                        <div className="px-5 py-8 text-center text-slate-400 text-sm italic">
-                                            ไม่พบสถานที่ที่ตรงกับคำค้นหา
-                                        </div>
-                                    )}
-                                    {searchQuery && !profile?.hospitals.some(h => h.toLowerCase() === searchQuery.toLowerCase()) && (
-                                        <button 
-                                            onClick={handleAddNewLocation} 
-                                            className="w-full text-left px-5 py-4 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 text-sm flex items-center gap-3 border-t-2 border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-slate-900 font-black"
-                                        >
-                                            <div className="bg-cyan-500 text-white p-1 rounded-full">
-                                                <Plus size={14} />
-                                            </div>
-                                            เพิ่มรายชื่อใหม่: "{searchQuery}"
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <button 
-                        onClick={handleCheckIn}
-                        disabled={isCheckedOut || !selectedPlace}
-                        className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
-                            isCheckedOut || !selectedPlace
-                            ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' 
-                            : 'bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-600 dark:to-emerald-800 shadow-[0_10px_30px_-10px_rgba(52,211,153,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(52,211,153,0.6)] active:scale-95'
-                        }`}
-                    >
-                        <Plus size={36} className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} mb-2`} />
-                        <span className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK IN</span>
-                    </button>
-
-                    <button 
-                        onClick={() => setShowReportModal(true)}
-                        disabled={!isCheckedInToday || isCheckedOut}
-                        className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
-                            !isCheckedInToday || isCheckedOut 
-                            ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' 
-                            : 'bg-gradient-to-br from-rose-400 to-rose-600 dark:from-rose-600 dark:to-rose-800 shadow-[0_10px_30px_-10px_rgba(244,63,94,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(244,63,94,0.6)] active:scale-95'
-                        }`}
-                    >
-                        <LogOut size={36} className={`${!isCheckedInToday || isCheckedOut ? 'text-slate-400' : 'text-white'} mb-2`} />
-                        <span className={`${!isCheckedInToday || isCheckedOut ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK OUT</span>
-                    </button>
-                </div>
-                
-                {statusMsg && <div className="text-center text-cyan-600 text-sm py-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-2xl border border-cyan-100 dark:border-cyan-500/20">{statusMsg}</div>}
-
-                <div className="pt-2">
-                    <div className="flex items-center gap-2 mb-4 px-2 opacity-60">
-                        <Calendar size={14} className="text-slate-500" />
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">เส้นทางวันนี้</h3>
-                    </div>
-                    
-                    <div className="relative pl-4 space-y-4 border-l border-slate-200 dark:border-slate-800 ml-3">
-                        {todayData?.checkIns.map((ci, idx) => (
-                            <div key={idx} className="relative pl-6">
-                                <div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg ring-4 ring-white dark:ring-slate-950"></div>
-                                <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-sm">
-                                    <div className="text-slate-900 dark:text-white font-bold text-sm">{ci.location}</div>
-                                    <div className="text-slate-500 dark:text-slate-400 font-mono text-xs">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
             </div>
