@@ -95,7 +95,13 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
         setProfile(p);
         setTodayData(a);
-        setReminders(r.filter(item => !item.isCompleted).slice(0, 5)); // Get top 5 uncompleted
+        
+        // กรองเฉพาะการแจ้งเตือนของ "วันนี้" และที่ "ยังไม่เสร็จ" เท่านั้น
+        const filteredReminders = r.filter(item => {
+            const isToday = item.dueTime.startsWith(todayStr);
+            return !item.isCompleted && isToday;
+        });
+        setReminders(filteredReminders.slice(0, 5)); 
         
         // Populate drafts from today's attendance if existing
         if (a && a.checkIns.length > 0) {
@@ -286,8 +292,15 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         );
     }
 
-    // Combine all reminder titles into a single string for marquee
-    const marqueeText = reminders.map(r => `• ${r.title} (${new Date(r.dueTime).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})})`).join('     ');
+    // รวมรายการแจ้งเตือนและรายการจากแผนงานของวันนี้เข้าด้วยกันสำหรับแสดงผลบนแถบเลื่อน
+    const marqueeItems = [
+        ...reminders.map(r => `• ${r.title} (${new Date(r.dueTime).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})})`),
+        ...(todayPlan?.itinerary || [])
+            .filter(it => !todayData?.checkIns.some(ci => ci.location === it.location))
+            .map(it => `• แผนงาน: ${it.location} (${it.objective})`)
+    ];
+
+    const marqueeText = marqueeItems.length > 0 ? marqueeItems.join('     ') : '• ไม่มีกิจกรรมค้างในวันนี้';
 
     return (
         <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617]">
@@ -385,8 +398,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                 </div>
                             )}
 
-                            {/* Floating Map HUD - TOP LEFT: Notification Marquee (Moved here to save space) */}
-                            {reminders.length > 0 && (
+                            {/* Floating Map HUD - TOP LEFT: Notification Marquee */}
+                            {marqueeItems.length > 0 && (
                                 <div className="absolute top-4 left-4 right-14 z-30 pointer-events-auto">
                                     <div 
                                         onClick={() => navigate('/reminders')}
@@ -413,6 +426,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             <button onClick={getLocation} className="absolute top-3 right-3 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md p-2 rounded-full text-white shadow-lg border border-white/20 z-20 hover:bg-white/50 transition-all active:scale-90">
                                 <Navigation size={18} />
                             </button>
+
+                            {/* Gradient Background for HUD elements (Bottom Dark Gradient) */}
+                            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 via-black/30 to-transparent pointer-events-none z-10"></div>
 
                             {/* Floating Map HUD - BOTTOM LEFT: Time & Date (Moved here to avoid blocking map controls) */}
                             <div className="absolute bottom-4 left-4 z-20 pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
