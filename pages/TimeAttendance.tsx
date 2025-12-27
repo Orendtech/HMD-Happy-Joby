@@ -232,73 +232,75 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     return (
         <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617]">
             <div className="w-full max-w-2xl mx-auto flex flex-col min-h-full">
-                {/* HUD Header */}
-                <div className={`relative rounded-b-[40px] shadow-xl pb-8 pt-[max(2.5rem,env(safe-area-inset-top))] px-6 z-20 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                    
-                    <div className="flex justify-between items-start mb-6 relative z-10">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm overflow-hidden border-2 ${theme.avatarBorder}`}>
-                                {profile?.photoBase64 ? (
-                                    <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-white text-xl font-bold">
-                                        {profile?.name?.[0] || user.email?.[0]?.toUpperCase()}
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h1 className={`text-xl font-bold leading-tight ${theme.textPrimary}`}>
-                                        {profile?.name || user.email?.split('@')[0]}
-                                    </h1>
-                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase ${badge.bg}`}>
-                                        {badge.label}
-                                    </span>
-                                </div>
-                                <p className={`text-sm font-medium ${theme.textSecondary}`}>
-                                    {profile?.area || 'Happy Joby Workspace'}
-                                </p>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={() => navigate('/settings')}
-                            className={`p-2.5 rounded-full transition-colors ${theme.settingsBtn}`}
-                        >
-                            <Settings size={22} />
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-4 relative z-10">
-                        <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden backdrop-blur-md bg-black/5 border border-white/10 shadow-inner">
-                             <span className={`text-2xl font-black ${theme.textPrimary}`}>{currentLevel}</span>
-                             {isHudBouncing && <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full animate-ping"></div>}
-                        </div>
+                {/* HUD Header - Refined Card Design */}
+                <div className="px-4 pt-[max(1rem,env(safe-area-inset-top))] mb-2 z-20 sticky top-0">
+                    <div className={`relative rounded-[28px] shadow-2xl pb-8 pt-8 px-6 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                         
-                        <div className="flex-1">
-                             <div className="flex justify-between items-end mb-1.5">
-                                 <span className={`text-[10px] font-black tracking-widest uppercase opacity-80 ${theme.textPrimary}`}>{rank.title}</span>
-                                 <div className="flex items-baseline gap-1">
-                                    <span className={`text-sm font-bold ${theme.textPrimary}`}>{currentXP}</span>
-                                    <span className={`text-[10px] ${theme.textSecondary}`}>XP</span>
-                                 </div>
-                             </div>
-                             <div className={`h-2.5 w-full rounded-full overflow-hidden ${theme.progressTrack}`}>
-                                <div style={{ width: `${progressPercent}%` }} className={`h-full rounded-full transition-all duration-700 ${theme.progressFill}`}></div>
-                             </div>
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm overflow-hidden border-2 ${theme.avatarBorder}`}>
+                                    {profile?.photoBase64 ? (
+                                        <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-white text-xl font-bold">
+                                            {profile?.name?.[0] || user.email?.[0]?.toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h1 className={`text-xl font-bold leading-tight ${theme.textPrimary}`}>
+                                            {profile?.name || user.email?.split('@')[0]}
+                                        </h1>
+                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border uppercase ${badge.bg}`}>
+                                            {badge.label}
+                                        </span>
+                                    </div>
+                                    <p className={`text-sm font-medium ${theme.textSecondary}`}>
+                                        {profile?.area || 'Happy Joby Workspace'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => navigate('/settings')}
+                                className={`p-2.5 rounded-full transition-colors ${theme.settingsBtn}`}
+                            >
+                                <Settings size={22} />
+                            </button>
                         </div>
 
-                        <div className={`flex flex-col items-center pl-3 border-l ${theme.divider}`}>
-                            <div className={`flex items-center gap-1 ${theme.statIcon}`}>
-                                <Flame size={20} className={theme.statIcon.split(' ')[1]} />
-                                <span className={`text-xl font-bold ${theme.textPrimary}`}>{profile?.currentStreak || 0}</span>
+                        <div className="flex items-center gap-4 relative z-10">
+                            <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden backdrop-blur-md bg-black/5 border border-white/10 shadow-inner">
+                                <span className={`text-2xl font-black ${theme.textPrimary}`}>{currentLevel}</span>
+                                {isHudBouncing && <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full animate-ping"></div>}
                             </div>
-                            <span className={`text-[8px] font-bold uppercase tracking-wider ${theme.textSecondary}`}>Streak</span>
+                            
+                            <div className="flex-1">
+                                <div className="flex justify-between items-end mb-1.5">
+                                    <span className={`text-[10px] font-black tracking-widest uppercase opacity-80 ${theme.textPrimary}`}>{rank.title}</span>
+                                    <div className="flex items-baseline gap-1">
+                                        <span className={`text-sm font-bold ${theme.textPrimary}`}>{currentXP}</span>
+                                        <span className={`text-[10px] ${theme.textSecondary}`}>XP</span>
+                                    </div>
+                                </div>
+                                <div className={`h-2.5 w-full rounded-full overflow-hidden ${theme.progressTrack}`}>
+                                    <div style={{ width: `${progressPercent}%` }} className={`h-full rounded-full transition-all duration-700 ${theme.progressFill}`}></div>
+                                </div>
+                            </div>
+
+                            <div className={`flex flex-col items-center pl-3 border-l ${theme.divider}`}>
+                                <div className={`flex items-center gap-1 ${theme.statIcon}`}>
+                                    <Flame size={20} className={theme.statIcon.split(' ')[1]} />
+                                    <span className={`text-xl font-bold ${theme.textPrimary}`}>{profile?.currentStreak || 0}</span>
+                                </div>
+                                <span className={`text-[8px] font-bold uppercase tracking-wider ${theme.textSecondary}`}>Streak</span>
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto px-4 pt-6 pb-28 space-y-6">
+                <div className="flex-1 overflow-y-auto px-4 pt-2 pb-28 space-y-6">
                     {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-3xl px-6 py-3 rounded-full shadow-lg border-2 border-white/40"><Zap className="fill-white" size={28} /> +{p.xp}</div></div>))}
 
                     <div className="flex justify-between items-end px-2">
