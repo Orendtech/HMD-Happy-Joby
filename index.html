@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="th">
   <head>
@@ -7,7 +8,7 @@
     <!-- PWA & Theme Settings -->
     <meta name="theme-color" content="#020617" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
 
     <!-- App Icons -->
@@ -54,7 +55,7 @@
 
       /* Handle safe area for iPhones with notches */
       body {
-        padding-top: env(safe-area-inset-top);
+        /* Removed global padding-top to allow content to bleed into status bar area */
         padding-bottom: env(safe-area-inset-bottom);
       }
       

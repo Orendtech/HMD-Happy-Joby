@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
 import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
-import { UserProfile } from '../types';
-import { getReminders, markReminderAsNotified } from '../services/dbService';
+import { UserProfile, AttendanceDay } from '../types';
+import { getReminders, markReminderAsNotified, getTodayAttendance, getTodayDateId } from '../services/dbService';
 
 interface LayoutProps {
     user: User;
@@ -31,13 +31,20 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     useEffect(() => {
         if (!user) return;
 
+        // Request Notification Permission on Mount
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+
         const checkReminders = async () => {
             const list = await getReminders(user.uid);
             const now = new Date();
+            const todayStr = getTodayDateId();
             
             const uncompletedList = list.filter(r => !r.isCompleted);
             setPendingCount(uncompletedList.length);
             
+            // 1. Process Custom User Reminders
             list.forEach(async (r) => {
                 const due = new Date(r.dueTime);
                 if (!r.isCompleted && !r.notified && due <= now) {
@@ -50,9 +57,33 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                     }
                 }
             });
+
+            // 2. Attendance Watchdog (9:00 AM Weekday Reminder)
+            const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            const hour = now.getHours();
+            const lastReminderKey = `attendance_reminder_sent_${user.uid}`;
+            const lastSentDate = localStorage.getItem(lastReminderKey);
+
+            // Conditions: Mon-Fri (1-5), Time >= 9:00 AM, Not sent today yet
+            if (day >= 1 && day <= 5 && hour >= 9 && lastSentDate !== todayStr) {
+                const todayAtt = await getTodayAttendance(user.uid);
+                if (!todayAtt || todayAtt.checkIns.length === 0) {
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        // Fix: cast options to any to satisfy TS compiler while using standard browser Notification properties
+                        new Notification("🚨 อย่าลืมเช็คอิน!", {
+                            body: "ขณะนี้เวลา 09:00 น. แล้ว คุณยังไม่ได้เช็คอินเข้างานในวันนี้ กรุณาบันทึกเวลาด้วยครับ",
+                            icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                            badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                            vibrate: [200, 100, 200]
+                        } as any);
+                        // Mark as sent for today to prevent spam
+                        localStorage.setItem(lastReminderKey, todayStr);
+                    }
+                }
+            }
         };
 
-        const interval = setInterval(checkReminders, 60000); 
+        const interval = setInterval(checkReminders, 60000); // Check every minute
         checkReminders(); 
 
         return () => clearInterval(interval);

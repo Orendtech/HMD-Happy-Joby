@@ -232,7 +232,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     return (
         <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617]">
             <div className="w-full max-w-2xl mx-auto flex flex-col min-h-full">
-                <div className={`relative rounded-b-[40px] shadow-xl pb-8 pt-[max(2rem,env(safe-area-inset-top))] px-6 z-20 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
+                {/* HUD Header - Fixed to Sit at the Very Top */}
+                <div className={`relative rounded-b-[40px] shadow-xl pb-8 pt-[max(2.5rem,env(safe-area-inset-top))] px-6 z-20 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                     
                     <div className="flex justify-between items-start mb-6 relative z-10">

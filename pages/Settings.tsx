@@ -1,10 +1,11 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { User, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { getUserProfile, updateUserProfile } from '../services/dbService';
 import { UserProfile } from '../types';
 import { GlassCard } from '../components/GlassCard';
-import { User as UserIcon, MapPin, Calendar, Mail, Lock, Save, LogOut, Settings as SettingsIcon, Camera, Upload, Sun, Moon } from 'lucide-react';
+import { User as UserIcon, MapPin, Calendar, Mail, Lock, Save, LogOut, Settings as SettingsIcon, Camera, Upload, Sun, Moon, BellRing, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
@@ -21,6 +22,7 @@ const Settings: React.FC<Props> = ({ user }) => {
     const [msg, setMsg] = useState('');
     const [msgType, setMsgType] = useState<'success' | 'error'>('success');
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -39,6 +41,9 @@ const Settings: React.FC<Props> = ({ user }) => {
         } else {
             setIsDarkMode(false);
         }
+        if ("Notification" in window) {
+            setNotifPermission(Notification.permission);
+        }
     }, [user]);
 
     const toggleTheme = () => {
@@ -52,6 +57,24 @@ const Settings: React.FC<Props> = ({ user }) => {
             localStorage.theme = 'dark';
             document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#020617');
             setIsDarkMode(true);
+        }
+    };
+
+    const handleEnableNotifications = async () => {
+        if (!("Notification" in window)) {
+            alert("เบราว์เซอร์ของคุณไม่รองรับการแจ้งเตือน");
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        setNotifPermission(permission);
+        if (permission === 'granted') {
+            // Real-world example notification for testing
+            new Notification("🚨 อย่าลืมเช็คอิน! (ตัวอย่าง)", {
+                body: "ขณะนี้เวลา 09:00 น. แล้ว คุณยังไม่ได้เช็คอินเข้างานในวันนี้ กรุณาบันทึกเวลาด้วยครับ",
+                icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                vibrate: [200, 100, 200]
+            } as any);
         }
     };
 
@@ -109,7 +132,6 @@ const Settings: React.FC<Props> = ({ user }) => {
             </div>
 
             <GlassCard className="space-y-6 relative overflow-visible">
-                 {/* Theme Toggle */}
                  <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-white/5">
                     <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-full ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-orange-100 text-orange-500'}`}>
@@ -125,8 +147,42 @@ const Settings: React.FC<Props> = ({ user }) => {
                     </button>
                 </div>
 
-                {/* Profile Picture */}
-                <div className="flex flex-col items-center justify-center -mt-4 mb-2">
+                {/* Notifications Setup */}
+                <div className="p-5 bg-cyan-50 dark:bg-cyan-900/10 rounded-[28px] border border-cyan-100 dark:border-cyan-500/20 space-y-4">
+                    <div className="flex items-start gap-4">
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl text-cyan-600 dark:text-cyan-400 shadow-sm shrink-0">
+                            <BellRing size={24} />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">ระบบแจ้งเตือนเข้างาน</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                                แจ้งเตือนเมื่อลืมเช็คอิน (จ-ศ 09:00 น.) 
+                                {notifPermission === 'granted' ? 
+                                    <span className="text-emerald-500 font-bold ml-1 flex items-center gap-1 mt-1"><ShieldCheck size={12}/> เปิดใช้งานแล้ว</span> : 
+                                    <span className="text-slate-400 ml-1 italic font-medium"> (ยังไม่ได้เปิดใช้งาน)</span>
+                                }
+                            </p>
+                        </div>
+                    </div>
+                    {notifPermission !== 'granted' && (
+                        <button 
+                            onClick={handleEnableNotifications}
+                            className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-600/20 transition-all active:scale-95 text-sm"
+                        >
+                            เปิดการแจ้งเตือนบนมือถือ
+                        </button>
+                    )}
+                    {notifPermission === 'granted' && (
+                        <button 
+                            onClick={handleEnableNotifications}
+                            className="w-full py-2 bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 font-bold rounded-xl border border-cyan-200 dark:border-cyan-500/30 transition-all active:scale-95 text-xs"
+                        >
+                            ทดสอบส่งการแจ้งเตือน
+                        </button>
+                    )}
+                </div>
+
+                <div className="flex flex-col items-center justify-center -mt-2 mb-2">
                     <div className="relative group mt-4">
                         <div className="w-28 h-28 rounded-full border-4 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 shadow-xl overflow-hidden relative">
                             {photoBase64 ? (
