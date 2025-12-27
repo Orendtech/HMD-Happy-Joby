@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
-import { getWorkPlans, addWorkPlan, deleteWorkPlan, addHospital, getUserProfile } from '../services/dbService';
-import { WorkPlan, UserProfile } from '../types';
+import { getWorkPlans, addWorkPlan, deleteWorkPlan, addHospital, getUserProfile, getUserHistory } from '../services/dbService';
+import { WorkPlan, UserProfile, AttendanceDay } from '../types';
 import { 
     Plus, Trash2, Calendar, MapPin, 
     X, Loader2, MessageSquare, User as UserIcon, 
@@ -25,6 +25,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
     };
 
     const [plans, setPlans] = useState<WorkPlan[]>([]);
+    const [history, setHistory] = useState<AttendanceDay[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -56,19 +57,21 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
         setLocalProfile(p);
     };
 
-    const fetchPlans = async () => {
+    const fetchData = async () => {
         setLoading(true);
         try {
-            const data = await getWorkPlans();
-            setPlans(data);
+            const planData = await getWorkPlans(user.uid);
+            const historyData = await getUserHistory(user.uid);
+            setPlans(planData);
+            setHistory(historyData);
         } catch (error) {
-            console.error("Failed to fetch plans", error);
+            console.error("Failed to fetch data", error);
         }
         setLoading(false);
     };
 
     useEffect(() => {
-        fetchPlans();
+        fetchData();
         
         const handleClickOutside = (e: MouseEvent) => {
             if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
@@ -137,7 +140,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             createdAt: new Date().toISOString()
         });
         resetForm();
-        await fetchPlans();
+        await fetchData();
         setIsSaving(false);
     };
 
@@ -151,32 +154,105 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
     const handleDelete = async (id: string) => {
         if (!window.confirm("ต้องการลบแผนงานนี้ใช่หรือไม่?")) return;
         await deleteWorkPlan(id);
-        await fetchPlans();
+        await fetchData();
     };
 
     const exportPlansToCSV = () => {
-        const filtered = plans.filter(p => p.date >= exportStart && p.date <= exportEnd);
-        if (filtered.length === 0) {
-            alert("ไม่พบแผนงานในช่วงวันที่เลือก");
-            return;
+        const headers = [
+            "วันที่", 
+            "พนักงาน", 
+            "แผนงาน: หัวข้อ", 
+            "แผนงาน: รายละเอียด", 
+            "แผนงาน: จุดนัดพบ/เป้าหมาย", 
+            "รายงาน: สถานที่เช็คอิน", 
+            "รายงาน: เวลาเช็คอิน", 
+            "รายงาน: เวลาเช็คเอาท์", 
+            "รายงาน: ผู้ติดต่อ", 
+            "รายงาน: แผนก", 
+            "รายงาน: สรุปกิจกรรม"
+        ];
+        
+        let rows: any[] = [];
+        
+        // Generate list of dates in the selected range
+        let curr = new Date(exportStart);
+        const endD = new Date(exportEnd);
+        
+        while (curr <= endD) {
+            const dateStr = curr.toISOString().split('T')[0];
+            const dayPlan = plans.find(p => p.date === dateStr);
+            const dayReport = history.find(h => h.id === dateStr);
+            
+            const planTitle = dayPlan?.title || '-';
+            const planContent = dayPlan?.content || '-';
+            const planItineraryStr = dayPlan?.itinerary 
+                ? dayPlan.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ') 
+                : '-';
+
+            // Check if there's actual report data (visits/interactions)
+            if (dayReport?.report?.visits && dayReport.report.visits.length > 0) {
+                dayReport.report.visits.forEach((v: any) => {
+                    if (v.interactions && v.interactions.length > 0) {
+                        v.interactions.forEach((i: any) => {
+                            rows.push([
+                                dateStr,
+                                `"${localProfile?.name || user.email?.split('@')[0]}"`,
+                                `"${planTitle.replace(/"/g, '""')}"`,
+                                `"${planContent.replace(/"/g, '""')}"`,
+                                `"${planItineraryStr.replace(/"/g, '""')}"`,
+                                `"${v.location}"`,
+                                v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
+                                dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                                `"${i.customerName}"`,
+                                `"${i.department || '-'}"`,
+                                `"${(i.summary || '').replace(/"/g, '""')}"`
+                            ]);
+                        });
+                    } else {
+                        rows.push([
+                            dateStr,
+                            `"${localProfile?.name || user.email?.split('@')[0]}"`,
+                            `"${planTitle.replace(/"/g, '""')}"`,
+                            `"${planContent.replace(/"/g, '""')}"`,
+                            `"${planItineraryStr.replace(/"/g, '""')}"`,
+                            `"${v.location}"`,
+                            v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
+                            dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                            '-',
+                            '-',
+                            '"(ไม่มีบันทึกกิจกรรม)"'
+                        ]);
+                    }
+                });
+            } else if (dayPlan) {
+                // Have plan but no check-in yet
+                rows.push([
+                    dateStr,
+                    `"${localProfile?.name || user.email?.split('@')[0]}"`,
+                    `"${planTitle.replace(/"/g, '""')}"`,
+                    `"${planContent.replace(/"/g, '""')}"`,
+                    `"${planItineraryStr.replace(/"/g, '""')}"`,
+                    '-',
+                    '-',
+                    '-',
+                    '-',
+                    '-',
+                    '"(ยังไม่มีข้อมูลรายงาน)"'
+                ]);
+            }
+            
+            curr.setDate(curr.getDate() + 1);
         }
 
-        const headers = ["วันที่", "พนักงาน", "หัวข้อแผนงาน", "รายละเอียด", "จุดนัดพบ/เป้าหมาย"];
-        const rows = filtered.map(p => {
-            const itineraryStr = p.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ');
-            return [
-                p.date,
-                `"${p.userName}"`,
-                `"${p.title.replace(/"/g, '""')}"`,
-                `"${p.content.replace(/"/g, '""')}"`,
-                `"${itineraryStr.replace(/"/g, '""')}"`
-            ];
-        });
+        if (rows.length === 0) {
+            alert("ไม่พบข้อมูลแผนงานหรือรายงานในช่วงวันที่เลือก");
+            return;
+        }
 
         const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
         const link = document.createElement("a");
         link.href = encodeURI("data:text/csv;charset=utf-8,\uFEFF" + csvContent);
-        link.download = `workplans_${exportStart}_to_${exportEnd}.csv`;
+        link.download = `full_work_report_${exportStart}_to_${exportEnd}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -193,14 +269,14 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-sm">
                 <div>
                     <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">ปฏิทินแผนงาน</h2>
-                    <p className="text-slate-500 text-sm font-medium">จัดตารางและเป้าหมายของคุณ</p>
+                    <p className="text-slate-500 text-sm font-medium">จัดตารางและรายงานของคุณ</p>
                 </div>
                 <div className="flex gap-2">
                     <button 
                         onClick={() => setShowExportOptions(!showExportOptions)}
                         className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${
                             showExportOptions 
-                            ? 'bg-emerald-500 text-white' 
+                            ? 'bg-emerald-500 text-white shadow-emerald-500/20' 
                             : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-white/5'
                         }`}
                         title="Download CSV"
@@ -225,14 +301,14 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                 <GlassCard className="p-6 border-emerald-500/20 animate-enter">
                     <div className="flex flex-col md:flex-row items-end gap-4">
                         <div className="flex-1 w-full space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ดาวน์โหลดแผนงานช่วงวันที่</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ดาวน์โหลดข้อมูลแผนงานและผลงาน</label>
                             <div className="grid grid-cols-2 gap-2">
                                 <input type="date" value={exportStart} onChange={e => setExportStart(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm text-slate-900 dark:text-white" />
                                 <input type="date" value={exportEnd} onChange={e => setExportEnd(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm text-slate-900 dark:text-white" />
                             </div>
                         </div>
                         <button onClick={exportPlansToCSV} className="w-full md:w-auto bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all">
-                            <Download size={18} /> Export
+                            <Download size={18} /> Export Full Report
                         </button>
                     </div>
                 </GlassCard>
