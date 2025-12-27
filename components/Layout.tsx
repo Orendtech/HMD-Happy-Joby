@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
 import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell } from 'lucide-react';
@@ -15,6 +15,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const isHomePage = location.pathname === '/';
+    const [pendingCount, setPendingCount] = useState(0);
 
     // Notification Observer Logic
     useEffect(() => {
@@ -23,6 +24,10 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
         const checkReminders = async () => {
             const list = await getReminders(user.uid);
             const now = new Date();
+            
+            // กรองเฉพาะรายการที่ยังไม่เสร็จเพื่อแสดงตัวเลขที่ Badge
+            const uncompletedList = list.filter(r => !r.isCompleted);
+            setPendingCount(uncompletedList.length);
             
             list.forEach(async (r) => {
                 const due = new Date(r.dueTime);
@@ -47,7 +52,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
 
     const navItems = [
         { path: '/', icon: <Clock size={24} />, label: 'ลงเวลา' },
-        { path: '/reminders', icon: <Bell size={24} />, label: 'แจ้งเตือน' },
+        { path: '/reminders', icon: <Bell size={24} />, label: 'แจ้งเตือน', badge: pendingCount },
         { path: '/reports', icon: <FileText size={24} />, label: 'รายงาน' },
         { path: '/management', icon: <Users size={24} />, label: 'รายชื่อ' },
         { path: '/dashboard', icon: <MapIcon size={24} />, label: 'แผนที่' },
@@ -123,8 +128,13 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                     isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'
                                 }`}
                             >
-                                <div className={`transform transition-all duration-300 ${isActive ? '-translate-y-1' : ''}`}>
+                                <div className={`relative transform transition-all duration-300 ${isActive ? '-translate-y-1' : ''}`}>
                                     {item.icon}
+                                    {item.badge !== undefined && item.badge > 0 && (
+                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-md px-1 animate-pulse">
+                                            {item.badge}
+                                        </span>
+                                    )}
                                 </div>
                                 <span className={`text-[10px] font-medium mt-1 transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0 text-cyan-600 dark:text-cyan-400' : 'opacity-0 translate-y-2 hidden'}`}>
                                     {item.label}
