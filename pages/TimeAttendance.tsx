@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from 'firebase/auth';
-import { Navigation, Plus, LogOut, Calendar, ChevronRight, Sparkles, Map as MapIcon, X, Search, Check, Flame, Trophy, Zap, TrendingUp, DollarSign, Loader2, ArrowLeft, ChevronDown, ChevronUp, UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, Clock, Target, MapPin, Building } from 'lucide-react';
+import { Navigation, Plus, LogOut, Calendar, ChevronRight, Sparkles, Map as MapIcon, X, Search, Check, Flame, Trophy, Zap, TrendingUp, DollarSign, Loader2, ArrowLeft, ChevronDown, ChevronUp, UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, Clock, Target, MapPin, Building, AlertCircle } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { getUserProfile, getTodayAttendance, checkIn, checkOut, addHospital, addCustomer, getReminders, getWorkPlans, getTodayDateId } from '../services/dbService';
 import { UserProfile, AttendanceDay, DailyReport, PipelineData, CheckInRecord, VisitReport, Interaction, Reminder, WorkPlan } from '../types';
@@ -30,11 +30,11 @@ interface XpParticle {
 }
 
 const getRankTitle = (level: number) => {
-    if (level >= 9) return { title: 'LEGEND', color: 'text-white', themeColor: '#f59e0b' }; // Amber 500
-    if (level >= 7) return { title: 'ELITE', color: 'text-white', themeColor: '#e11d48' };  // Rose 600
-    if (level >= 5) return { title: 'RANGER', color: 'text-white', themeColor: '#4f46e5' }; // Indigo 600
-    if (level >= 3) return { title: 'SCOUT', color: 'text-white', themeColor: '#06b6d4' };  // Cyan 500
-    return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400', themeColor: '' }; // Handled by standard background
+    if (level >= 9) return { title: 'LEGEND', color: 'text-white', themeColor: '#f59e0b' }; 
+    if (level >= 7) return { title: 'ELITE', color: 'text-white', themeColor: '#e11d48' };  
+    if (level >= 5) return { title: 'RANGER', color: 'text-white', themeColor: '#4f46e5' }; 
+    if (level >= 3) return { title: 'SCOUT', color: 'text-white', themeColor: '#06b6d4' };  
+    return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400', themeColor: '' }; 
 };
 
 const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) => {
@@ -93,7 +93,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
         setProfile(p);
         setTodayData(a);
-        setReminders(r.filter(item => !item.isCompleted).slice(0, 3));
+        setReminders(r.filter(item => !item.isCompleted).slice(0, 5)); // Get top 5 uncompleted
         if (a && a.checkIns.length > 0) {
             setVisitDrafts(prev => {
                 const newDrafts = { ...prev };
@@ -115,7 +115,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
             if (rank.themeColor) {
                 metaThemeColor.setAttribute('content', rank.themeColor);
             } else {
-                // Fallback to system background
                 const isDark = document.documentElement.classList.contains('dark');
                 metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
             }
@@ -229,6 +228,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         );
     }
 
+    // Combine all reminder titles into a single string for marquee
+    const marqueeText = reminders.map(r => `• ${r.title} (${new Date(r.dueTime).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})})`).join('     ');
+
     return (
         <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617]">
             <div className="w-full max-w-2xl mx-auto flex flex-col min-h-full">
@@ -303,48 +305,48 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                 <div className="flex-1 overflow-y-auto px-4 pt-2 pb-28 space-y-6">
                     {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-3xl px-6 py-3 rounded-full shadow-lg border-2 border-white/40"><Zap className="fill-white" size={28} /> +{p.xp}</div></div>))}
 
-                    <div className="flex justify-between items-end px-2">
-                        <div>
-                            <div className="text-4xl font-bold text-slate-900 dark:text-white tracking-tighter leading-none">{time.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
-                            <div className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">{time.toLocaleDateString('en-US', {weekday: 'long', day: 'numeric', month: 'short'})}</div>
-                        </div>
-                        <div className={`px-4 py-1.5 rounded-full text-[10px] font-bold border uppercase tracking-wider shadow-sm ${
-                            currentStage === 'working' ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/50 text-emerald-700 dark:text-emerald-400' :
-                            currentStage === 'completed' ? 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500' :
-                            'bg-cyan-100 dark:bg-cyan-500/20 border-cyan-200 dark:border-cyan-500/50 text-cyan-700 dark:text-cyan-400'
-                        }`}>
-                            {currentStage === 'working' ? 'ON DUTY' : currentStage === 'completed' ? 'OFF DUTY' : 'READY'}
-                        </div>
-                    </div>
-
+                    {/* Dynamic Smart Alert Pill - Redesigned with Horizontal Marquee */}
                     {reminders.length > 0 && (
-                        <div className="animate-enter delay-100">
-                            <div className="flex items-center justify-between mb-3 px-2">
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                                    <Bell size={12} className="text-cyan-500" /> Smart Alerts
-                                </h3>
-                                <button onClick={() => navigate('/reminders')} className="text-[10px] font-black text-cyan-500 flex items-center gap-1 uppercase">ดูทั้งหมด <ChevronRight size={12} /></button>
-                            </div>
-                            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                                {reminders.map((r) => (
-                                    <div 
-                                        key={r.id} 
-                                        onClick={() => navigate('/reminders')}
-                                        className="min-w-[160px] bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm hover:shadow-md active:scale-95 transition-all cursor-pointer"
-                                    >
-                                        <div className="font-bold text-slate-900 dark:text-white text-xs truncate mb-1">{r.title}</div>
-                                        <div className="text-[9px] font-black text-cyan-600 dark:text-cyan-400 uppercase flex items-center gap-1">
-                                            <Clock size={10} /> 
-                                            {new Date(r.dueTime).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
-                                        </div>
+                        <div className="animate-enter delay-100 px-1">
+                            <div 
+                                onClick={() => navigate('/reminders')}
+                                className="group relative w-full h-11 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-white/10 shadow-lg overflow-hidden flex items-center cursor-pointer transition-all hover:border-rose-500/50 active:scale-[0.98]"
+                            >
+                                {/* Leading Icon with Pulse Effect - Rose theme */}
+                                <div className="flex-shrink-0 w-11 h-full flex items-center justify-center bg-rose-500 text-white relative z-20">
+                                    <Bell size={18} className="animate-[wiggle_1s_ease-in-out_infinite]" />
+                                    <div className="absolute inset-0 bg-rose-400 animate-ping opacity-20 rounded-full"></div>
+                                </div>
+
+                                {/* Marquee Text Area */}
+                                <div className="flex-1 h-full overflow-hidden relative flex items-center whitespace-nowrap z-10">
+                                    <div className="inline-block animate-marquee pl-4">
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                                            {marqueeText}
+                                        </span>
+                                        {/* Seamless duplicate for infinite loop */}
+                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-10">
+                                            {marqueeText}
+                                        </span>
                                     </div>
-                                ))}
+                                </div>
+
+                                {/* Trailing Indicator */}
+                                <div className="flex-shrink-0 pr-4 pl-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm h-full flex items-center z-20 text-slate-300 group-hover:text-rose-500 transition-colors">
+                                    <ChevronRight size={16} />
+                                </div>
+
+                                {/* Active Progress Underline (Subtle Rose) */}
+                                <div className="absolute bottom-0 left-0 h-[2px] bg-rose-500/10 w-full z-30">
+                                    <div className="h-full bg-rose-500/40 w-full"></div>
+                                </div>
                             </div>
                         </div>
                     )}
 
+                    {/* Integrated Map & Info Section */}
                     <div className="relative rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xl overflow-visible" ref={dropdownRef}>
-                        <div className="h-48 w-full relative overflow-hidden rounded-t-[32px]">
+                        <div className="h-56 w-full relative overflow-hidden rounded-t-[32px]">
                             {location ? (
                                 <MapDisplay 
                                     lat={location.lat} 
@@ -363,9 +365,32 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                     <Navigation size={14} className="animate-spin" /> Acquiring GPS...
                                 </div>
                             )}
-                            <button onClick={getLocation} className="absolute top-3 right-3 bg-white dark:bg-slate-900/80 p-2 rounded-full text-slate-500 shadow-md border border-slate-100 dark:border-white/10 z-10">
-                                <Navigation size={16} />
+
+                            {/* Floating Map HUD - TOP LEFT: Time & Date */}
+                            <div className="absolute top-4 left-4 z-20 pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                                <div className="text-3xl font-black text-white leading-none">
+                                    {time.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}
+                                </div>
+                                <div className="text-[10px] text-white/90 font-black uppercase tracking-wider mt-1">
+                                    {time.toLocaleDateString('en-US', {weekday: 'short', day: 'numeric', month: 'short'})}
+                                </div>
+                            </div>
+
+                            {/* Floating Map HUD - TOP RIGHT: Nav Button */}
+                            <button onClick={getLocation} className="absolute top-3 right-3 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md p-2 rounded-full text-white shadow-lg border border-white/20 z-20 hover:bg-white/50 transition-all active:scale-90">
+                                <Navigation size={18} />
                             </button>
+
+                            {/* Floating Map HUD - BOTTOM RIGHT: Status Badge */}
+                            <div className="absolute bottom-4 right-4 z-20">
+                                <div className={`px-3 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest shadow-xl backdrop-blur-md ${
+                                    currentStage === 'working' ? 'bg-emerald-500/80 border-emerald-400 text-white' :
+                                    currentStage === 'completed' ? 'bg-slate-600/80 border-slate-500 text-white' :
+                                    'bg-cyan-500/80 border-cyan-400 text-white'
+                                }`}>
+                                    {currentStage === 'working' ? 'ON DUTY' : currentStage === 'completed' ? 'OFF DUTY' : 'READY'}
+                                </div>
+                            </div>
                         </div>
                         
                         <div className="p-4 space-y-4">
@@ -504,6 +529,22 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     </div>
                 </div>
             </div>
+
+            <style dangerouslySetInnerHTML={{ __html: `
+                @keyframes wiggle {
+                    0%, 100% { transform: rotate(0deg); }
+                    25% { transform: rotate(10deg); }
+                    75% { transform: rotate(-10deg); }
+                }
+                @keyframes marquee {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
+                .animate-marquee {
+                    animation: marquee 15s linear infinite;
+                    display: inline-block;
+                }
+            `}} />
         </div>
     )
 }
