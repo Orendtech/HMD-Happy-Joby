@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -15,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
+import Reminders from './pages/Reminders';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -44,7 +46,6 @@ function App() {
     );
   }
 
-  // Protection logic
   if (user && userProfile && userProfile.isApproved === false) {
       return (
         <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 text-center space-y-4">
@@ -69,13 +70,13 @@ function App() {
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         
         <Route path="/" element={user ? <Layout user={user} userProfile={userProfile} /> : <Navigate to="/login" />}>
-           <Route index element={<TimeAttendance user={user!} />} />
+           <Route index element={<TimeAttendance user={user!} userProfile={userProfile} />} />
+           <Route path="reminders" element={<Reminders user={user!} />} />
            <Route path="reports" element={<Reports user={user!} />} />
            <Route path="management" element={<Management user={user!} />} />
            <Route path="dashboard" element={<Dashboard />} />
            <Route path="settings" element={<Settings user={user!} />} />
            
-           {/* Admin & Manager Route */}
            {['admin', 'manager'].includes(userProfile?.role || '') && (
                <Route path="admin" element={<AdminPanel viewerProfile={userProfile} />} />
            )}

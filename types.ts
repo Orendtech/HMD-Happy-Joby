@@ -1,3 +1,4 @@
+
 import { Timestamp } from 'firebase/firestore';
 
 export interface Customer {
@@ -17,6 +18,17 @@ export interface PipelineData {
     isNew?: boolean; // UI helper
     customerName?: string; // Link deal to a specific person/customer
     expectedCloseDate?: string; // NEW: YYYY-MM-DD
+}
+
+export interface Reminder {
+    id: string;
+    title: string;
+    description?: string;
+    dueTime: string; // ISO string for date & time
+    type: 'check-in' | 'follow-up' | 'task';
+    isCompleted: boolean;
+    notified?: boolean;
+    createdAt: string;
 }
 
 export interface UserProfile {
@@ -49,6 +61,13 @@ export interface CheckInRecord {
     longitude: number;
 }
 
+export interface Interaction {
+    customerName: string;
+    department?: string;
+    summary: string;
+    pipeline?: PipelineData;
+}
+
 // NEW: Granular Report per Visit
 export interface VisitReport {
     location: string;
@@ -56,6 +75,11 @@ export interface VisitReport {
     summary: string;
     metWith: string[];
     pipeline: PipelineData[];
+    interactions?: Interaction[];
+    
+    // Optional coords for mapping
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface DailyReport {

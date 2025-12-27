@@ -1,9 +1,16 @@
+
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
 import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers } from '../services/dbService';
-import { AttendanceDay, PipelineData, UserProfile, AdminUser, VisitReport } from '../types';
-import { Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, Edit, X, Save, Loader2, Building, Users, ChevronDown, ExternalLink, BarChart3, List, PieChart, Calendar, Trash2, ArrowLeft, CheckCircle2, Filter, ArrowUpRight } from 'lucide-react';
+import { AttendanceDay, PipelineData, UserProfile, AdminUser } from '../types';
+import { 
+    Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, 
+    Edit, Save, Loader2, Building, Users, ChevronDown, 
+    BarChart3, List, PieChart, Calendar, Trash2, 
+    ArrowLeft, Filter, ArrowUpRight, Activity, 
+    Zap, Target, Briefcase, ChevronRight, X, Download, Percent
+} from 'lucide-react';
 
 interface Props {
     user: User;
@@ -26,18 +33,20 @@ const Reports: React.FC<Props> = ({ user }) => {
     const [isPrivileged, setIsPrivileged] = useState(false);
     const [teamMembers, setTeamMembers] = useState<AdminUser[]>([]);
     const [targetUserId, setTargetUserId] = useState<string>(user.uid);
-    const [targetUserName, setTargetUserName] = useState<string>('My Reports');
+    const [targetUserName, setTargetUserName] = useState<string>('ประสิทธิภาพของฉัน');
 
     // Filter State
     const [filterMode, setFilterMode] = useState<'this_month' | 'next_month' | 'this_quarter' | 'year_to_date' | 'custom'>('this_month');
     const [filterStartDate, setFilterStartDate] = useState('');
     const [filterEndDate, setFilterEndDate] = useState('');
+    const [filterStages, setFilterStages] = useState<string[]>([]);
 
     // Edit State
     const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
     const [saving, setSaving] = useState(false);
 
-    // Initial Load
+    const funnelStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
+
     useEffect(() => {
         const init = async () => {
             setLoading(true);
@@ -47,13 +56,22 @@ const Reports: React.FC<Props> = ({ user }) => {
                 setIsPrivileged(hasAccess);
 
                 if (hasAccess) {
+                    let rawMembers: AdminUser[] = [];
                     if (profile?.role === 'admin') {
-                        const users = await getAllUsers();
-                        setTeamMembers(users);
+                        rawMembers = await getAllUsers();
                     } else {
-                        const team = await getTeamMembers(user.uid);
-                        setTeamMembers(team);
+                        rawMembers = await getTeamMembers(user.uid);
                     }
+                    
+                    // Filter: 
+                    // 1. Must be Approved (isApproved !== false)
+                    // 2. Must have at least some XP/Data ((u.xp || 0) > 0)
+                    // 3. OR it's the current user themselves
+                    const filteredMembers = rawMembers.filter(u => 
+                        (u.isApproved !== false && (u.xp || 0) > 0) || u.id === user.uid
+                    );
+                    
+                    setTeamMembers(filteredMembers);
                 }
                 await fetchHistory(user.uid);
             } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -64,11 +82,11 @@ const Reports: React.FC<Props> = ({ user }) => {
 
     const handleUserChange = async (newUserId: string) => {
         setTargetUserId(newUserId);
-        if (newUserId === user.uid) { setTargetUserName('My Reports'); } else {
-            const selectedUser = teamMembers.find(u => u.id === newUserId);
-            setTargetUserName(selectedUser?.name || selectedUser?.email || 'User Reports');
-        }
-        setLoading(true); await fetchHistory(newUserId); setLoading(false);
+        const selectedUser = teamMembers.find(u => u.id === newUserId);
+        setTargetUserName(newUserId === user.uid ? 'ประสิทธิภาพของฉัน' : (selectedUser?.name || selectedUser?.email || 'รายงานพนักงาน'));
+        setLoading(true); 
+        await fetchHistory(newUserId); 
+        setLoading(false);
     };
 
     const fetchHistory = async (uid: string) => {
@@ -76,7 +94,6 @@ const Reports: React.FC<Props> = ({ user }) => {
         setHistory(data);
     };
 
-    // --- FILTER LOGIC ---
     const applyQuickFilter = (mode: typeof filterMode) => {
         setFilterMode(mode);
         const now = new Date();
@@ -98,34 +115,20 @@ const Reports: React.FC<Props> = ({ user }) => {
             end = new Date(now.getFullYear(), 11, 31);
         }
 
-        if (mode !== 'custom') {
-            const toLocalISO = (d: Date) => {
-                const offset = d.getTimezoneOffset() * 60000;
-                return new Date(d.getTime() - offset).toISOString().split('T')[0];
-            }
-            setFilterStartDate(toLocalISO(start));
-            setFilterEndDate(toLocalISO(end));
+        const toLocalISO = (d: Date) => {
+            const offset = d.getTimezoneOffset() * 60000;
+            return new Date(d.getTime() - offset).toISOString().split('T')[0];
         }
+        setFilterStartDate(toLocalISO(start));
+        setFilterEndDate(toLocalISO(end));
     };
 
-    const getProbColor = (prob: number) => {
-        if (prob >= 80) return 'bg-emerald-500 text-white';
-        if (prob >= 50) return 'bg-amber-500 text-white';
-        return 'bg-rose-500 text-white';
-    };
-
-    const funnelConfig = [
-        { stage: 'Prospecting', color: 'bg-yellow-400', width: '100%', z: 50 },
-        { stage: 'Qualification', color: 'bg-orange-400', width: '85%', z: 40 },
-        { stage: 'Proposal', color: 'bg-rose-400', width: '70%', z: 30 },
-        { stage: 'Negotiation', color: 'bg-purple-500', width: '55%', z: 20 },
-        { stage: 'Closed Won', color: 'bg-emerald-500', width: '40%', z: 10 }
-    ];
-    const pipelineStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
-
-    // --- ACTION HANDLERS ---
-    const handleEditClick = (dateId: string, item: PipelineData, location: { visitIdx?: number; interactionIdx?: number; legacyIdx?: number; }) => {
-        setEditTarget({ dateId, data: { ...item }, location });
+    const toggleStageFilter = (stage: string) => {
+        setFilterStages(prev => 
+            prev.includes(stage) 
+                ? prev.filter(s => s !== stage) 
+                : [...prev, stage]
+        );
     };
 
     const handleSaveEdit = async () => {
@@ -134,22 +137,25 @@ const Reports: React.FC<Props> = ({ user }) => {
         try {
             await updateOpportunity(targetUserId, editTarget.dateId, editTarget.location, editTarget.data);
             await fetchHistory(targetUserId); setEditTarget(null);
-        } catch (e) { console.error(e); alert("Failed to update opportunity"); } finally { setSaving(false); }
+        } catch (e) { alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล"); } finally { setSaving(false); }
     };
 
     const handleDelete = async () => {
         if (!editTarget) return;
-        if (!window.confirm("Are you sure you want to delete this opportunity?")) return;
+        if (!window.confirm("คุณต้องการลบโอกาสการขายนี้ใช่หรือไม่?")) return;
         setSaving(true);
         try {
             await updateOpportunity(targetUserId, editTarget.dateId, editTarget.location, null);
             await fetchHistory(targetUserId); setEditTarget(null);
-        } catch (e) { console.error(e); alert("Failed to delete opportunity"); } finally { setSaving(false); }
+        } catch (e) { alert("เกิดข้อผิดพลาดในการลบข้อมูล"); } finally { setSaving(false); }
     };
 
-    // --- DATA PROCESSING ENGINE ---
+    const handleEditClick = (dateId: string, data: PipelineData, location: EditTarget['location']) => {
+        setEditTarget({ dateId, data: { ...data }, location });
+    };
+
     const getAllOpportunities = () => {
-        const opportunities: Array<PipelineData & { date: string, locationName: string, editMetadata: { dateId: string, location: any } }> = [];
+        const opportunities: any[] = [];
         history.forEach(day => {
             const extract = (p: PipelineData, loc: string, meta: any) => {
                 opportunities.push({ ...p, date: day.id, locationName: loc, editMetadata: { dateId: day.id, location: meta } });
@@ -164,236 +170,407 @@ const Reports: React.FC<Props> = ({ user }) => {
                 pipes.forEach((p, pIdx) => extract(p, day.checkIns[0]?.location || 'Unknown', { legacyIdx: pIdx }));
             }
         });
-        
         return opportunities.filter(op => {
             const d = op.expectedCloseDate || op.date;
-            return d >= filterStartDate && d <= filterEndDate;
-        }).sort((a, b) => {
-            const dateA = a.expectedCloseDate || a.date;
-            const dateB = b.expectedCloseDate || b.date;
-            return dateA.localeCompare(dateB);
-        });
+            const dateMatch = d >= filterStartDate && d <= filterEndDate;
+            
+            // If no stage filter is selected, hide Closed Won/Lost by default to keep list clean
+            if (filterStages.length === 0) {
+                return dateMatch && op.stage !== 'Closed Won' && op.stage !== 'Closed Lost';
+            }
+            
+            const stageMatch = filterStages.includes(op.stage);
+            return dateMatch && stageMatch;
+        }).sort((a, b) => (a.expectedCloseDate || a.date).localeCompare(b.expectedCloseDate || b.date));
+    };
+
+    const exportToCSV = () => {
+        let headers: string[] = [];
+        let rows: any[] = [];
+        let filename = `report_${filterStartDate}_to_${filterEndDate}.csv`;
+
+        if (activeTab === 'dashboard') {
+            headers = ["Date Created", "Product", "Hospital/Location", "Value (THB)", "Stage", "Probability", "Expected Close", "Customer"];
+            const opportunities = getAllOpportunities();
+            rows = opportunities.map(op => [
+                op.date,
+                `"${op.product}"`,
+                `"${op.locationName}"`,
+                op.value,
+                op.stage,
+                `${op.probability}%`,
+                op.expectedCloseDate || '-',
+                `"${op.customerName || '-'}"`
+            ]);
+            filename = `pipeline_${targetUserName}_${filterStartDate}.csv`;
+        } else {
+            headers = ["Date", "Location", "Check-in Time", "Customer", "Department", "Summary"];
+            history.forEach(day => {
+                if (day.id < filterStartDate || day.id > filterEndDate) return;
+                if (day.report?.visits) {
+                    day.report.visits.forEach((v: any) => {
+                        // Only export visits with interactions
+                        if (v.interactions && v.interactions.length > 0) {
+                            v.interactions.forEach((i: any) => {
+                                rows.push([
+                                    day.id,
+                                    `"${v.location}"`,
+                                    v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
+                                    `"${i.customerName}"`,
+                                    `"${i.department || '-'}"`,
+                                    `"${(i.summary || '').replace(/"/g, '""')}"`
+                                ]);
+                            });
+                        }
+                    });
+                }
+            });
+            filename = `journal_${targetUserName}_${filterStartDate}.csv`;
+        }
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const link = document.createElement("a");
+        link.href = encodeURI("data:text/csv;charset=utf-8,\uFEFF" + csvContent);
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const allDeals = getAllOpportunities();
     const totalValue = allDeals.reduce((sum, item) => sum + (item.value || 0), 0);
     const weightedValue = allDeals.reduce((sum, item) => sum + ((item.value || 0) * (item.probability / 100)), 0);
-    const wonValue = allDeals.filter(i => i.stage === 'Closed Won').reduce((sum, item) => sum + item.value, 0);
+    const wonValue = allDeals.filter(i => i.stage === 'Closed Won').reduce((sum, item) => sum + (item.value || 0), 0);
 
-    // Chart Data
-    const generateForecastChart = () => {
-        if (!filterStartDate || !filterEndDate) return [];
-        const start = new Date(filterStartDate);
-        const end = new Date(filterEndDate);
-        const diffDays = (end.getTime() - start.getTime()) / (1000 * 3600 * 24);
-        const isMonthly = diffDays > 62;
-        const buckets: Record<string, { label: string, won: number, forecast: number, sortKey: string }> = {};
-        allDeals.forEach(deal => {
-            const d = new Date(deal.expectedCloseDate || deal.date);
-            let key = '', label = '', sortKey = '';
-            if (isMonthly) {
-                key = `${d.getFullYear()}-${d.getMonth()}`; label = d.toLocaleDateString('en-US', { month: 'short' }); sortKey = d.toISOString().slice(0, 7);
-            } else {
-                const oneJan = new Date(d.getFullYear(), 0, 1); const numberOfDays = Math.floor((d.getTime() - oneJan.getTime()) / 86400000); const week = Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
-                key = `${d.getFullYear()}-W${week}`; label = `${d.getDate()}/${d.getMonth()+1}`; sortKey = key;
-            }
-            if (!buckets[key]) buckets[key] = { label, won: 0, forecast: 0, sortKey };
-            if (deal.stage === 'Closed Won') buckets[key].won += deal.value;
-            else if (deal.stage !== 'Closed Lost') buckets[key].forecast += (deal.value * (deal.probability / 100));
-        });
-        return Object.values(buckets).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-    };
-    const forecastData = generateForecastChart();
-    const maxChartValue = Math.max(...forecastData.map(d => d.won + d.forecast), 1000);
+    const funnelStagesList = funnelStages;
 
-    // Top Products
-    const productStats = allDeals.reduce((acc, curr) => {
-        const name = curr.product || 'Unspecified';
-        if (!acc[name]) acc[name] = { count: 0, value: 0 }; acc[name].count++; acc[name].value += curr.value; return acc;
-    }, {} as Record<string, {count: number, value: number}>);
-    const topProducts = Object.entries(productStats).sort((a,b) => b[1].value - a[1].value).slice(0, 5);
-
-    if (editTarget) { 
-         // ... (Edit Modal Code remains the same, omitted for brevity but will be in final output) ...
-         return (
+    if (editTarget) {
+        return (
             <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
-                <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
-                    <button onClick={() => setEditTarget(null)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"><ArrowLeft size={20} /></button>
-                    <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><Edit className="text-cyan-500" size={24}/> Edit Opportunity</h2><p className="text-sm text-slate-500 dark:text-slate-400">Update details for {editTarget.data.product}</p></div>
+                <div className="flex items-center gap-4 py-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20">
+                    <button onClick={() => setEditTarget(null)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 transition-transform active:scale-95"><ArrowLeft size={20} /></button>
+                    <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white">แก้ไขโอกาสการขาย</h2><p className="text-sm text-slate-500">{editTarget.data.product}</p></div>
                 </div>
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] p-6 shadow-sm space-y-6">
-                    <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Product / Solution</label><input value={editTarget.data.product} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base font-medium" /></div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Value (THB)</label><div className="relative"><div className="absolute left-4 top-4 text-slate-400"><DollarSign size={18}/></div><input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base font-mono" /></div></div>
-                        <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Stage</label><div className="relative"><select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base appearance-none">{pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}</select><ChevronDown className="absolute right-4 top-5 text-slate-400 pointer-events-none" size={16} /></div></div>
+                
+                <div className="space-y-6">
+                    <GlassCard className="p-8 space-y-6">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">ชื่อสินค้า / โปรเจกต์</label>
+                            <div className="relative">
+                                <Briefcase className="absolute left-4 top-4 text-slate-400" size={18} />
+                                <input value={editTarget.data.product} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">มูลค่า (THB)</label>
+                                <div className="relative">
+                                    <DollarSign className="absolute left-4 top-4 text-emerald-500" size={18} />
+                                    <input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">สถานะ (Status)</label>
+                                <select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-base font-bold outline-none focus:border-cyan-500 appearance-none transition-all">
+                                    {funnelStagesList.map(f => <option key={f} value={f}>{f}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">โอกาสสำเร็จ (%)</label>
+                                <div className="relative">
+                                    <Percent className="absolute left-4 top-4 text-indigo-500" size={18} />
+                                    <input type="number" min="0" max="100" value={editTarget.data.probability} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" />
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">วันที่คาดว่าจะปิดดีล</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-4 top-4 text-cyan-500" size={18} />
+                                    <input type="date" value={editTarget.data.expectedCloseDate || ''} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-base font-bold outline-none focus:border-cyan-500 appearance-none transition-all" />
+                                </div>
+                            </div>
+                        </div>
+                    </GlassCard>
+                    
+                    <div className="flex gap-4">
+                        <button onClick={handleDelete} className="p-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all">
+                            <Trash2 size={24}/>
+                        </button>
+                        <button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50">
+                            {saving ? <Loader2 className="animate-spin"/> : <><Save size={20}/> บันทึกการเปลี่ยนแปลง</>}
+                        </button>
                     </div>
-                    <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Expected Close Date</label><div className="relative"><Calendar className="absolute left-4 top-4 text-slate-400" size={18}/><input type="date" value={editTarget.data.expectedCloseDate || ''} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-4 pl-12 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-base" /></div></div>
-                    <div className="space-y-4 pt-2"><div className="flex justify-between items-end"><label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Probability</label><span className={`text-sm font-bold px-2 py-1 rounded ${getProbColor(editTarget.data.probability)}`}>{editTarget.data.probability}%</span></div><input type="range" min="0" max="100" step="10" value={editTarget.data.probability} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500" /><div className="flex justify-between text-xs text-slate-400 px-1"><span>0%</span><span>50%</span><span>100%</span></div></div>
                 </div>
-                <div className="flex gap-4 pt-4"><button onClick={handleDelete} disabled={saving} className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-colors border border-rose-100 dark:border-rose-500/20 shadow-sm"><Trash2 size={24} /></button><button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg hover:shadow-lg hover:scale-[1.01] transition-all flex items-center justify-center gap-2 shadow-md">{saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> Save Changes</>}</button></div>
             </div>
         );
     }
 
     return (
-        <div className="max-w-3xl mx-auto space-y-6 animate-enter pb-24">
+        <div className="max-w-4xl mx-auto space-y-8 animate-enter pb-28 px-4 sm:px-6">
             
-            {/* Header */}
-            <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-start">
-                    <div><h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{targetUserName}</h2><p className="text-slate-500 text-sm">Performance & Activity Overview</p></div>
-                    <div className="bg-slate-200 dark:bg-slate-800 p-1 rounded-xl flex text-xs font-bold"><button onClick={() => setActiveTab('reports')} className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'reports' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>Daily Reports</button><button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg transition-all ${activeTab === 'dashboard' ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}>Opportunities</button></div>
+            {/* --- TOP HUD --- */}
+            <div className="flex flex-col gap-6 pt-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div>
+                        <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">{targetUserName}</h1>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 font-medium flex items-center gap-2">
+                            <Activity size={14} className="text-cyan-500" /> 
+                            ข้อมูลเชิงลึกทางธุรกิจ
+                        </p>
+                    </div>
+                    
+                    {/* Header Controls: Switcher + Export */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                        <button 
+                            onClick={exportToCSV}
+                            className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-95"
+                            title="Export to CSV"
+                        >
+                            <Download size={20} />
+                            <span className="sm:hidden font-bold text-xs uppercase tracking-widest">Download CSV</span>
+                        </button>
+
+                        <div className="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md p-1.5 rounded-[20px] flex gap-1 border border-slate-200 dark:border-white/5">
+                            <button 
+                                onClick={() => setActiveTab('dashboard')} 
+                                className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all duration-500 ${activeTab === 'dashboard' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl scale-[1.02]' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                            >
+                                Intelligence
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('reports')} 
+                                className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all duration-500 ${activeTab === 'reports' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl scale-[1.02]' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                            >
+                                Journal
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                {isPrivileged && <GlassCard className="p-3 flex items-center gap-3 bg-white/70 dark:bg-slate-900/50 border-indigo-200 dark:border-indigo-500/20"><div className="bg-indigo-100 dark:bg-indigo-500/10 p-2 rounded-lg text-indigo-500 dark:text-indigo-400"><Users size={18} /></div><div className="flex-1 relative"><label className="block text-[10px] text-indigo-400 dark:text-indigo-300 font-bold uppercase tracking-wider mb-0.5">{teamMembers.length <= 1 ? 'Viewing Data For' : 'Select Team Member'}</label><div className="relative"><select value={targetUserId} onChange={(e) => handleUserChange(e.target.value)} className="w-full bg-transparent text-slate-900 dark:text-white text-sm font-medium outline-none appearance-none cursor-pointer relative z-10 pr-8"><option value={user.uid} className="bg-white dark:bg-slate-900">My Reports (Me)</option>{teamMembers.filter(u => u.id !== user.uid).map(member => (<option key={member.id} value={member.id} className="bg-white dark:bg-slate-900">{member.name || member.email}</option>))}</select><ChevronDown size={14} className="absolute right-0 top-1 text-slate-400 pointer-events-none" /></div></div></GlassCard>}
+
+                {isPrivileged && (
+                    <div className="bg-white/50 dark:bg-slate-900/40 p-1 rounded-[24px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
+                        <div className="p-3 bg-indigo-500 text-white rounded-[20px] shadow-lg shadow-indigo-500/20 shrink-0">
+                            <Users size={20} />
+                        </div>
+                        <select 
+                            value={targetUserId} 
+                            onChange={(e) => handleUserChange(e.target.value)}
+                            className="flex-1 bg-transparent px-4 py-2 text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer appearance-none"
+                        >
+                            <option value={user.uid} className="bg-white dark:bg-slate-900">มุมมองส่วนตัว (ฉัน)</option>
+                            {teamMembers.filter(u => u.id !== user.uid).map(m => (
+                                <option key={m.id} value={m.id} className="bg-white dark:bg-slate-900">{m.name || m.email}</option>
+                            ))}
+                        </select>
+                        <div className="pr-4 pointer-events-none text-slate-400">
+                            <ChevronDown size={16} />
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {/* --- DASHBOARD TAB --- */}
+            {/* --- INTELLIGENCE TAB (Opportunities) --- */}
             {activeTab === 'dashboard' && (
-                <>
-                    {/* Filter Bar */}
-                    <div className="bg-white dark:bg-slate-900/50 p-3 rounded-[28px] border border-slate-200 dark:border-white/5 shadow-sm">
-                        <div className="flex p-1 bg-slate-100 dark:bg-slate-800/50 rounded-2xl mb-3 overflow-x-auto no-scrollbar gap-1">
-                            {([ { id: 'this_month', label: 'This Month' }, { id: 'next_month', label: 'Next Month' }, { id: 'this_quarter', label: 'This Quarter' }, { id: 'year_to_date', label: 'YTD' } ] as const).map((f) => (<button key={f.id} onClick={() => applyQuickFilter(f.id)} className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${filterMode === f.id ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md' : 'text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700'}`}>{f.label}</button>))}
+                <div className="space-y-8 animate-enter">
+                    
+                    {/* Stats Dashboard */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-6 rounded-[32px] text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
+                            <Target size={40} className="absolute -right-2 -bottom-2 opacity-20 group-hover:scale-110 transition-transform" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Pipeline</p>
+                            <h3 className="text-3xl font-black">฿{(totalValue/1000).toFixed(1)}k</h3>
+                            <p className="text-[10px] mt-2 bg-white/20 w-fit px-2 py-0.5 rounded-full">{allDeals.length} ACTIVE</p>
                         </div>
-                        <div className="flex gap-2 items-center px-2 pb-1"><Filter size={14} className="text-slate-400" /><div className="flex items-center gap-2 bg-slate-50 dark:bg-black/20 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-white/5"><input type="date" value={filterStartDate} onChange={(e) => {setFilterStartDate(e.target.value); setFilterMode('custom');}} className="bg-transparent text-xs text-slate-700 dark:text-slate-300 outline-none font-medium w-24" /><span className="text-slate-300 text-xs">-</span><input type="date" value={filterEndDate} onChange={(e) => {setFilterEndDate(e.target.value); setFilterMode('custom');}} className="bg-transparent text-xs text-slate-700 dark:text-slate-300 outline-none font-medium w-24" /></div></div>
+
+                        <div className="bg-gradient-to-br from-amber-400 to-orange-600 p-6 rounded-[32px] text-white shadow-2xl shadow-orange-500/20 relative overflow-hidden group">
+                            <Zap size={40} className="absolute -right-2 -bottom-2 opacity-20 group-hover:scale-110 transition-transform" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Forecast</p>
+                            <h3 className="text-3xl font-black">฿{(weightedValue/1000).toFixed(1)}k</h3>
+                            <p className="text-[10px] mt-2 bg-white/20 w-fit px-2 py-0.5 rounded-full">WEIGHTED</p>
+                        </div>
+
+                        <div className="col-span-2 md:col-span-1 bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-xl flex flex-col justify-center">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Won Revenue</p>
+                            <h3 className="text-3xl font-black text-emerald-500">฿{(wonValue/1000).toFixed(1)}k</h3>
+                            <div className="flex items-center gap-1 mt-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span className="text-[10px] font-bold text-slate-500">REALIZED THIS PERIOD</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-2 gap-4">
-                             <div className="bg-white dark:bg-slate-800 p-5 rounded-[32px] shadow-sm border border-slate-100 dark:border-white/5 relative overflow-hidden group">
-                                <div className="absolute left-0 top-4 bottom-4 w-1.5 bg-indigo-500 rounded-r-full group-hover:w-2 transition-all"></div>
-                                <div className="pl-3 relative z-10"><div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Total</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Pipeline</div><div className="flex items-baseline gap-1"><span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">฿{(totalValue/1000).toFixed(1)}k</span></div><div className="text-[10px] text-slate-400 mt-1">{allDeals.length} active deals</div></div>
-                            </div>
-                            <div className="bg-white dark:bg-slate-800 p-5 rounded-[32px] shadow-sm border border-slate-100 dark:border-white/5 relative overflow-hidden group">
-                                <div className="absolute left-0 top-4 bottom-4 w-1.5 bg-amber-400 rounded-r-full group-hover:w-2 transition-all"></div>
-                                <div className="pl-3 relative z-10"><div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Weighted</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Forecast</div><div className="flex items-baseline gap-1"><span className="text-2xl font-black text-slate-800 dark:text-white">฿{(weightedValue/1000).toFixed(1)}k</span></div><div className="text-[10px] text-slate-400 mt-1">Prob. adjusted</div></div>
-                            </div>
-                            <div className="col-span-2 bg-white dark:bg-slate-800 p-5 rounded-[32px] shadow-sm border border-slate-100 dark:border-white/5 relative overflow-hidden flex items-center justify-between group">
-                                <div className="absolute left-0 top-4 bottom-4 w-1.5 bg-emerald-500 rounded-r-full group-hover:w-2 transition-all"></div>
-                                <div className="pl-3 flex flex-col"><div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Realized Revenue</div><div className="flex items-baseline gap-2"><span className="text-3xl font-black text-emerald-500">฿{(wonValue/1000).toFixed(1)}k</span><span className="text-[10px] text-slate-400 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">Closed Won</span></div></div><div className="hidden sm:block pr-4 opacity-20"><DollarSign size={48} /></div>
-                            </div>
+                    {/* Deal List */}
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center px-2">
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <Briefcase size={16} className="text-slate-400" /> โอกาสการขายที่ใช้งานอยู่
+                            </h3>
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">{allDeals.length} ทั้งหมด</span>
                         </div>
-
-                        <GlassCard>
-                            <div className="flex justify-between items-center mb-4"><h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2"><BarChart3 size={16} className="text-cyan-500"/> Revenue Forecast</h3><span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">By Expected Close Date</span></div>
-                            <div className="h-48 flex items-end gap-2 overflow-x-auto no-scrollbar pb-2 px-2">
-                                {forecastData.length === 0 ? ( <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs italic">No data for selected period</div> ) : (
-                                    forecastData.map((d, i) => {
-                                        const total = d.won + d.forecast;
-                                        const heightPct = Math.max((total / maxChartValue) * 100, 5);
-                                        const wonPct = (d.won / total) * 100;
-                                        const forecastPct = (d.forecast / total) * 100;
-                                        return (<div key={i} className="flex-1 min-w-[40px] h-full flex flex-col justify-end group relative"><div className="w-full bg-slate-100 dark:bg-slate-800 rounded-t-lg overflow-hidden relative flex flex-col justify-end" style={{ height: `${heightPct}%` }}><div className="bg-purple-400/80 dark:bg-purple-500/60 w-full transition-all" style={{ height: `${forecastPct}%` }}></div><div className="bg-emerald-400/80 dark:bg-emerald-500/80 w-full transition-all" style={{ height: `${wonPct}%` }}></div></div><span className="text-[9px] text-slate-400 text-center mt-2 truncate w-full block">{d.label}</span><div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-slate-900 text-white text-[10px] p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 shadow-xl"><div className="font-bold">{d.label}</div><div className="text-emerald-400">Won: ฿{(d.won/1000).toFixed(1)}k</div><div className="text-purple-400">Fcst: ฿{(d.forecast/1000).toFixed(1)}k</div></div></div>)
-                                    })
-                                )}
-                            </div>
-                            <div className="flex justify-center gap-4 mt-4 text-[10px] text-slate-500"><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-400"></div> Realized (Won)</div><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-400"></div> Weighted Forecast</div></div>
-                        </GlassCard>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <GlassCard className="bg-white/50 dark:bg-slate-900/50"><div className="flex justify-between items-center mb-4"><h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2"><PieChart size={16} className="text-cyan-500"/> Top Products</h3><button className="text-slate-400 hover:text-cyan-500"><ArrowUpRight size={14}/></button></div><div className="space-y-3">{topProducts.map(([name, stats], i) => (<div key={i} className="flex items-center justify-between text-sm group"><div className="flex items-center gap-3"><div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xs group-hover:bg-cyan-100 group-hover:text-cyan-600 transition-colors">{i+1}</div><span className="text-slate-700 dark:text-slate-200 font-medium">{name}</span></div><div className="text-right"><div className="font-bold text-slate-900 dark:text-white">฿{(stats.value/1000).toFixed(1)}k</div><div className="text-[10px] text-slate-400">{stats.count} deals</div></div></div>))}{topProducts.length === 0 && <div className="text-center text-slate-400 text-xs italic py-2">No data available</div>}</div></GlassCard>
-                            <GlassCard className="overflow-visible relative"><h3 className="text-sm font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2"><BarChart3 size={16} className="text-cyan-500"/> Pipeline Funnel</h3><div className="flex flex-col items-center w-full gap-0.5 relative z-0">{funnelConfig.map((config, idx) => { const deals = allDeals.filter(d => d.stage === config.stage); const value = deals.reduce((sum, d) => sum + d.value, 0); return (<div key={idx} className={`h-10 md:h-12 ${config.color} text-white flex items-center justify-between px-4 md:px-6 shadow-lg relative group transition-all hover:scale-[1.02] hover:z-50 cursor-default`} style={{ width: config.width, clipPath: 'polygon(2% 0, 98% 0, 100% 100%, 0% 100%)', marginBottom: '-4px', zIndex: config.z }}><span className="font-bold text-[10px] md:text-xs uppercase tracking-wider drop-shadow-md whitespace-nowrap text-shadow">{config.stage}</span><div className="text-right flex flex-col items-end leading-none drop-shadow-md"><span className="font-black text-xs md:text-sm">฿{(value/1000).toFixed(1)}k</span><span className="text-[8px] md:text-[10px] opacity-90">{deals.length} deals</span></div></div>); })}<div className="w-[30%] min-w-[120px] mt-6 bg-slate-200 dark:bg-slate-800 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-slate-500 shadow-inner">Lost: ฿{(allDeals.filter(d => d.stage === 'Closed Lost').reduce((s,i) => s+i.value, 0)/1000).toFixed(1)}k</div></div></GlassCard>
-                        </div>
-
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white ml-2 flex items-center gap-2"><List size={16} className="text-slate-400"/> Active Deals ({allDeals.length})</h3>
-                            {allDeals.length === 0 ? <div className="text-center py-8 text-slate-400 text-sm italic">No opportunities matching filter.</div> : (
-                                allDeals.map((deal, idx) => (
-                                    <div key={idx} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col gap-2">
-                                        <div className="flex justify-between items-start">
-                                            <div><div className="font-bold text-slate-900 dark:text-white text-base">{deal.product}</div><div className="text-xs text-slate-500 flex items-center gap-1.5 mt-1"><Building size={10} className="text-slate-400"/> {deal.locationName} {deal.customerName && <><span className="text-slate-300">•</span> <UserIcon size={10} className="text-slate-400"/> {deal.customerName}</>}</div></div>
-                                            <div className="text-right"><div className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-base">฿{deal.value.toLocaleString()}</div><div className="flex items-center justify-end gap-2"><div className={`text-[10px] px-2 py-0.5 rounded mt-1 inline-block font-bold ${getProbColor(deal.probability)} shadow-sm`}>{deal.probability}%</div><button onClick={() => handleEditClick(deal.editMetadata.dateId, deal, deal.editMetadata.location)} className="p-1 bg-slate-100 dark:bg-slate-800 rounded mt-1 text-slate-400 hover:text-cyan-500"><Edit size={12}/></button></div></div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {allDeals.map((deal, idx) => (
+                                <div key={idx} onClick={() => handleEditClick(deal.editMetadata.dateId, deal, deal.editMetadata.location)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-5 rounded-[32px] shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all cursor-pointer group flex flex-col gap-4">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="font-black text-slate-900 dark:text-white text-lg leading-tight group-hover:text-indigo-500 transition-colors">{deal.product}</div>
+                                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1 flex items-center gap-2">
+                                                <Building size={12} className="text-cyan-500" /> {deal.locationName}
+                                            </div>
                                         </div>
-                                        <div className="flex justify-between items-center pt-3 border-t border-slate-50 dark:border-white/5 mt-1"><span className="text-[10px] px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 font-bold uppercase tracking-wide border border-indigo-100 dark:border-indigo-500/20">{deal.stage}</span><span className="text-[10px] text-slate-400 flex items-center gap-1"><Calendar size={10}/> {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('th-TH') : '-'}</span></div>
+                                        <div className="text-right">
+                                            <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">฿{(deal.value || 0).toLocaleString()}</div>
+                                            <div className={`text-[10px] font-black px-2 py-0.5 rounded-full inline-block uppercase mt-1 ${deal.probability >= 70 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
+                                                {deal.probability}% Prob.
+                                            </div>
+                                        </div>
                                     </div>
-                                ))
-                            )}
+                                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 font-black rounded-full uppercase border border-indigo-100 dark:border-indigo-500/20">
+                                                {deal.stage}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold">
+                                            <Calendar size={12} /> {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('th-TH') : '-'}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {allDeals.length === 0 && <div className="col-span-full py-12 text-center text-slate-400 font-bold italic opacity-50 bg-slate-50 dark:bg-slate-900/50 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/10">ไม่มีข้อมูลในช่วงเวลานี้</div>}
                         </div>
                     </div>
-                </>
+                </div>
             )}
 
-            {/* --- DAILY REPORTS TAB (Legacy View) --- */}
+            {/* --- JOURNAL TAB (Daily Reports) --- */}
             {activeTab === 'reports' && (
-                <div className="space-y-6">
-                    {history.length === 0 && <div className="text-center py-10 text-slate-400 bg-white/50 dark:bg-slate-900/30 rounded-3xl border border-slate-200 dark:border-white/5 border-dashed">No reports found.</div>}
-                    {history.map((day, idx) => {
-                        const dateObj = new Date(day.id);
-                        let visits: any[] = []; // Use any to allow ad-hoc props
+                <div className="space-y-10 animate-enter">
+                    {history.length === 0 && <div className="py-20 text-center text-slate-400 font-black uppercase tracking-widest opacity-30">ไม่มีบันทึกใน Journal</div>}
+                    
+                    <div className="relative pl-6 sm:pl-10 space-y-12">
+                        {/* Timeline vertical bar */}
+                        <div className="absolute left-0 sm:left-4 top-4 bottom-4 w-1 bg-gradient-to-b from-cyan-400 via-indigo-500 to-purple-600 rounded-full opacity-30"></div>
+                        
+                        {history.map((day, idx) => {
+                            // Filter visits that actually have content (interactions or pipeline items)
+                            const activeVisits = (day.report?.visits || []).filter((v: any) => 
+                                (v.interactions && v.interactions.length > 0) || (v.pipeline && v.pipeline.length > 0)
+                            );
 
-                        if (day.report?.visits) {
-                             // Map stored visits and try to attach coordinates from day.checkIns
-                             visits = day.report.visits.map((v, i) => ({
-                                 ...v,
-                                 latitude: day.checkIns[i]?.latitude,
-                                 longitude: day.checkIns[i]?.longitude
-                             }));
-                        } else if (day.checkIns.length > 0) {
-                             // Legacy Logic with coordinates
-                             const flatPipeline = Array.isArray(day.report?.pipeline) ? day.report?.pipeline : day.report?.pipeline ? [day.report.pipeline] : [];
-                             const flatMetWith = Array.isArray(day.report?.metWith) ? day.report?.metWith : day.report?.metWith ? [day.report.metWith] : [];
-                             visits = day.checkIns.map((ci, i) => ({
-                                 location: ci.location,
-                                 checkInTime: ci.timestamp,
-                                 summary: i === day.checkIns.length - 1 ? day.report?.summary || '' : '',
-                                 metWith: i === day.checkIns.length - 1 ? flatMetWith : [],
-                                 pipeline: i === day.checkIns.length - 1 ? flatPipeline : [],
-                                 latitude: ci.latitude,
-                                 longitude: ci.longitude
-                             }));
-                        }
-
-                        return (
-                            <div key={day.id} className="relative pl-8 animate-enter" style={{animationDelay: `${idx * 50}ms`}}>
-                                <div className={`absolute left-0 top-2 w-6 h-6 rounded-full border-4 border-[#F5F5F7] dark:border-slate-950 ${day.checkOut ? 'bg-emerald-500' : 'bg-cyan-500 animate-pulse'}`}></div>
-                                <GlassCard className="group">
-                                    <div className="flex justify-between items-start border-b border-slate-100 dark:border-white/5 pb-4 mb-4">
-                                        <div><div className="text-lg font-bold text-slate-900 dark:text-white">{dateObj.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</div><div className="text-slate-500 text-xs mt-1 flex items-center gap-2"><Clock size={12} />{day.checkIns[0]?.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}<span className="text-slate-300 dark:text-slate-700 mx-1">•</span>{day.checkOut ? day.checkOut.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : 'Active'}</div></div>
-                                        <div className={`text-xs px-2 py-1 rounded border ${day.checkOut ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-100 dark:border-cyan-500/20 text-cyan-600 dark:text-cyan-400'}`}>{day.checkOut ? 'Completed' : 'On Going'}</div>
+                            return (
+                                <div key={day.id} className="relative animate-enter" style={{animationDelay: `${idx * 80}ms`}}>
+                                    {/* Timeline Dot */}
+                                    <div className="absolute -left-[30px] sm:-left-[34px] top-4 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-slate-950 bg-white dark:bg-slate-800 shadow-xl z-10 flex items-center justify-center">
+                                        <div className={`w-2 h-2 rounded-full ${day.checkOut ? 'bg-emerald-500' : 'bg-cyan-500 animate-pulse'}`}></div>
                                     </div>
-                                    <div className="space-y-6">
-                                        {visits.map((visit, vIdx) => (
-                                            <div key={vIdx} className="relative">
-                                                {vIdx !== visits.length - 1 && <div className="absolute left-[7px] top-4 bottom-[-24px] w-[2px] bg-slate-100 dark:bg-white/5"></div>}
-                                                <div className="flex flex-col gap-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-4 h-4 rounded-full bg-cyan-100 dark:bg-cyan-500/20 border border-cyan-200 dark:border-cyan-500/50 flex items-center justify-center shrink-0"><div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div></div>
-                                                        <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">{visit.location}</div>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <div className="text-[10px] text-slate-400 bg-slate-50 dark:bg-black/20 px-1.5 py-0.5 rounded">{visit.checkInTime?.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</div>
-                                                            {(visit.latitude && visit.longitude) && (
-                                                                <a href={`https://www.google.com/maps/search/?api=1&query=${visit.latitude},${visit.longitude}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-400 hover:underline">
-                                                                   <MapPin size={10} /> Open Map
-                                                                </a>
-                                                            )}
-                                                        </div>
+                                    
+                                    <GlassCard className="p-0 overflow-hidden border-white/50 dark:border-white/5">
+                                        {/* Card Header */}
+                                        <div className="p-6 bg-slate-50 dark:bg-white/5 flex justify-between items-center border-b border-slate-100 dark:border-white/5">
+                                            <div>
+                                                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                                                    {new Date(day.id).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}
+                                                </h3>
+                                                <div className="flex items-center gap-3 mt-1.5">
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        <Clock size={12} className="text-cyan-500" />
+                                                        {day.checkIns[0]?.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}
+                                                        {day.checkOut && ` — ${day.checkOut.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}`}
                                                     </div>
-                                                    <div className="ml-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden shadow-sm">
-                                                        {visit.interactions && visit.interactions.length > 0 ? (
-                                                            <div className="divide-y divide-slate-100 dark:divide-white/5">
-                                                                {visit.interactions.map((interaction: any, iIdx: number) => (
-                                                                    <div key={iIdx} className="p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                                                        <div className="flex items-center gap-2 mb-2"><div className="p-1.5 bg-purple-100 dark:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-300"><UserIcon size={12} /></div><span className="font-bold text-sm text-slate-900 dark:text-white">{interaction.customerName}</span>{interaction.department && <span className="text-xs text-slate-500">({interaction.department})</span>}</div>
-                                                                        <div className="pl-8"><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">{interaction.summary || <span className="italic text-slate-400">No summary recorded.</span>}</p>{interaction.pipeline && (<div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-500/20 rounded-lg p-3 flex justify-between items-center"><div className="flex items-center gap-3"><div className="p-1.5 bg-indigo-100 dark:bg-indigo-500/30 rounded text-indigo-600 dark:text-indigo-300"><TrendingUp size={14} /></div><div><div className="text-xs font-bold text-indigo-900 dark:text-indigo-200">{interaction.pipeline.product}</div><div className="text-[10px] text-indigo-600 dark:text-indigo-400">{interaction.pipeline.stage} • {interaction.pipeline.probability}%</div></div></div><div className="text-right"><div className="font-mono text-sm font-bold text-indigo-700 dark:text-indigo-300">฿{interaction.pipeline.value.toLocaleString()}</div></div></div>)}</div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                             <div className="p-4">
-                                                                {visit.summary ? <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-3 whitespace-pre-line">"{visit.summary}"</p> : <p className="text-xs text-slate-400 italic mb-3">No summary recorded.</p>}
-                                                                {visit.metWith && visit.metWith.length > 0 && <div className="flex flex-wrap gap-2 mb-3">{visit.metWith.map((contact: string, ci: number) => (<span key={ci} className="flex items-center gap-1 text-[10px] bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-300 px-2 py-1 rounded border border-purple-100 dark:border-purple-500/20"><UserIcon size={10}/> {contact}</span>))}</div>}
-                                                                {visit.pipeline && visit.pipeline.length > 0 && (<div className="space-y-2 pt-2 border-t border-slate-200 dark:border-white/5">{visit.pipeline.map((item: any, pi: number) => (<div key={pi} className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-white/5 rounded-lg p-2.5 flex justify-between items-center shadow-sm"><div><div className="flex items-center gap-2"><span className="font-bold text-xs text-slate-800 dark:text-slate-200">{item.product}</span>{item.customerName && <span className="text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-500 px-1.5 rounded">{item.customerName}</span>}</div><div className="text-[10px] text-slate-500">{item.stage} • {item.probability}%</div></div><div className="text-right"><div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">฿{item.value.toLocaleString()}</div><button onClick={() => handleEditClick(day.id, item, { visitIdx: vIdx, legacyIdx: pi })} className="p-1 text-slate-400 hover:text-cyan-500"><Edit size={12} /></button></div></div>))}</div>)}
-                                                             </div>
-                                                        )}
-                                                    </div>
+                                                    {day.checkOut && <div className="text-[8px] px-2 py-0.5 bg-emerald-500 text-white rounded-full font-black uppercase">เรียบร้อย</div>}
                                                 </div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </GlassCard>
-                            </div>
-                        );
-                    })}
+                                            <div className="text-right">
+                                                <div className="text-2xl font-black text-slate-200 dark:text-slate-800">#{history.length - idx}</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Visit Thread */}
+                                        <div className="p-6 space-y-8">
+                                            {activeVisits.length > 0 ? activeVisits.map((visit: any, vIdx: number) => (
+                                                <div key={vIdx} className="relative pl-6">
+                                                    {/* Connecting line between visits */}
+                                                    {vIdx < activeVisits.length - 1 && (
+                                                        <div className="absolute left-[7px] top-4 bottom-[-32px] w-0.5 bg-slate-100 dark:bg-white/5"></div>
+                                                    )}
+                                                    
+                                                    {/* Visit Indicator */}
+                                                    <div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 bg-cyan-500 shadow-lg"></div>
+                                                    
+                                                    <div className="space-y-4">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <h4 className="font-black text-slate-900 dark:text-white text-base leading-tight">{visit.location}</h4>
+                                                                <div className="flex items-center gap-3 mt-1">
+                                                                    <span className="text-[10px] font-bold text-slate-400">{visit.checkInTime?.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Interactions within visit */}
+                                                        <div className="space-y-3">
+                                                            {(visit.interactions || []).map((inter: any, iIdx: number) => (
+                                                                <div key={iIdx} className="bg-slate-50 dark:bg-white/5 p-4 rounded-[24px] border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all">
+                                                                    <div className="flex items-center gap-2 mb-3">
+                                                                        <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md">
+                                                                            <UserIcon size={14} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="text-sm font-black text-slate-900 dark:text-white">{inter.customerName}</div>
+                                                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{inter.department || 'ไม่ระบุแผนก'}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-10">
+                                                                        "{inter.summary || 'ไม่มีรายละเอียดการบันทึก'}"
+                                                                    </p>
+                                                                    
+                                                                    {inter.pipeline && (
+                                                                        <div 
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx });
+                                                                            }}
+                                                                            className="mt-4 ml-10 p-4 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-white/10 rounded-2xl flex justify-between items-center group/pipe relative transition-all hover:border-indigo-500/50 cursor-pointer hover:scale-[1.01] hover:shadow-md"
+                                                                        >
+                                                                            <div className="flex items-center gap-3">
+                                                                                <TrendingUp size={16} className="text-indigo-500" />
+                                                                                <div>
+                                                                                    <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">{inter.pipeline.product}</div>
+                                                                                    <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{inter.pipeline.stage}</div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <div className="text-xs font-black text-indigo-600 dark:text-indigo-400">฿{(inter.pipeline.value || 0).toLocaleString()}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                <div className="py-4 text-center text-slate-400 text-xs font-medium italic opacity-60">
+                                                    (ไม่มีข้อมูลบันทึกในวันนี้)
+                                                </div>
+                                            )}
+                                        </div>
+                                    </GlassCard>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {loading && (
+                <div className="fixed inset-0 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm z-[100] flex items-center justify-center">
+                    <Loader2 className="animate-spin text-cyan-500" size={48} />
                 </div>
             )}
         </div>
