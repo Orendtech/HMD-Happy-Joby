@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface GlassCardProps {
@@ -6,6 +7,8 @@ interface GlassCardProps {
     onClick?: () => void;
     hoverEffect?: boolean;
     variant?: 'default' | 'highlight' | 'danger';
+    // Add style prop to support custom CSS like animation-delay
+    style?: React.CSSProperties;
 }
 
 export const GlassCard: React.FC<GlassCardProps> = ({ 
@@ -13,7 +16,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     className = "", 
     onClick, 
     hoverEffect,
-    variant = 'default'
+    variant = 'default',
+    style
 }) => {
     const shouldHover = hoverEffect || !!onClick;
 
@@ -38,6 +42,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     return (
         <div 
             onClick={onClick}
+            style={style}
             className={`
                 ${baseStyles}
                 ${variantStyles}
