@@ -17,6 +17,7 @@ import Reports from './pages/Reports';
 import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
 import Reminders from './pages/Reminders';
+import WorkPlanner from './pages/WorkPlanner';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -72,6 +73,7 @@ function App() {
         <Route path="/" element={user ? <Layout user={user} userProfile={userProfile} /> : <Navigate to="/login" />}>
            <Route index element={<TimeAttendance user={user!} userProfile={userProfile} />} />
            <Route path="reminders" element={<Reminders user={user!} />} />
+           <Route path="planner" element={<WorkPlanner user={user!} userProfile={userProfile} />} />
            <Route path="reports" element={<Reports user={user!} />} />
            <Route path="management" element={<Management user={user!} />} />
            <Route path="dashboard" element={<Dashboard />} />

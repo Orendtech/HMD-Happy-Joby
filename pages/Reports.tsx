@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
-import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers } from '../services/dbService';
-import { AttendanceDay, PipelineData, UserProfile, AdminUser } from '../types';
+import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers, getWorkPlans } from '../services/dbService';
+import { AttendanceDay, PipelineData, UserProfile, AdminUser, WorkPlan } from '../types';
 import { 
     Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, 
     Edit, Save, Loader2, Building, Users, ChevronDown, 
@@ -29,6 +29,7 @@ interface EditTarget {
 const Reports: React.FC<Props> = ({ user }) => {
     const [activeTab, setActiveTab] = useState<'reports' | 'dashboard'>('dashboard');
     const [history, setHistory] = useState<AttendanceDay[]>([]);
+    const [plans, setPlans] = useState<WorkPlan[]>([]);
     const [loading, setLoading] = useState(true);
     const [isPrivileged, setIsPrivileged] = useState(false);
     const [teamMembers, setTeamMembers] = useState<AdminUser[]>([]);
@@ -63,17 +64,13 @@ const Reports: React.FC<Props> = ({ user }) => {
                         rawMembers = await getTeamMembers(user.uid);
                     }
                     
-                    // Filter: 
-                    // 1. Must be Approved (isApproved !== false)
-                    // 2. Must have at least some XP/Data ((u.xp || 0) > 0)
-                    // 3. OR it's the current user themselves
                     const filteredMembers = rawMembers.filter(u => 
                         (u.isApproved !== false && (u.xp || 0) > 0) || u.id === user.uid
                     );
                     
                     setTeamMembers(filteredMembers);
                 }
-                await fetchHistory(user.uid);
+                await fetchUserData(user.uid);
             } catch (e) { console.error(e); } finally { setLoading(false); }
         };
         init();
@@ -85,13 +82,15 @@ const Reports: React.FC<Props> = ({ user }) => {
         const selectedUser = teamMembers.find(u => u.id === newUserId);
         setTargetUserName(newUserId === user.uid ? 'ประสิทธิภาพของฉัน' : (selectedUser?.name || selectedUser?.email || 'รายงานพนักงาน'));
         setLoading(true); 
-        await fetchHistory(newUserId); 
+        await fetchUserData(newUserId); 
         setLoading(false);
     };
 
-    const fetchHistory = async (uid: string) => {
-        const data = await getUserHistory(uid);
-        setHistory(data);
+    const fetchUserData = async (uid: string) => {
+        const historyData = await getUserHistory(uid);
+        const planData = await getWorkPlans(uid);
+        setHistory(historyData);
+        setPlans(planData);
     };
 
     const applyQuickFilter = (mode: typeof filterMode) => {
@@ -136,7 +135,7 @@ const Reports: React.FC<Props> = ({ user }) => {
         setSaving(true);
         try {
             await updateOpportunity(targetUserId, editTarget.dateId, editTarget.location, editTarget.data);
-            await fetchHistory(targetUserId); setEditTarget(null);
+            await fetchUserData(targetUserId); setEditTarget(null);
         } catch (e) { alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล"); } finally { setSaving(false); }
     };
 
@@ -146,7 +145,7 @@ const Reports: React.FC<Props> = ({ user }) => {
         setSaving(true);
         try {
             await updateOpportunity(targetUserId, editTarget.dateId, editTarget.location, null);
-            await fetchHistory(targetUserId); setEditTarget(null);
+            await fetchUserData(targetUserId); setEditTarget(null);
         } catch (e) { alert("เกิดข้อผิดพลาดในการลบข้อมูล"); } finally { setSaving(false); }
     };
 
@@ -174,7 +173,6 @@ const Reports: React.FC<Props> = ({ user }) => {
             const d = op.expectedCloseDate || op.date;
             const dateMatch = d >= filterStartDate && d <= filterEndDate;
             
-            // If no stage filter is selected, hide Closed Won/Lost by default to keep list clean
             if (filterStages.length === 0) {
                 return dateMatch && op.stage !== 'Closed Won' && op.stage !== 'Closed Lost';
             }
@@ -190,7 +188,7 @@ const Reports: React.FC<Props> = ({ user }) => {
         let filename = `report_${filterStartDate}_to_${filterEndDate}.csv`;
 
         if (activeTab === 'dashboard') {
-            headers = ["Date Created", "Product", "Hospital/Location", "Value (THB)", "Stage", "Probability", "Expected Close", "Customer"];
+            headers = ["วันที่สร้าง", "ชื่อสินค้า", "โรงพยาบาล/สถานที่", "มูลค่า (บาท)", "สถานะ", "ความน่าจะเป็น (%)", "วันที่คาดว่าจะปิด", "ผู้ติดต่อ"];
             const opportunities = getAllOpportunities();
             rows = opportunities.map(op => [
                 op.date,
@@ -204,28 +202,98 @@ const Reports: React.FC<Props> = ({ user }) => {
             ]);
             filename = `pipeline_${targetUserName}_${filterStartDate}.csv`;
         } else {
-            headers = ["Date", "Location", "Check-in Time", "Customer", "Department", "Summary"];
-            history.forEach(day => {
-                if (day.id < filterStartDate || day.id > filterEndDate) return;
-                if (day.report?.visits) {
-                    day.report.visits.forEach((v: any) => {
-                        // Only export visits with interactions
+            // Updated Export: Plan Data first, then Report Data
+            headers = [
+                "วันที่", 
+                "พนักงาน", 
+                "แผนงาน: หัวข้อ", 
+                "แผนงาน: รายละเอียด", 
+                "แผนงาน: จุดนัดพบ/เป้าหมาย", 
+                "รายงาน: สถานที่เช็คอิน", 
+                "รายงาน: เวลาเช็คอิน", 
+                "รายงาน: เวลาเช็คเอาท์", 
+                "รายงาน: ผู้ติดต่อ", 
+                "รายงาน: แผนก", 
+                "รายงาน: สรุปกิจกรรม"
+            ];
+            
+            // Create a set of all dates in the range to iterate
+            const startDateObj = new Date(filterStartDate);
+            const endDateObj = new Date(filterEndDate);
+            const dateCursor = new Date(startDateObj);
+
+            while (dateCursor <= endDateObj) {
+                const dateStr = dateCursor.toISOString().split('T')[0];
+                
+                // Find Plan and Report for this date
+                const dayPlan = plans.find(p => p.date === dateStr);
+                const dayReport = history.find(h => h.id === dateStr);
+
+                // Format Plan Itinerary
+                const planItineraryStr = dayPlan?.itinerary 
+                    ? dayPlan.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ') 
+                    : '-';
+
+                if (dayReport?.report?.visits && dayReport.report.visits.length > 0) {
+                    dayReport.report.visits.forEach((v: any) => {
                         if (v.interactions && v.interactions.length > 0) {
                             v.interactions.forEach((i: any) => {
                                 rows.push([
-                                    day.id,
+                                    dateStr,
+                                    `"${targetUserName}"`,
+                                    `"${(dayPlan?.title || '-').replace(/"/g, '""')}"`,
+                                    `"${(dayPlan?.content || '-').replace(/"/g, '""')}"`,
+                                    `"${planItineraryStr.replace(/"/g, '""')}"`,
                                     `"${v.location}"`,
                                     v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
+                                    dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
                                     `"${i.customerName}"`,
                                     `"${i.department || '-'}"`,
                                     `"${(i.summary || '').replace(/"/g, '""')}"`
                                 ]);
                             });
+                        } else {
+                            // Visit without interaction notes
+                            rows.push([
+                                dateStr,
+                                `"${targetUserName}"`,
+                                `"${(dayPlan?.title || '-').replace(/"/g, '""')}"`,
+                                `"${(dayPlan?.content || '-').replace(/"/g, '""')}"`,
+                                `"${planItineraryStr.replace(/"/g, '""')}"`,
+                                `"${v.location}"`,
+                                v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
+                                dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                                '-',
+                                '-',
+                                '"(ไม่มีบันทึกกิจกรรม)"'
+                            ]);
                         }
                     });
+                } else if (dayPlan) {
+                    // Only plan, no report
+                    rows.push([
+                        dateStr,
+                        `"${targetUserName}"`,
+                        `"${dayPlan.title.replace(/"/g, '""')}"`,
+                        `"${dayPlan.content.replace(/"/g, '""')}"`,
+                        `"${planItineraryStr.replace(/"/g, '""')}"`,
+                        '-',
+                        '-',
+                        '-',
+                        '-',
+                        '-',
+                        '"(ไม่มีการเช็คอินเข้างาน)"'
+                    ]);
                 }
-            });
-            filename = `journal_${targetUserName}_${filterStartDate}.csv`;
+
+                dateCursor.setDate(dateCursor.getDate() + 1);
+            }
+            filename = `performance_log_${targetUserName}_${filterStartDate}_to_${filterEndDate}.csv`;
+        }
+
+        if (rows.length === 0) {
+            alert("ไม่พบข้อมูลที่จะส่งออกในช่วงเวลาที่เลือก");
+            return;
         }
 
         const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -351,26 +419,41 @@ const Reports: React.FC<Props> = ({ user }) => {
                     </div>
                 </div>
 
-                {isPrivileged && (
-                    <div className="bg-white/50 dark:bg-slate-900/40 p-1 rounded-[24px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
-                        <div className="p-3 bg-indigo-500 text-white rounded-[20px] shadow-lg shadow-indigo-500/20 shrink-0">
-                            <Users size={20} />
+                {/* Date Filter & Manager Switcher Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Date Picker Range */}
+                    <div className="bg-white/50 dark:bg-slate-900/40 p-3 rounded-[24px] border border-slate-200 dark:border-white/10 flex items-center gap-3 shadow-sm">
+                        <div className="p-2 bg-cyan-500 text-white rounded-xl shadow-md shrink-0">
+                            <Calendar size={18} />
                         </div>
-                        <select 
-                            value={targetUserId} 
-                            onChange={(e) => handleUserChange(e.target.value)}
-                            className="flex-1 bg-transparent px-4 py-2 text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer appearance-none"
-                        >
-                            <option value={user.uid} className="bg-white dark:bg-slate-900">มุมมองส่วนตัว (ฉัน)</option>
-                            {teamMembers.filter(u => u.id !== user.uid).map(m => (
-                                <option key={m.id} value={m.id} className="bg-white dark:bg-slate-900">{m.name || m.email}</option>
-                            ))}
-                        </select>
-                        <div className="pr-4 pointer-events-none text-slate-400">
-                            <ChevronDown size={16} />
+                        <div className="flex flex-1 items-center gap-2">
+                            <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none w-full" />
+                            <span className="text-slate-400 text-xs">to</span>
+                            <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none w-full" />
                         </div>
                     </div>
-                )}
+
+                    {isPrivileged && (
+                        <div className="bg-white/50 dark:bg-slate-900/40 p-1 rounded-[24px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
+                            <div className="p-3 bg-indigo-500 text-white rounded-[20px] shadow-lg shadow-indigo-500/20 shrink-0">
+                                <Users size={20} />
+                            </div>
+                            <select 
+                                value={targetUserId} 
+                                onChange={(e) => handleUserChange(e.target.value)}
+                                className="flex-1 bg-transparent px-4 py-2 text-sm font-bold text-slate-900 dark:text-white outline-none cursor-pointer appearance-none"
+                            >
+                                <option value={user.uid} className="bg-white dark:bg-slate-900">มุมมองส่วนตัว (ฉัน)</option>
+                                {teamMembers.filter(u => u.id !== user.uid).map(m => (
+                                    <option key={m.id} value={m.id} className="bg-white dark:bg-slate-900">{m.name || m.email}</option>
+                                ))}
+                            </select>
+                            <div className="pr-4 pointer-events-none text-slate-400">
+                                <ChevronDown size={16} />
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* --- INTELLIGENCE TAB (Opportunities) --- */}
@@ -456,8 +539,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                         {/* Timeline vertical bar */}
                         <div className="absolute left-0 sm:left-4 top-4 bottom-4 w-1 bg-gradient-to-b from-cyan-400 via-indigo-500 to-purple-600 rounded-full opacity-30"></div>
                         
-                        {history.map((day, idx) => {
-                            // Filter visits that actually have content (interactions or pipeline items)
+                        {history.filter(h => h.id >= filterStartDate && h.id <= filterEndDate).map((day, idx) => {
                             const activeVisits = (day.report?.visits || []).filter((v: any) => 
                                 (v.interactions && v.interactions.length > 0) || (v.pipeline && v.pipeline.length > 0)
                             );

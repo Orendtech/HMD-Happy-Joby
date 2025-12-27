@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
-import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell } from 'lucide-react';
+import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getReminders, markReminderAsNotified } from '../services/dbService';
 
@@ -53,9 +53,9 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const navItems = [
         { path: '/', icon: <Clock size={24} />, label: 'ลงเวลา' },
         { path: '/reminders', icon: <Bell size={24} />, label: 'แจ้งเตือน', badge: pendingCount },
+        { path: '/planner', icon: <MessageSquare size={24} />, label: 'แผนงาน' },
         { path: '/reports', icon: <FileText size={24} />, label: 'รายงาน' },
         { path: '/management', icon: <Users size={24} />, label: 'รายชื่อ' },
-        { path: '/dashboard', icon: <MapIcon size={24} />, label: 'แผนที่' },
     ];
 
     if (['admin', 'manager'].includes(userProfile?.role || '')) {
@@ -103,12 +103,22 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                         </p>
                     </div>
                     </div>
-                    <button 
-                        onClick={() => navigate('/settings')} 
-                        className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 group shadow-sm"
-                    >
-                        <Settings size={20} className="text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => navigate('/dashboard')} 
+                            className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 group shadow-sm"
+                            title="แผนที่"
+                        >
+                            <MapIcon size={20} className="text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
+                        </button>
+                        <button 
+                            onClick={() => navigate('/settings')} 
+                            className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full hover:bg-slate-50 dark:hover:bg-slate-700 transition-all active:scale-95 group shadow-sm"
+                            title="ตั้งค่า"
+                        >
+                            <Settings size={20} className="text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors" />
+                        </button>
+                    </div>
                 </header>
             )}
 

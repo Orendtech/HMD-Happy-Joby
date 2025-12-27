@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
@@ -25,10 +26,20 @@ const Login: React.FC = () => {
             }
         } catch (err: any) {
             console.error(err);
-            if (err.code === 'auth/invalid-credential') setError('Invalid credentials.');
-            else if (err.code === 'auth/email-already-in-use') setError('Email already in use.');
-            else if (err.code === 'auth/weak-password') setError('Password is too weak.');
-            else setError('Something went wrong. Please try again.');
+            // Firebase now uses 'auth/invalid-credential' for both wrong email and wrong password
+            if (err.code === 'auth/invalid-credential') {
+                setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง');
+            } else if (err.code === 'auth/email-already-in-use') {
+                setError('อีเมลนี้ถูกใช้งานแล้ว');
+            } else if (err.code === 'auth/weak-password') {
+                setError('รหัสผ่านต้องมีความยาวอย่างน้อย 6 ตัวอักษร');
+            } else if (err.code === 'auth/user-not-found') {
+                setError('ไม่พบผู้ใช้งานรายนี้ในระบบ');
+            } else if (err.code === 'auth/wrong-password') {
+                setError('รหัสผ่านไม่ถูกต้อง');
+            } else {
+                setError('เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่ภายหลัง');
+            }
         } finally {
             setLoading(false);
         }
@@ -36,7 +47,7 @@ const Login: React.FC = () => {
 
     const handleForgotPassword = async () => {
         if (!email) {
-            setError('Please enter your email to reset password.');
+            setError('กรุณากรอกอีเมลเพื่อรับลิงก์รีเซ็ตรหัสผ่าน');
             return;
         }
         try {
@@ -44,7 +55,7 @@ const Login: React.FC = () => {
             setResetSent(true);
             setError('');
         } catch (err) {
-            setError('Failed to send reset email.');
+            setError('ไม่สามารถส่งอีเมลรีเซ็ตได้');
         }
     };
 
@@ -119,7 +130,7 @@ const Login: React.FC = () => {
                          {resetSent && (
                             <div className="flex items-center gap-3 text-emerald-500 dark:text-emerald-400 text-sm bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/20 p-3 rounded-xl">
                                 <Sparkles size={18} />
-                                Reset email sent successfully.
+                                ลิงก์รีเซ็ตรหัสผ่านถูกส่งไปที่อีเมลของคุณแล้ว
                             </div>
                         )}
 
@@ -147,7 +158,7 @@ const Login: React.FC = () => {
                         
                         {isLogin && (
                              <button onClick={handleForgotPassword} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xs transition-colors">
-                                Forgot Password?
+                                ลืมรหัสผ่าน?
                             </button>
                         )}
                     </div>

@@ -1,11 +1,10 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from 'firebase/auth';
-// Added Clock to the lucide-react imports to resolve the missing reference error
-import { Navigation, Plus, LogOut, Calendar, ChevronRight, Sparkles, Map as MapIcon, X, Search, Check, Flame, Trophy, Zap, TrendingUp, DollarSign, Loader2, ArrowLeft, ChevronDown, ChevronUp, UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, Clock } from 'lucide-react';
+import { Navigation, Plus, LogOut, Calendar, ChevronRight, Sparkles, Map as MapIcon, X, Search, Check, Flame, Trophy, Zap, TrendingUp, DollarSign, Loader2, ArrowLeft, ChevronDown, ChevronUp, UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, Clock, Target, MapPin, Building } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
-import { getUserProfile, getTodayAttendance, checkIn, checkOut, addHospital, addCustomer, getReminders } from '../services/dbService';
-import { UserProfile, AttendanceDay, DailyReport, PipelineData, CheckInRecord, VisitReport, Interaction, Reminder } from '../types';
+import { getUserProfile, getTodayAttendance, checkIn, checkOut, addHospital, addCustomer, getReminders, getWorkPlans, getTodayDateId } from '../services/dbService';
+import { UserProfile, AttendanceDay, DailyReport, PipelineData, CheckInRecord, VisitReport, Interaction, Reminder, WorkPlan } from '../types';
 import { GlassCard } from '../components/GlassCard';
 import { useNavigate } from 'react-router-dom';
 
@@ -42,6 +41,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const navigate = useNavigate();
     const [profile, setProfile] = useState<UserProfile | null>(initialProfile || null);
     const [todayData, setTodayData] = useState<AttendanceDay | null>(null);
+    const [todayPlan, setTodayPlan] = useState<WorkPlan | null>(null);
     const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
     const [loadingLoc, setLoadingLoc] = useState(false);
     const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -85,6 +85,13 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         const p = await getUserProfile(user.uid);
         const a = await getTodayAttendance(user.uid);
         const r = await getReminders(user.uid);
+        
+        // Fetch Today's Plan
+        const plans = await getWorkPlans(user.uid);
+        const todayStr = getTodayDateId();
+        const foundPlan = plans.find(plan => plan.date === todayStr);
+        setTodayPlan(foundPlan || null);
+
         setProfile(p);
         setTodayData(a);
         setReminders(r.filter(item => !item.isCompleted).slice(0, 3));
@@ -143,9 +150,15 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const removeInteraction = (visitIdx: number, interactIdx: number) => { const currentInteractions = [...visitDrafts[visitIdx].interactions]; currentInteractions.splice(interactIdx, 1); setVisitDrafts(prev => ({ ...prev, [visitIdx]: { ...prev[visitIdx], interactions: currentInteractions } })); };
     const handleExistingDealSelect = (dealId: string) => { const deal = profile?.activePipeline?.find(p => p.id === dealId); setSelectedExistingDealId(dealId); if (deal) { setPipelineProduct(deal.product); setPipelineValue(deal.value.toString()); setPipelineStage(deal.stage); setPipelineProb(deal.probability); if (deal.expectedCloseDate) setPipelineDate(deal.expectedCloseDate); } };
     const confirmCheckOut = async () => { try { if (!todayData?.checkIns) return; const visits: VisitReport[] = todayData.checkIns.map((ci, idx) => { const draft = visitDrafts[idx]; const interactions = draft.interactions.map(d => ({ customerName: d.customerName, department: d.department, summary: d.summary, pipeline: d.pipeline || undefined })); const aggregatedSummary = interactions.map(i => `${i.customerName}: ${i.summary}`).join('\n'); const aggregatedMetWith = interactions.map(i => i.customerName); const aggregatedPipeline = interactions.filter(i => i.pipeline).map(i => i.pipeline!); return { location: ci.location, checkInTime: ci.timestamp, summary: aggregatedSummary, metWith: aggregatedMetWith, pipeline: aggregatedPipeline, interactions: interactions }; }); const reportData: DailyReport = { visits }; await checkOut(user.uid, reportData); setStatusMsg('บันทึกรายงานและเช็คเอาท์เรียบร้อย'); setShowReportModal(false); refreshData(); } catch (e) { setStatusMsg('Check-out failed'); } };
-    const filteredLocations = profile?.hospitals.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase())) || [];
+    
+    // Improved Location Logic - Show all if query is empty on focus
+    const filteredLocations = searchQuery === '' 
+        ? (profile?.hospitals || []) 
+        : (profile?.hospitals.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase())) || []);
+
     const handleSelectLocation = (loc: string) => { setSelectedPlace(loc); setSearchQuery(loc); setIsDropdownOpen(false); };
     const handleAddNewLocation = async () => { if (!searchQuery.trim()) return; try { await addHospital(user.uid, searchQuery.trim()); await refreshData(); handleSelectLocation(searchQuery.trim()); } catch (e) { setStatusMsg('Failed to add new location'); } };
+
     const isCheckedInToday = todayData && todayData.checkIns.length > 0;
     const isCheckedOut = todayData && !!todayData.checkOut;
     const currentStage = isCheckedOut ? 'completed' : isCheckedInToday ? 'working' : 'idle';
@@ -311,8 +324,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     </div>
                 )}
 
-                <div className="relative rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xl overflow-hidden" ref={dropdownRef}>
-                    <div className="h-48 w-full relative">
+                <div className="relative rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xl overflow-visible" ref={dropdownRef}>
+                    <div className="h-48 w-full relative overflow-hidden rounded-t-[32px]">
                         {location ? (
                             <MapDisplay 
                                 lat={location.lat} 
@@ -336,7 +349,38 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                         </button>
                     </div>
                     
-                    <div className="absolute bottom-4 left-4 right-4 z-20">
+                    <div className="p-4 space-y-4">
+                        {/* Planned Today Chips */}
+                        {todayPlan && todayPlan.itinerary && todayPlan.itinerary.length > 0 && !isCheckedOut && (
+                            <div className="animate-enter">
+                                <label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2 mb-2 ml-1">
+                                    <Target size={12} /> เป้าหมายวันนี้จากแผนงาน
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {todayPlan.itinerary.map((it, idx) => {
+                                        // ตรวจสอบว่าเช็คอินไปแล้วหรือยัง
+                                        const isCheckedIn = todayData?.checkIns.some(ci => ci.location === it.location);
+                                        return (
+                                            <button 
+                                                key={idx}
+                                                onClick={() => handleSelectLocation(it.location)}
+                                                className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border shadow-sm active:scale-95 ${
+                                                    selectedPlace === it.location
+                                                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/20'
+                                                    : isCheckedIn
+                                                        ? 'bg-slate-50 dark:bg-slate-800 border-emerald-500/30 text-emerald-500 opacity-60'
+                                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-indigo-500'
+                                                }`}
+                                            >
+                                                {isCheckedIn ? <Check size={14} /> : <MapPin size={14} />}
+                                                {it.location}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="relative group shadow-lg rounded-2xl">
                             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                                 <Search size={18} className="text-slate-400" />
@@ -347,44 +391,64 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                 onChange={(e) => {
                                     const val = e.target.value;
                                     setSearchQuery(val);
-                                    setIsDropdownOpen(val.length > 0);
+                                    setIsDropdownOpen(true);
                                     if(val === '') setSelectedPlace('');
                                 }}
-                                onFocus={() => { if (searchQuery.length > 0) setIsDropdownOpen(true); }}
+                                onFocus={() => setIsDropdownOpen(true)}
                                 placeholder="เลือกสถานที่เพื่อเช็คอิน..."
                                 className="block w-full pl-11 pr-4 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all text-sm font-medium"
                             />
+                            
+                            {isDropdownOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] max-h-52 overflow-y-auto ring-1 ring-black/5">
+                                    {filteredLocations.length > 0 ? (
+                                        filteredLocations.map((loc, idx) => (
+                                            <button 
+                                                key={idx} 
+                                                onClick={() => handleSelectLocation(loc)} 
+                                                className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-sm flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Building size={16} className="text-slate-400" />
+                                                    <span className="font-bold">{loc}</span>
+                                                </div>
+                                                {selectedPlace === loc && <Check size={14} className="text-cyan-500" />}
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="px-5 py-8 text-center text-slate-400 text-sm italic">
+                                            ไม่พบสถานที่ที่ตรงกับคำค้นหา
+                                        </div>
+                                    )}
+                                    {searchQuery && !profile?.hospitals.some(h => h.toLowerCase() === searchQuery.toLowerCase()) && (
+                                        <button 
+                                            onClick={handleAddNewLocation} 
+                                            className="w-full text-left px-5 py-4 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 text-sm flex items-center gap-3 border-t-2 border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-slate-900 font-black"
+                                        >
+                                            <div className="bg-cyan-500 text-white p-1 rounded-full">
+                                                <Plus size={14} />
+                                            </div>
+                                            เพิ่มรายชื่อใหม่: "{searchQuery}"
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
-                        {isDropdownOpen && (
-                            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 max-h-52 overflow-y-auto">
-                                {filteredLocations.map((loc, idx) => (
-                                    <button key={idx} onClick={() => handleSelectLocation(loc)} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-sm flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0">
-                                        {loc}
-                                        {selectedPlace === loc && <Check size={14} className="text-cyan-500" />}
-                                    </button>
-                                ))}
-                                {filteredLocations.length === 0 && searchQuery && (
-                                    <button onClick={handleAddNewLocation} className="w-full text-left px-4 py-3 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 text-sm flex items-center gap-2 border-t border-slate-100 dark:border-white/5">
-                                        <Plus size={14} /> เพิ่มรายชื่อ: "{searchQuery}"
-                                    </button>
-                                )}
-                            </div>
-                        )}
                     </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                     <button 
                         onClick={handleCheckIn}
-                        disabled={isCheckedOut}
+                        disabled={isCheckedOut || !selectedPlace}
                         className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
-                            isCheckedOut 
+                            isCheckedOut || !selectedPlace
                             ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' 
                             : 'bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-600 dark:to-emerald-800 shadow-[0_10px_30px_-10px_rgba(52,211,153,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(52,211,153,0.6)] active:scale-95'
                         }`}
                     >
-                        <Plus size={36} className={`${isCheckedOut ? 'text-slate-400' : 'text-white'} mb-2`} />
-                        <span className={`${isCheckedOut ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK IN</span>
+                        <Plus size={36} className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} mb-2`} />
+                        <span className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK IN</span>
                     </button>
 
                     <button 

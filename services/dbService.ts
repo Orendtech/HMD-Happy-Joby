@@ -15,18 +15,22 @@ import {
     Timestamp,
     orderBy,
     documentId,
-    deleteDoc
+    deleteDoc,
+    limit
 } from 'firebase/firestore';
-import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport, Reminder } from '../types';
+import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport, Reminder, WorkPlan } from '../types';
 
-// Helpers to build paths
 const getUserRef = (userId: string) => doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}`);
 const getAttendanceRef = (userId: string, dateId: string) => doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance/${dateId}`);
 const getRemindersCol = (userId: string) => collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/reminders`);
+const getWorkPlansCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/workplans`);
 
 export const getTodayDateId = () => {
     const now = new Date();
-    return now.toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 export const initializeUser = async (userId: string, email: string) => {
@@ -45,12 +49,48 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
 export const addHospital = async (userId: string, hospital: string) => { await updateDoc(getUserRef(userId), { hospitals: arrayUnion(hospital) }); };
 export const addCustomer = async (userId: string, customer: Customer) => { await updateDoc(getUserRef(userId), { customers: arrayUnion(customer) }); };
 
+// Work Plans
+export const getWorkPlans = async (userId?: string): Promise<WorkPlan[]> => {
+    try {
+        let q;
+        // ปรับปรุง: ลบ orderBy ออกจาก Query เพื่อหลีกเลี่ยงข้อผิดพลาดเรื่อง Index 
+        // และจะใช้การ sort ฝั่ง Client แทน
+        if (userId) {
+            q = query(getWorkPlansCol(), where('userId', '==', userId), limit(100));
+        } else {
+            q = query(getWorkPlansCol(), limit(100));
+        }
+        const snap = await getDocs(q);
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() as any } as WorkPlan));
+        
+        // จัดเรียงลำดับฝั่ง Client (ใหม่ไปเก่า)
+        return data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    } catch (e) {
+        console.error("Failed to fetch workplans", e);
+        return [];
+    }
+};
+
+export const addWorkPlan = async (plan: Omit<WorkPlan, 'id'>) => {
+    const ref = doc(getWorkPlansCol());
+    await setDoc(ref, { ...plan, createdAt: new Date().toISOString() });
+    return ref.id;
+};
+
+export const deleteWorkPlan = async (planId: string) => {
+    await deleteDoc(doc(getWorkPlansCol(), planId));
+};
+
 // Reminders CRUD
 export const getReminders = async (userId: string): Promise<Reminder[]> => {
     try {
-        const q = query(getRemindersCol(userId), orderBy('dueTime', 'asc'));
+        // ปรับปรุง: ลบ orderBy ออกเพื่อให้แอปทำงานได้ทันที
+        const q = query(getRemindersCol(userId));
         const snap = await getDocs(q);
-        return snap.docs.map(d => ({ id: d.id, ...d.data() } as Reminder));
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() as any } as Reminder));
+        
+        // จัดเรียงตามเวลาที่ต้องทำ (เก่าไปใหม่)
+        return data.sort((a, b) => a.dueTime.localeCompare(b.dueTime));
     } catch (e) {
         console.error("Failed to fetch reminders", e);
         return [];
@@ -87,7 +127,8 @@ export const checkIn = async (userId: string, location: string, lat: number, lng
     const userSnap = await getDoc(userRef); const userData = userSnap.data() as UserProfile;
     let currentXp = userData.xp || 0; let currentLevel = userData.level || 1; let currentStreak = userData.currentStreak || 0; const lastActive = userData.lastActiveDate || '';
     let earnedXp = isFirstCheckInToday ? (new Date().getHours() < 9 ? 50 : 15) : 5;
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); 
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
     if (isFirstCheckInToday && lastActive === yesterdayStr) { currentStreak += 1; earnedXp += Math.min(currentStreak * 5, 50); } else if (isFirstCheckInToday && lastActive !== today) { currentStreak = 1; }
     const newXp = currentXp + earnedXp; const newLevel = calculateLevel(newXp);
     await updateDoc(userRef, { xp: newXp, level: newLevel, currentStreak: currentStreak, lastActiveDate: today });

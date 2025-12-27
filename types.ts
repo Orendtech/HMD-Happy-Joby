@@ -9,25 +9,36 @@ export interface Customer {
 }
 
 export interface PipelineData {
-    id?: string; // Unique ID for the deal
+    id?: string; 
     product: string;
     stage: string;
     value: number;
-    probability: number; // 0-100
-    lastUpdated?: string; // ISO Date
-    isNew?: boolean; // UI helper
-    customerName?: string; // Link deal to a specific person/customer
-    expectedCloseDate?: string; // NEW: YYYY-MM-DD
+    probability: number; 
+    lastUpdated?: string; 
+    isNew?: boolean; 
+    customerName?: string; 
+    expectedCloseDate?: string; 
 }
 
 export interface Reminder {
     id: string;
     title: string;
     description?: string;
-    dueTime: string; // ISO string for date & time
+    dueTime: string; 
     type: 'check-in' | 'follow-up' | 'task';
     isCompleted: boolean;
     notified?: boolean;
+    createdAt: string;
+}
+
+export interface WorkPlan {
+    id: string;
+    userId: string;
+    userName: string;
+    date: string; // YYYY-MM-DD
+    title: string;
+    content: string;
+    itinerary: { location: string; objective: string }[];
     createdAt: string;
 }
 
@@ -43,11 +54,7 @@ export interface UserProfile {
     role?: 'admin' | 'manager' | 'user'; 
     isApproved?: boolean;
     reportsTo?: string;
-    
-    // Smart Pipeline Memory
     activePipeline?: PipelineData[];
-
-    // Gamification Fields
     xp?: number;
     level?: number;
     currentStreak?: number;
@@ -68,7 +75,6 @@ export interface Interaction {
     pipeline?: PipelineData;
 }
 
-// NEW: Granular Report per Visit
 export interface VisitReport {
     location: string;
     checkInTime: Timestamp;
@@ -76,30 +82,24 @@ export interface VisitReport {
     metWith: string[];
     pipeline: PipelineData[];
     interactions?: Interaction[];
-    
-    // Optional coords for mapping
     latitude?: number;
     longitude?: number;
 }
 
 export interface DailyReport {
-    // Optional legacy fields for backward compatibility
     summary?: string; 
     metWith?: string[] | string;
     pipeline?: PipelineData[] | PipelineData;
-
-    // New Structure: Array of specific visits matches checkIns
     visits?: VisitReport[];
 }
 
 export interface AttendanceDay {
-    id: string; // YYYY-MM-DD
+    id: string; 
     checkIns: CheckInRecord[];
     checkOut?: Timestamp;
     report?: DailyReport;
 }
 
-// For Admin Dashboard
 export interface UserLocationData {
     userId: string;
     email: string;
@@ -109,7 +109,6 @@ export interface UserLocationData {
     isCheckedOut?: boolean;
 }
 
-// For Admin User Management
 export interface AdminUser extends UserProfile {
     id: string;
 }
