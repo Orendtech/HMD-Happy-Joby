@@ -1,12 +1,13 @@
 
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" class="notranslate" translate="no">
   <head>
     <meta charset="utf-8" />
+    <meta name="google" content="notranslate" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
     
     <!-- PWA & Theme Settings -->
-    <meta name="theme-color" content="#020617" />
+    <meta name="theme-color" content="#f8fafc" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
@@ -18,15 +19,17 @@
 
     <title>Happy Joby - Intelligent Workspace</title>
     
-    <!-- Theme Initialization Script (Must be in head to prevent flash) -->
+    <!-- Theme Initialization Script -->
     <script>
-      if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#020617');
-      } else {
-        document.documentElement.classList.remove('dark');
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f8fafc');
-      }
+      (function() {
+        const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          // Initial safe color before React takes over
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
     </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -38,110 +41,44 @@
       body {
         font-family: 'Sarabun', sans-serif;
         -webkit-tap-highlight-color: transparent;
-        transition: background-color 0.3s ease, color 0.3s ease;
+        transition: background-color 0.3s ease;
+        /* Ensure background covers safe areas */
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
       }
       
-      /* Light Mode Defaults */
-      body {
-        background-color: #f8fafc; /* Slate 50 */
-        color: #0f172a; /* Slate 900 */
+      html {
+        height: -webkit-fill-available;
       }
 
-      /* Dark Mode Overrides */
+      body {
+        background-color: #f8fafc;
+        color: #0f172a;
+        margin: 0;
+      }
+
       .dark body {
-        background-color: #020617; /* Slate 950 */
-        color: #f8fafc; /* Slate 50 */
+        background-color: #020617;
+        color: #f8fafc;
       }
 
-      /* Handle safe area for iPhones with notches */
-      body {
-        /* Removed global padding-top to allow content to bleed into status bar area */
-        padding-bottom: env(safe-area-inset-bottom);
-      }
-      
-      /* Custom Scrollbar */
-      ::-webkit-scrollbar {
-        width: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 10px;
-      }
-      .dark ::-webkit-scrollbar-track {
-        background: #0f172a;
-      }
-      .dark ::-webkit-scrollbar-thumb {
-        background: #334155;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-      .dark ::-webkit-scrollbar-thumb:hover {
-        background: #475569;
-      }
-
-      /* Map Override */
-      .leaflet-container {
-        width: 100%;
-        height: 100%;
-        z-index: 0;
-        background: #f1f5f9;
-        font-family: 'Sarabun', sans-serif;
-      }
-      .dark .leaflet-container {
-        background: #0f172a;
-      }
-      
       /* Animations */
       @keyframes fade-in-up {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
       }
-      @keyframes float-up {
-        0% { opacity: 0; transform: translate(-50%, 20px) scale(0.8); }
-        20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
-        80% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
-        100% { opacity: 0; transform: translate(-50%, -40px) scale(0.9); }
-      }
       @keyframes pulse-ring {
         0% { transform: scale(0.8); opacity: 0.8; }
         100% { transform: scale(1.5); opacity: 0; }
       }
-      /* New Fly Animation: Starts center bottom, flies to top left HUD */
       @keyframes fly-to-collection {
-        0% { 
-            opacity: 0; 
-            transform: translate(-50%, 0) scale(0.5); 
-            top: 70%; 
-            left: 50%;
-        }
-        20% { 
-            opacity: 1; 
-            transform: translate(-50%, -50%) scale(1.5); 
-            top: 50%; 
-            left: 50%;
-        }
-        40% {
-            transform: translate(-50%, -50%) scale(1.2);
-            top: 50%;
-            left: 50%;
-        }
-        100% { 
-            opacity: 0; 
-            transform: translate(-50%, -50%) scale(0.2); 
-            top: 5%; 
-            left: 10%; /* Targets the approximate area of the Level/XP HUD */
-        }
+        0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); top: 70%; left: 50%; }
+        20% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); top: 50%; left: 50%; }
+        100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); top: 5%; left: 10%; }
       }
 
       .animate-enter {
         animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      }
-      .animate-float-up {
-        animation: float-up 2s ease-out forwards;
       }
       .animate-fly-xp {
         position: fixed;
@@ -149,11 +86,6 @@
         animation: fly-to-collection 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         pointer-events: none;
       }
-
-      .delay-100 { animation-delay: 100ms; }
-      .delay-200 { animation-delay: 200ms; }
-      .delay-300 { animation-delay: 300ms; }
-
     </style>
     <script>
         tailwind.config = {
@@ -161,20 +93,8 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: {
-                          DEFAULT: '#06b6d4', // Cyan 500
-                          glow: '#22d3ee', // Cyan 400
-                        },
-                        surface: {
-                          light: 'rgba(255, 255, 255, 0.05)',
-                          medium: 'rgba(30, 41, 59, 0.7)',
-                          dark: '#020617'
-                        }
+                        primary: { DEFAULT: '#06b6d4', glow: '#22d3ee' },
                     },
-                    backgroundImage: {
-                      'ai-gradient': 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%)',
-                      'glass': 'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.0) 100%)'
-                    }
                 }
             }
         }
@@ -182,17 +102,16 @@
   <script type="importmap">
 {
   "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.9.6",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react-leaflet": "https://aistudiocdn.com/react-leaflet@^5.0.0",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "leaflet/": "https://aistudiocdn.com/leaflet@^1.9.4/",
-    "leaflet": "https://aistudiocdn.com/leaflet@^1.9.4",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
-    "vite": "https://aistudiocdn.com/vite@^7.2.4"
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "react-leaflet": "https://esm.sh/react-leaflet@^5.0.0",
+    "leaflet": "https://esm.sh/leaflet@^1.9.4",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>

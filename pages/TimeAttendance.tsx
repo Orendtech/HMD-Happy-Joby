@@ -33,8 +33,8 @@ const getRankTitle = (level: number) => {
     if (level >= 9) return { title: 'LEGEND', color: 'text-white', themeColor: '#f59e0b' }; // Amber 500
     if (level >= 7) return { title: 'ELITE', color: 'text-white', themeColor: '#e11d48' };  // Rose 600
     if (level >= 5) return { title: 'RANGER', color: 'text-white', themeColor: '#4f46e5' }; // Indigo 600
-    if (level >= 3) return { title: 'SCOUT', color: 'text-white', themeColor: '#2563eb' };  // Blue 600
-    return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400', themeColor: '#0f172a' }; // Slate 900
+    if (level >= 3) return { title: 'SCOUT', color: 'text-white', themeColor: '#06b6d4' };  // Cyan 500
+    return { title: 'ROOKIE', color: 'text-slate-400 dark:text-slate-400', themeColor: '' }; // Handled by standard background
 };
 
 const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) => {
@@ -108,11 +108,17 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const currentLevel = profile?.level || 1; 
     const rank = getRankTitle(currentLevel);
 
-    // Dynamic Theme Color for Mobile Status Bar
+    // Sync Status Bar with HUD Theme Color
     useEffect(() => {
         const metaThemeColor = document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', rank.themeColor);
+            if (rank.themeColor) {
+                metaThemeColor.setAttribute('content', rank.themeColor);
+            } else {
+                // Fallback to system background
+                const isDark = document.documentElement.classList.contains('dark');
+                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+            }
         }
     }, [currentLevel]);
 
@@ -128,12 +134,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         return () => { 
             clearInterval(timer); 
             document.removeEventListener('mousedown', handleClickOutside);
-            // Reset theme color when leaving page
-            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-            if (metaThemeColor) {
-                const isDark = document.documentElement.classList.contains('dark');
-                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
-            }
         };
     }, [user]);
 
@@ -232,7 +232,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     return (
         <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617]">
             <div className="w-full max-w-2xl mx-auto flex flex-col min-h-full">
-                {/* HUD Header - Fixed to Sit at the Very Top */}
+                {/* HUD Header */}
                 <div className={`relative rounded-b-[40px] shadow-xl pb-8 pt-[max(2.5rem,env(safe-area-inset-top))] px-6 z-20 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
                     <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
                     

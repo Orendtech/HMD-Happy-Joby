@@ -20,6 +20,29 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const isHomePage = location.pathname === '/';
     const [pendingCount, setPendingCount] = useState(0);
 
+    // Global Status Bar Syncing
+    useEffect(() => {
+        const syncStatusBar = () => {
+            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+            if (!metaThemeColor) return;
+
+            const isDark = document.documentElement.classList.contains('dark');
+
+            // If on homepage, the Page component will handle it (dynamic leval color)
+            // If on ANY other page, we sync it to the standard background color
+            if (!isHomePage) {
+                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+            }
+        };
+
+        syncStatusBar();
+        // Listener for theme changes manually if needed
+        const observer = new MutationObserver(syncStatusBar);
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        
+        return () => observer.disconnect();
+    }, [location.pathname, isHomePage]);
+
     // Update System App Badge (Home Screen Icon)
     useEffect(() => {
         const updateAppBadge = async () => {
@@ -37,17 +60,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
         };
         updateAppBadge();
     }, [pendingCount]);
-
-    // Reset theme color when not on homepage
-    useEffect(() => {
-        if (!isHomePage) {
-            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-            if (metaThemeColor) {
-                const isDark = document.documentElement.classList.contains('dark');
-                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
-            }
-        }
-    }, [location.pathname]);
 
     useEffect(() => {
         if (!user) return;
@@ -80,17 +92,18 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 }
             });
 
-            // Attendance Watchdog Trigger at 08:50 AM
-            const day = now.getDay(); // 1-5 (Mon-Fri)
+            // Attendance Watchdog Trigger
+            const day = now.getDay(); // 0-6 (Sun-Sat)
             const hour = now.getHours();
             const minute = now.getMinutes();
             const totalMinutes = hour * 60 + minute;
-            const targetMinutes = 8 * 60 + 50; // 08:50 AM
 
-            const lastReminderKey = `attendance_reminder_sent_${user.uid}`;
-            const lastSentDate = localStorage.getItem(lastReminderKey);
+            // Check-in Reminder at 08:50 AM
+            const checkInTargetMinutes = 8 * 60 + 50; 
+            const lastCheckInReminderKey = `attendance_reminder_sent_${user.uid}`;
+            const lastCheckInSentDate = localStorage.getItem(lastCheckInReminderKey);
 
-            if (day >= 1 && day <= 5 && totalMinutes >= targetMinutes && lastSentDate !== todayStr) {
+            if (day >= 1 && day <= 5 && totalMinutes >= checkInTargetMinutes && totalMinutes < 10 * 60 && lastCheckInSentDate !== todayStr) {
                 const todayAtt = await getTodayAttendance(user.uid);
                 if (!todayAtt || todayAtt.checkIns.length === 0) {
                     if ("Notification" in window && Notification.permission === "granted") {
@@ -100,7 +113,28 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                             badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
                             vibrate: [200, 100, 200]
                         } as any);
-                        localStorage.setItem(lastReminderKey, todayStr);
+                        localStorage.setItem(lastCheckInReminderKey, todayStr);
+                    }
+                }
+            }
+
+            // Check-out Reminder at 05:00 PM (17:00)
+            const checkOutTargetMinutes = 17 * 60; 
+            const lastCheckOutReminderKey = `checkout_reminder_sent_${user.uid}`;
+            const lastCheckOutSentDate = localStorage.getItem(lastCheckOutReminderKey);
+
+            if (day >= 1 && day <= 5 && totalMinutes >= checkOutTargetMinutes && lastCheckOutSentDate !== todayStr) {
+                const todayAtt = await getTodayAttendance(user.uid);
+                // แจ้งเตือนถ้าเช็คอินแล้วแต่ยังไม่ได้เช็คเอาท์
+                if (todayAtt && todayAtt.checkIns.length > 0 && !todayAtt.checkOut) {
+                    if ("Notification" in window && Notification.permission === "granted") {
+                        new Notification("🏁 อย่าลืมเช็คเอาท์!", {
+                            body: "ขณะนี้เวลา 17:00 น. แล้ว ได้เวลาเลิกงานแล้วครับ อย่าลืมสรุปรายงานและเช็คเอาท์ด้วยนะ",
+                            icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                            badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                            vibrate: [200, 100, 200]
+                        } as any);
+                        localStorage.setItem(lastCheckOutReminderKey, todayStr);
                     }
                 }
             }
