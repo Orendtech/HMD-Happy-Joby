@@ -3,8 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
 import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
-import { UserProfile, AttendanceDay } from '../types';
+import { UserProfile, AttendanceDay, ActivityLog } from '../types';
+// Fix: Import db and APP_ARTIFACT_ID from firebaseConfig instead of dbService
 import { getReminders, markReminderAsNotified, getTodayAttendance, getTodayDateId } from '../services/dbService';
+import { db, APP_ARTIFACT_ID } from '../firebaseConfig';
+import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
 
 interface LayoutProps {
     user: User;
@@ -16,6 +19,24 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const location = useLocation();
     const isHomePage = location.pathname === '/';
     const [pendingCount, setPendingCount] = useState(0);
+
+    // Update System App Badge (Home Screen Icon)
+    useEffect(() => {
+        const updateAppBadge = async () => {
+            if ('setAppBadge' in navigator) {
+                try {
+                    if (pendingCount > 0) {
+                        await (navigator as any).setAppBadge(pendingCount);
+                    } else {
+                        await (navigator as any).clearAppBadge();
+                    }
+                } catch (error) {
+                    console.error('Failed to update app badge:', error);
+                }
+            }
+        };
+        updateAppBadge();
+    }, [pendingCount]);
 
     // Reset theme color when not on homepage
     useEffect(() => {
@@ -31,11 +52,12 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     useEffect(() => {
         if (!user) return;
 
-        // Request Notification Permission on Mount
+        // 1. Request Notification Permission on Mount
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
         }
 
+        // 2. Attendance Watchdog and Reminders
         const checkReminders = async () => {
             const list = await getReminders(user.uid);
             const now = new Date();
@@ -44,12 +66,12 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             const uncompletedList = list.filter(r => !r.isCompleted);
             setPendingCount(uncompletedList.length);
             
-            // 1. Process Custom User Reminders
+            // Custom User Reminders
             list.forEach(async (r) => {
                 const due = new Date(r.dueTime);
                 if (!r.isCompleted && !r.notified && due <= now) {
                     if ("Notification" in window && Notification.permission === "granted") {
-                        new Notification("Happy Joby Reminder", {
+                        new Notification("การแจ้งเตือนจาก Happy Joby", {
                             body: `${r.title}\n${r.description || ''}`,
                             icon: "https://img2.pic.in.th/pic/Orendtech-1.png"
                         });
@@ -58,25 +80,26 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 }
             });
 
-            // 2. Attendance Watchdog (9:00 AM Weekday Reminder)
-            const day = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            // Attendance Watchdog Trigger at 08:50 AM
+            const day = now.getDay(); // 1-5 (Mon-Fri)
             const hour = now.getHours();
+            const minute = now.getMinutes();
+            const totalMinutes = hour * 60 + minute;
+            const targetMinutes = 8 * 60 + 50; // 08:50 AM
+
             const lastReminderKey = `attendance_reminder_sent_${user.uid}`;
             const lastSentDate = localStorage.getItem(lastReminderKey);
 
-            // Conditions: Mon-Fri (1-5), Time >= 9:00 AM, Not sent today yet
-            if (day >= 1 && day <= 5 && hour >= 9 && lastSentDate !== todayStr) {
+            if (day >= 1 && day <= 5 && totalMinutes >= targetMinutes && lastSentDate !== todayStr) {
                 const todayAtt = await getTodayAttendance(user.uid);
                 if (!todayAtt || todayAtt.checkIns.length === 0) {
                     if ("Notification" in window && Notification.permission === "granted") {
-                        // Fix: cast options to any to satisfy TS compiler while using standard browser Notification properties
                         new Notification("🚨 อย่าลืมเช็คอิน!", {
-                            body: "ขณะนี้เวลา 09:00 น. แล้ว คุณยังไม่ได้เช็คอินเข้างานในวันนี้ กรุณาบันทึกเวลาด้วยครับ",
+                            body: "ขณะนี้เวลา 08:50 น. แล้ว อีก 10 นาทีจะถึงเวลาเข้างาน กรุณาลงเวลาเช็คอินด้วยครับ",
                             icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
                             badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
                             vibrate: [200, 100, 200]
                         } as any);
-                        // Mark as sent for today to prevent spam
                         localStorage.setItem(lastReminderKey, todayStr);
                     }
                 }
@@ -86,8 +109,48 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
         const interval = setInterval(checkReminders, 60000); // Check every minute
         checkReminders(); 
 
-        return () => clearInterval(interval);
-    }, [user]);
+        // 3. Admin/Manager Activity Notification (Real-time)
+        let unsubscribe: (() => void) | undefined;
+        if (userProfile?.role === 'admin' || userProfile?.role === 'manager') {
+            const logsCol = collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_logs`);
+            const startTime = Timestamp.now(); // Start listening from now
+            const q = query(
+                logsCol,
+                where('timestamp', '>', startTime),
+                orderBy('timestamp', 'desc'),
+                limit(1)
+            );
+
+            unsubscribe = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") {
+                        const log = change.doc.data() as ActivityLog;
+                        // Avoid notifying self
+                        if (log.userId !== user.uid) {
+                            if ("Notification" in window && Notification.permission === "granted") {
+                                const title = log.type === 'check-in' ? "📍 พนักงานเช็คอินแล้ว" : "🏁 พนักงานเช็คเอาท์แล้ว";
+                                const message = log.type === 'check-in' 
+                                    ? `${log.userName} เช็คอินที่ ${log.location}`
+                                    : `${log.userName} ส่งรายงานและเช็คเอาท์เรียบร้อย`;
+
+                                new Notification(title, {
+                                    body: message,
+                                    icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                                    badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                                    vibrate: [100, 50, 100]
+                                } as any);
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        return () => {
+            clearInterval(interval);
+            if (unsubscribe) unsubscribe();
+        };
+    }, [user, userProfile]);
 
     const navItems = [
         { path: '/', icon: <Clock size={24} />, label: 'ลงเวลา' },

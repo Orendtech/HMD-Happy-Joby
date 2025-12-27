@@ -112,3 +112,12 @@ export interface UserLocationData {
 export interface AdminUser extends UserProfile {
     id: string;
 }
+
+export interface ActivityLog {
+    id: string;
+    userId: string;
+    userName: string;
+    type: 'check-in' | 'check-out';
+    location: string;
+    timestamp: Timestamp;
+}

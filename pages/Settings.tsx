@@ -68,9 +68,8 @@ const Settings: React.FC<Props> = ({ user }) => {
         const permission = await Notification.requestPermission();
         setNotifPermission(permission);
         if (permission === 'granted') {
-            // Real-world example notification for testing
-            new Notification("🚨 อย่าลืมเช็คอิน! (ตัวอย่าง)", {
-                body: "ขณะนี้เวลา 09:00 น. แล้ว คุณยังไม่ได้เช็คอินเข้างานในวันนี้ กรุณาบันทึกเวลาด้วยครับ",
+            new Notification("🚨 อย่าลืมเช็คอิน!", {
+                body: "ขณะนี้เวลา 08:50 น. แล้ว อีก 10 นาทีจะถึงเวลาเข้างาน กรุณาเช็คอินด้วยครับ",
                 icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
                 badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
                 vibrate: [200, 100, 200]
@@ -156,7 +155,7 @@ const Settings: React.FC<Props> = ({ user }) => {
                         <div className="flex-1">
                             <h3 className="text-sm font-bold text-slate-900 dark:text-white">ระบบแจ้งเตือนเข้างาน</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                แจ้งเตือนเมื่อลืมเช็คอิน (จ-ศ 09:00 น.) 
+                                แจ้งเตือนเมื่อลืมเช็คอิน (จ-ศ 08:50 น.) 
                                 {notifPermission === 'granted' ? 
                                     <span className="text-emerald-500 font-bold ml-1 flex items-center gap-1 mt-1"><ShieldCheck size={12}/> เปิดใช้งานแล้ว</span> : 
                                     <span className="text-slate-400 ml-1 italic font-medium"> (ยังไม่ได้เปิดใช้งาน)</span>
