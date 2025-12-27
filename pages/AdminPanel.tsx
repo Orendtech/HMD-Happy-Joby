@@ -1,12 +1,16 @@
+
 import React, { useEffect, useState } from 'react';
 import { GlassCard } from '../components/GlassCard';
-import { getAllUsers, toggleUserStatus, updateUserRole, getGlobalReportRange, getTodayDateId, updateUserProfile, adminCreateUser, getAllGlobalCustomers } from '../services/dbService';
-import { AdminUser, UserProfile, Customer } from '../types';
-import { ShieldCheck, Users, Download, UserCheck, UserX, FileText, MapPin, CheckCircle, Calendar, Edit, X, Save, Search, Eye, Plus, AlertCircle, Loader2, Building, Phone, User as UserIcon, ChevronRight } from 'lucide-react';
+import { getAllUsers, toggleUserStatus, updateUserRole, getGlobalReportRange, getTodayDateId, updateUserProfile, adminCreateUser, getAllGlobalCustomers, getWorkPlans, getUserHistory } from '../services/dbService';
+import { AdminUser, UserProfile, Customer, WorkPlan, AttendanceDay } from '../types';
+// Fixed: Added ChevronDown to the imports from lucide-react
+import { ShieldCheck, Users, Download, UserCheck, UserX, FileText, MapPin, CheckCircle, Calendar, Edit, X, Save, Search, Eye, Plus, AlertCircle, Loader2, Building, Phone, User as UserIcon, ChevronRight, LayoutList, TrendingUp, ChevronDown } from 'lucide-react';
 
 interface AdminPanelProps {
     viewerProfile: UserProfile | null;
 }
+
+type ReportType = 'activity' | 'performance' | 'pipeline';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const [activeTab, setActiveTab] = useState<'users' | 'reports' | 'customers'>('users');
@@ -14,6 +18,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const [loading, setLoading] = useState(false);
     const [startDate, setStartDate] = useState(getTodayDateId());
     const [endDate, setEndDate] = useState(getTodayDateId());
+    const [reportType, setReportType] = useState<ReportType>('activity');
     const [reportData, setReportData] = useState<any[]>([]);
     const [customers, setCustomers] = useState<Array<Customer & { addedBy: string, userId: string }>>([]);
     const [customerSearch, setCustomerSearch] = useState('');
@@ -28,7 +33,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const potentialManagers = users.filter(u => u.role === 'admin' || u.role === 'manager');
 
     const fetchUsers = async () => { setUsers(await getAllUsers()); };
-    const fetchReport = async () => { setReportData(await getGlobalReportRange(startDate, endDate)); }
+    const fetchReport = async () => { 
+        setLoading(true);
+        setReportData(await getGlobalReportRange(startDate, endDate)); 
+        setLoading(false);
+    }
     const fetchCustomers = async () => { setCustomers(await getAllGlobalCustomers()); }
 
     useEffect(() => {
@@ -44,7 +53,140 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const handleEditClick = (user: AdminUser) => { if (isManager) return; setEditingUser(user); setEditForm({ name: user.name || '', area: user.area || '', startDate: user.startDate || '', reportsTo: user.reportsTo || '' }); };
     const handleSaveUser = async () => { if (!editingUser || isManager) return; await updateUserProfile(editingUser.id, { name: editForm.name, area: editForm.area, startDate: editForm.startDate, reportsTo: editForm.reportsTo }); await fetchUsers(); setEditingUser(null); };
     const handleAddUserSubmit = async () => { setAddUserError(''); setAddUserLoading(true); try { await adminCreateUser(addUserForm.email, addUserForm.password, addUserForm.reportsTo); await fetchUsers(); setShowAddUser(false); setAddUserForm({ email: '', password: '', reportsTo: '' }); } catch (e: any) { console.error(e); setAddUserError(e.message || 'Failed to create user.'); } finally { setAddUserLoading(false); } };
-    const exportToCSV = () => { if (reportData.length === 0) return; const headers = ["Date", "Email", "Name", "Check-ins", "Hospitals", "Start", "End", "Locations", "Met With", "Report"]; const csvContent = [headers.join(','), ...reportData.map(row => [row.date, row.userEmail, row.userName, row.checkInCount, row.hospitalCount, `"${row.checkInTime}"`, `"${row.checkOutTime}"`, `"${row.locations}"`, `"${row.metWith}"`, `"${row.reportSummary.replace(/"/g, '""')}"`].join(','))].join('\n'); const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8,\uFEFF" + csvContent); link.download = `report_${startDate}_to_${endDate}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+
+    const exportToCSV = async () => {
+        setLoading(true);
+        try {
+            let headers: string[] = [];
+            let rows: any[] = [];
+            let filename = `report_${startDate}_to_${endDate}.csv`;
+
+            if (reportType === 'activity') {
+                headers = ["วันที่", "อีเมล", "ชื่อ", "จำนวนเช็คอิน", "จำนวนสถานพยาบาล", "เวลาเข้างาน", "เวลาเลิกงาน", "สถานที่เช็คอิน", "ผู้ที่เข้าพบ", "สรุปรายงาน"];
+                const data = await getGlobalReportRange(startDate, endDate);
+                rows = data.map(row => [
+                    row.date, 
+                    row.userEmail, 
+                    row.userName, 
+                    row.checkInCount, 
+                    row.hospitalCount, 
+                    `"${row.checkInTime}"`, 
+                    `"${row.checkOutTime}"`, 
+                    `"${row.locations}"`, 
+                    `"${row.metWith}"`, 
+                    `"${row.reportSummary.replace(/"/g, '""')}"`
+                ]);
+                filename = `global_activity_${startDate}_to_${endDate}.csv`;
+            } 
+            else if (reportType === 'performance') {
+                headers = [
+                    "วันที่", "พนักงาน", "แผนงาน: หัวข้อ", "แผนงาน: รายละเอียด", "แผนงาน: จุดนัดพบ/เป้าหมาย", 
+                    "รายงาน: สถานที่เช็คอิน", "รายงาน: เวลาเช็คอิน", "รายงาน: เวลาเลิกงาน", 
+                    "รายงาน: ผู้ติดต่อ", "รายงาน: แผนก", "รายงาน: สรุปกิจกรรม"
+                ];
+                
+                // For performance, we need to iterate users and merge plan + history
+                const allUsers = await getAllUsers();
+                
+                for (const u of allUsers) {
+                    const uPlans = await getWorkPlans(u.id);
+                    const uHistory = await getUserHistory(u.id);
+                    
+                    let curr = new Date(startDate);
+                    const endD = new Date(endDate);
+                    while (curr <= endD) {
+                        const dateStr = curr.toISOString().split('T')[0];
+                        const dayPlan = uPlans.find(p => p.date === dateStr);
+                        const dayReport = uHistory.find(h => h.id === dateStr);
+                        
+                        const planTitle = dayPlan?.title || '-';
+                        const planContent = dayPlan?.content || '-';
+                        const planItinerary = dayPlan?.itinerary 
+                            ? dayPlan.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ') 
+                            : '-';
+
+                        if (dayReport?.report?.visits && dayReport.report.visits.length > 0) {
+                            dayReport.report.visits.forEach((v: any) => {
+                                if (v.interactions && v.interactions.length > 0) {
+                                    v.interactions.forEach((i: any) => {
+                                        rows.push([
+                                            dateStr, `"${u.name || u.email}"`, `"${planTitle.replace(/"/g, '""')}"`, 
+                                            `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
+                                            `"${v.location}"`, v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
+                                            dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                                            `"${i.customerName}"`, `"${i.department || '-'}"`, `"${(i.summary || '').replace(/"/g, '""')}"`
+                                        ]);
+                                    });
+                                } else {
+                                    rows.push([
+                                        dateStr, `"${u.name || u.email}"`, `"${planTitle.replace(/"/g, '""')}"`, 
+                                        `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
+                                        `"${v.location}"`, v.checkInTime?.toDate().toLocaleTimeString('th-TH'),
+                                        dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                                        '-', '-', '"(ไม่มีบันทึกกิจกรรม)"'
+                                    ]);
+                                }
+                            });
+                        } else if (dayPlan) {
+                            rows.push([
+                                dateStr, `"${u.name || u.email}"`, `"${planTitle.replace(/"/g, '""')}"`, 
+                                `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
+                                '-', '-', '-', '-', '-', '"(ยังไม่มีข้อมูลรายงาน)"'
+                            ]);
+                        }
+                        curr.setDate(curr.getDate() + 1);
+                    }
+                }
+                filename = `team_performance_${startDate}_to_${endDate}.csv`;
+            }
+            else if (reportType === 'pipeline') {
+                headers = ["วันที่สร้าง", "พนักงาน", "สินค้า/โปรเจกต์", "โรงพยาบาล/สถานที่", "มูลค่า (บาท)", "สถานะ", "โอกาสสำเร็จ (%)", "วันที่คาดว่าจะปิด", "ผู้ติดต่อ"];
+                const allUsers = await getAllUsers();
+                allUsers.forEach(u => {
+                    if (u.activePipeline) {
+                        u.activePipeline.forEach(deal => {
+                            // Filter by date if possible (using expectedCloseDate or lastUpdated)
+                            const dealDate = deal.expectedCloseDate || deal.lastUpdated?.split('T')[0] || '';
+                            if (dealDate >= startDate && dealDate <= endDate) {
+                                rows.push([
+                                    deal.lastUpdated?.split('T')[0] || '-',
+                                    `"${u.name || u.email}"`,
+                                    `"${deal.product}"`,
+                                    // Fixed: 'locationName' does not exist on 'PipelineData'. Using '-' as placeholder or potentially customerName.
+                                    `"-"`,
+                                    deal.value,
+                                    deal.stage,
+                                    `${deal.probability}%`,
+                                    deal.expectedCloseDate || '-',
+                                    `"${deal.customerName || '-'}"`
+                                ]);
+                            }
+                        });
+                    }
+                });
+                filename = `global_pipeline_${startDate}_to_${endDate}.csv`;
+            }
+
+            if (rows.length === 0) {
+                alert("ไม่พบข้อมูลในช่วงวันที่เลือก");
+                return;
+            }
+
+            const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+            const link = document.createElement("a");
+            link.href = encodeURI("data:text/csv;charset=utf-8,\uFEFF" + csvContent);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (e) {
+            console.error(e);
+            alert("เกิดข้อผิดพลาดในการส่งออกข้อมูล");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const filteredCustomers = customers.filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.hospital.toLowerCase().includes(customerSearch.toLowerCase()) || c.addedBy.toLowerCase().includes(customerSearch.toLowerCase()));
 
     return (
@@ -87,7 +229,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
                                 </div>
                                 <div className="flex gap-2 mb-4 flex-wrap">
                                     {u.area && <span className="text-[10px] bg-slate-100 dark:bg-slate-950 text-slate-500 px-2 py-1 rounded border border-slate-200 dark:border-white/5">{u.area}</span>}
-                                    <span className={`text-[10px] px-2 py-1 rounded border font-bold ${u.role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-300' : u.role === 'manager' ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'}`}>{u.role?.toUpperCase() || 'USER'}</span>
+                                    <span className={`text-[10px] px-2 py-1 rounded border font-bold ${u.role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-500/20 border-indigo-200 dark:border-indigo-500/30 text-indigo-600 dark:text-indigo-300' : u.role === 'manager' ? 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'}`}>{u.role?.toUpperCase() || 'USER'}</span>
                                 </div>
                                 {!isManager && (
                                     <div className="grid grid-cols-2 gap-2 mt-auto">
@@ -104,25 +246,73 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
             {activeTab === 'reports' && (
                 <div className="space-y-6">
                     <div className="bg-white dark:bg-slate-900/50 p-6 rounded-3xl border border-slate-200 dark:border-white/5 shadow-sm">
-                        <div className="flex flex-col md:flex-row gap-4 items-end">
-                            <div className="flex-1 w-full">
-                                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2 block">Date Range</label>
-                                <div className="flex gap-2">
-                                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-cyan-500" />
-                                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-cyan-500" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider ml-1">ประเภทรายงาน (Report Type)</label>
+                                <div className="relative">
+                                    <select 
+                                        value={reportType} 
+                                        onChange={(e) => setReportType(e.target.value as ReportType)}
+                                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-cyan-500 appearance-none font-bold"
+                                    >
+                                        <option value="activity">Daily Activity Log (เช็คอิน/เช็คเอาท์)</option>
+                                        <option value="performance">Team Performance (แผนงาน vs รายงานจริง)</option>
+                                        <option value="pipeline">Sales Pipeline (โอกาสการขายทั้งหมด)</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-3.5 text-slate-400 pointer-events-none" size={16} />
                                 </div>
                             </div>
-                            <button onClick={exportToCSV} disabled={reportData.length === 0} className={`px-6 py-3.5 rounded-xl font-bold flex items-center gap-2 transition-all ${reportData.length > 0 ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}><Download size={18} /> Export CSV</button>
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                         <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-2 pl-2">Preview</div>
-                         {reportData.slice(0, 5).map((row, i) => (
-                            <div key={i} className="flex items-center justify-between p-4 bg-white dark:bg-slate-900/30 border border-slate-100 dark:border-white/5 rounded-2xl shadow-sm">
-                                <div><div className="font-bold text-slate-900 dark:text-white text-sm">{row.userEmail}</div><div className="text-xs text-slate-500">{row.date} • {row.checkInCount} Check-ins</div></div>
-                                {row.reportSummary && <FileText size={16} className="text-purple-400" />}
+
+                            <div className="space-y-2">
+                                <label className="text-xs text-slate-500 font-bold uppercase tracking-wider ml-1">ช่วงวันที่ (Date Range)</label>
+                                <div className="flex gap-2">
+                                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-bold" />
+                                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="flex-1 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm text-slate-900 dark:text-white outline-none focus:border-cyan-500 font-bold" />
+                                </div>
                             </div>
-                         ))}
+                        </div>
+
+                        <button 
+                            onClick={exportToCSV} 
+                            disabled={loading}
+                            className={`w-full mt-6 px-6 py-4 rounded-2xl font-black text-white shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95 ${loading ? 'bg-slate-400' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'}`}
+                        >
+                            {loading ? <Loader2 className="animate-spin" /> : <><Download size={22} /> Export CSV</>}
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                         <div className="flex items-center justify-between px-2">
+                            <h3 className="text-xs text-slate-500 font-black uppercase tracking-[0.2em]">Preview: Recent Activity</h3>
+                            {reportType === 'activity' && <FileText size={14} className="text-cyan-500" />}
+                            {reportType === 'performance' && <LayoutList size={14} className="text-indigo-500" />}
+                            {reportType === 'pipeline' && <TrendingUp size={14} className="text-emerald-500" />}
+                         </div>
+
+                         {reportData.length === 0 ? (
+                            <div className="py-12 text-center text-slate-400 font-bold italic opacity-50 bg-slate-50 dark:bg-slate-900/20 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/10">
+                                ไม่พบข้อมูลพรีวิวในช่วงเวลาที่เลือก
+                            </div>
+                         ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                                {reportData.slice(0, 5).map((row, i) => (
+                                    <div key={i} className="flex items-center justify-between p-5 bg-white dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[28px] shadow-sm hover:shadow-md transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`p-3 rounded-2xl ${row.reportSummary ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
+                                                <UserIcon size={18} />
+                                            </div>
+                                            <div>
+                                                <div className="font-black text-slate-900 dark:text-white text-sm leading-tight">{row.userName || row.userEmail}</div>
+                                                <div className="text-[10px] text-slate-500 font-bold flex items-center gap-2 mt-1 uppercase tracking-wide">
+                                                    <Calendar size={10} /> {row.date} • {row.checkInCount} Check-ins
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={18} className="text-slate-300" />
+                                    </div>
+                                ))}
+                            </div>
+                         )}
                     </div>
                 </div>
             )}
@@ -150,7 +340,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
                      </div>
                 </div>
             )}
-            {/* ... Modal Code similar to previous but styled light/dark ... */}
+
             {editingUser && !isManager && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
                     <GlassCard className="w-full max-w-md relative border-cyan-500/30 bg-white dark:bg-slate-900 shadow-2xl">
