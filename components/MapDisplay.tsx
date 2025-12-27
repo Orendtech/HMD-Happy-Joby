@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import { divIcon } from 'leaflet';
@@ -113,6 +114,7 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ lat, lng, popupText, mar
                 center={[lat, lng]} 
                 zoom={zoom} 
                 scrollWheelZoom={true} 
+                zoomControl={false}
                 style={{ height: "100%", width: "100%", background: '#0f172a' }}
             >
                 <TileLayer

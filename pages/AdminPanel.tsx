@@ -1,9 +1,28 @@
 
 import React, { useEffect, useState } from 'react';
 import { GlassCard } from '../components/GlassCard';
-import { getAllUsers, toggleUserStatus, updateUserRole, getGlobalReportRange, getTodayDateId, updateUserProfile, adminCreateUser, getAllGlobalCustomers, getWorkPlans, getUserHistory } from '../services/dbService';
-import { AdminUser, UserProfile, Customer, WorkPlan, AttendanceDay } from '../types';
-import { ShieldCheck, Users, Download, UserCheck, UserX, FileText, MapPin, CheckCircle, Calendar, Edit, X, Save, Search, Eye, Plus, AlertCircle, Loader2, Building, Phone, User as UserIcon, ChevronRight, LayoutList, TrendingUp, ChevronDown } from 'lucide-react';
+import { 
+    getAllUsers, 
+    toggleUserStatus, 
+    updateUserRole, 
+    getGlobalReportRange, 
+    getTodayDateId, 
+    updateUserProfile, 
+    adminCreateUser, 
+    getAllGlobalCustomers, 
+    getWorkPlans, 
+    getUserHistory,
+    undoCheckOut,
+    getAllUsersTodayLocations
+} from '../services/dbService';
+import { AdminUser, UserProfile, Customer, WorkPlan, AttendanceDay, UserLocationData } from '../types';
+import { 
+    ShieldCheck, Users, Download, UserCheck, UserX, FileText, 
+    MapPin, CheckCircle, Calendar, Edit, X, Save, Search, 
+    Eye, Plus, AlertCircle, Loader2, Building, Phone, 
+    User as UserIcon, ChevronRight, LayoutList, TrendingUp, 
+    ChevronDown, RotateCcw, Zap
+} from 'lucide-react';
 
 interface AdminPanelProps {
     viewerProfile: UserProfile | null;
@@ -14,6 +33,7 @@ type ReportType = 'activity' | 'performance' | 'pipeline';
 const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const [activeTab, setActiveTab] = useState<'users' | 'reports' | 'customers'>('users');
     const [users, setUsers] = useState<AdminUser[]>([]);
+    const [userStatuses, setUserStatuses] = useState<Record<string, UserLocationData>>({});
     const [loading, setLoading] = useState(false);
     const [startDate, setStartDate] = useState(getTodayDateId());
     const [endDate, setEndDate] = useState(getTodayDateId());
@@ -28,10 +48,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const [addUserLoading, setAddUserLoading] = useState(false);
     const [addUserError, setAddUserError] = useState('');
 
+    const isAdmin = viewerProfile?.role === 'admin';
     const isManager = viewerProfile?.role === 'manager';
     const potentialManagers = users.filter(u => u.role === 'admin' || u.role === 'manager');
 
-    const fetchUsers = async () => { setUsers(await getAllUsers()); };
+    const fetchUsers = async () => { 
+        const allUsers = await getAllUsers();
+        setUsers(allUsers);
+        
+        // Fetch today's status for each user
+        const todayLocations = await getAllUsersTodayLocations();
+        const statusMap: Record<string, UserLocationData> = {};
+        todayLocations.forEach(loc => {
+            statusMap[loc.userId] = loc;
+        });
+        setUserStatuses(statusMap);
+    };
+
     const fetchReport = async () => { 
         setLoading(true);
         setReportData(await getGlobalReportRange(startDate, endDate)); 
@@ -52,6 +85,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const handleEditClick = (user: AdminUser) => { if (isManager) return; setEditingUser(user); setEditForm({ name: user.name || '', area: user.area || '', startDate: user.startDate || '', reportsTo: user.reportsTo || '' }); };
     const handleSaveUser = async () => { if (!editingUser || isManager) return; await updateUserProfile(editingUser.id, { name: editForm.name, area: editForm.area, startDate: editForm.startDate, reportsTo: editForm.reportsTo }); await fetchUsers(); setEditingUser(null); };
     const handleAddUserSubmit = async () => { setAddUserError(''); setAddUserLoading(true); try { await adminCreateUser(addUserForm.email, addUserForm.password, addUserForm.reportsTo); await fetchUsers(); setShowAddUser(false); setAddUserForm({ email: '', password: '', reportsTo: '' }); } catch (e: any) { console.error(e); setAddUserError(e.message || 'Failed to create user.'); } finally { setAddUserLoading(false); } };
+
+    const handleUndoCheckout = async (userId: string) => {
+        if (!isAdmin) return;
+        if (!window.confirm("ยืนยันการถอยกลับการเช็คเอาท์? พนักงานจะกลับสู่สถานะ On Duty ทันที")) return;
+        
+        try {
+            await undoCheckOut(userId, getTodayDateId());
+            alert("ถอยกลับรายการเช็คเอาท์เรียบร้อยแล้ว");
+            fetchUsers();
+        } catch (e) {
+            alert("เกิดข้อผิดพลาดในการ Undo");
+        }
+    };
 
     const exportToCSV = async () => {
         setLoading(true);
@@ -163,24 +209,80 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
                 <div className="space-y-4">
                      {!isManager && (<button onClick={() => setShowAddUser(true)} className="w-full py-3 border border-dashed border-slate-300 dark:border-white/20 rounded-xl text-slate-500 hover:text-cyan-600 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2"><Plus size={20} /> Add New User</button>)}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {users.map(u => (
-                            <div key={u.id} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 p-5 rounded-2xl hover:shadow-md transition-all group relative overflow-hidden shadow-sm">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div><div className="text-slate-900 dark:text-white font-bold text-lg">{u.name || 'Unnamed User'}</div><div className="text-slate-400 text-xs">{u.email}</div></div>
-                                    {!isManager && <button onClick={() => handleEditClick(u)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-cyan-600 transition-colors"><Edit size={14} /></button>}
-                                </div>
-                                <div className="flex gap-2 mb-4 flex-wrap">
-                                    {u.area && <span className="text-[10px] bg-slate-100 dark:bg-slate-950 text-slate-500 px-2 py-1 rounded border border-slate-200 dark:border-white/5">{u.area}</span>}
-                                    <span className={`text-[10px] px-2 py-1 rounded border font-bold ${u.role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : u.role === 'manager' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{u.role?.toUpperCase() || 'USER'}</span>
-                                </div>
-                                {!isManager && (
-                                    <div className="grid grid-cols-2 gap-2 mt-auto">
-                                        <button onClick={() => handleToggleStatus(u.id, u.isApproved)} className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 ${u.isApproved !== false ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>{u.isApproved !== false ? <><UserX size={12}/> Suspend</> : <><UserCheck size={12}/> Approve</>}</button>
-                                        <select value={u.role || 'user'} onChange={(e) => handleRoleChange(u.id, e.target.value as any)} className="bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-center py-2"><option value="user">User</option><option value="manager">Manager</option><option value="admin">Admin</option></select>
+                        {users.map(u => {
+                            const status = userStatuses[u.id];
+                            const isCheckedOut = status?.isCheckedOut;
+                            const isCheckedIn = !!status;
+
+                            return (
+                                <div key={u.id} className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 p-5 rounded-2xl hover:shadow-md transition-all group relative overflow-hidden shadow-sm flex flex-col h-full">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="relative">
+                                                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden border border-slate-200 dark:border-white/10">
+                                                    {u.photoBase64 ? <img src={u.photoBase64} className="w-full h-full object-cover" /> : <UserIcon size={20} className="text-slate-400" />}
+                                                </div>
+                                                {isCheckedIn && (
+                                                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-4 border-white dark:border-slate-900 ${isCheckedOut ? 'bg-slate-300' : 'bg-emerald-500 animate-pulse'}`}></div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <div className="text-slate-900 dark:text-white font-bold text-lg leading-tight">{u.name || 'Unnamed User'}</div>
+                                                <div className="text-slate-400 text-xs truncate max-w-[120px]">{u.email}</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            {isAdmin && isCheckedOut && (
+                                                <button 
+                                                    onClick={() => handleUndoCheckout(u.id)} 
+                                                    className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-full text-amber-600 hover:bg-amber-100 transition-colors shadow-sm border border-amber-200/50"
+                                                    title="Undo Checkout"
+                                                >
+                                                    <RotateCcw size={14} />
+                                                </button>
+                                            )}
+                                            {!isManager && <button onClick={() => handleEditClick(u)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-cyan-600 transition-colors"><Edit size={14} /></button>}
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        ))}
+                                    
+                                    <div className="space-y-3 flex-1 flex flex-col">
+                                        <div className="flex gap-2 flex-wrap">
+                                            {u.area && <span className="text-[10px] bg-slate-100 dark:bg-slate-950 text-slate-500 px-2 py-1 rounded border border-slate-200 dark:border-white/5">{u.area}</span>}
+                                            <span className={`text-[10px] px-2 py-1 rounded border font-bold ${u.role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : u.role === 'manager' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{u.role?.toUpperCase() || 'USER'}</span>
+                                        </div>
+
+                                        {/* Status Indicators */}
+                                        <div className="bg-slate-50 dark:bg-black/20 rounded-xl p-3 border border-slate-100 dark:border-white/5 space-y-1.5 mt-auto">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Today Status</span>
+                                                {isCheckedIn ? (
+                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isCheckedOut ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                                        {isCheckedOut ? 'OFF DUTY' : 'ON DUTY'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 italic">IDLE</span>
+                                                )}
+                                            </div>
+                                            {status && status.lastCheckIn && (
+                                                <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                                                    <MapPin size={10} className="text-cyan-500"/>
+                                                    <span className="truncate">{status.lastCheckIn.location}</span>
+                                                    <span className="opacity-50">•</span>
+                                                    <span>{status.lastCheckIn.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {!isManager && (
+                                            <div className="grid grid-cols-2 gap-2 mt-2">
+                                                <button onClick={() => handleToggleStatus(u.id, u.isApproved)} className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 ${u.isApproved !== false ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>{u.isApproved !== false ? <><UserX size={12}/> Suspend</> : <><UserCheck size={12}/> Approve</>}</button>
+                                                <select value={u.role || 'user'} onChange={(e) => handleRoleChange(u.id, e.target.value as any)} className="bg-slate-100 dark:bg-slate-800 rounded-lg text-xs text-center py-2 appearance-none outline-none border-0"><option value="user">User</option><option value="manager">Manager</option><option value="admin">Admin</option></select>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -244,6 +346,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
 
             {editingUser && !isManager && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4"><GlassCard className="w-full max-w-md border-cyan-500/30 shadow-2xl relative"><button onClick={() => setEditingUser(null)} className="absolute top-4 right-4 text-slate-400 hover:text-rose-500"><X size={20} /></button><h3 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">Edit Profile</h3><div className="space-y-4"><input value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} placeholder="Full Name" className="w-full bg-slate-50 dark:bg-black/30 border rounded-xl p-3 text-slate-900 dark:text-white focus:border-cyan-500" /><input value={editForm.area} onChange={(e) => setEditForm({...editForm, area: e.target.value})} placeholder="Area / Region" className="w-full bg-slate-50 dark:bg-black/30 border rounded-xl p-3 text-slate-900 dark:text-white focus:border-cyan-500" /><input type="date" value={editForm.startDate} onChange={(e) => setEditForm({...editForm, startDate: e.target.value})} className="w-full bg-slate-50 dark:bg-black/30 border rounded-xl p-3 text-slate-900 dark:text-white focus:border-cyan-500" /><div className="space-y-2"><label className="text-xs text-slate-400 uppercase tracking-wider">Reports To</label><select value={editForm.reportsTo} onChange={(e) => setEditForm({...editForm, reportsTo: e.target.value})} className="w-full bg-slate-50 dark:bg-black/30 border rounded-xl p-3 text-slate-900 dark:text-white"><option value="">-- Select Manager --</option>{potentialManagers.map(m => (<option key={m.id} value={m.id}>{m.name || m.email}</option>))}</select></div><button onClick={handleSaveUser} className="w-full bg-cyan-600 py-3 rounded-xl font-bold text-white shadow-lg">Save Changes</button></div></GlassCard></div>
+            )}
+            
+            {showAddUser && !isManager && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
+                    <GlassCard className="w-full max-w-md border-emerald-500/30 shadow-2xl relative">
+                        <button onClick={() => setShowAddUser(false)} className="absolute top-4 right-4 text-slate-400 hover:text-rose-500"><X size={20} /></button>
+                        <h3 className="text-xl font-bold mb-6 text-slate-900 dark:text-white">Add New User</h3>
+                        <div className="space-y-4">
+                            <input type="email" value={addUserForm.email} onChange={(e) => setAddUserForm({...addUserForm, email: e.target.value})} placeholder="User Email" className="w-full bg-slate-50 dark:bg-black/30 border rounded-xl p-3 text-slate-900 dark:text-white focus:border-emerald-500" />
+                            <input type="password" value={addUserForm.password} onChange={(e) => setAddUserForm({...addUserForm, password: e.target.value})} placeholder="Temporary Password" className="w-full bg-slate-50 dark:bg-black/30 border rounded-xl p-3 text-slate-900 dark:text-white focus:border-emerald-500" />
+                            <div className="space-y-2">
+                                <label className="text-xs text-slate-400 uppercase tracking-wider">Manager</label>
+                                <select value={addUserForm.reportsTo} onChange={(e) => setAddUserForm({...addUserForm, reportsTo: e.target.value})} className="w-full bg-slate-50 dark:bg-black/30 border rounded-xl p-3 text-slate-900 dark:text-white">
+                                    <option value="">-- Select Manager --</option>
+                                    {potentialManagers.map(m => (<option key={m.id} value={m.id}>{m.name || m.email}</option>))}
+                                </select>
+                            </div>
+                            {addUserError && <p className="text-rose-500 text-xs font-bold">{addUserError}</p>}
+                            <button onClick={handleAddUserSubmit} disabled={addUserLoading} className="w-full bg-emerald-600 py-3 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2">
+                                {addUserLoading ? <Loader2 className="animate-spin" /> : 'Create User'}
+                            </button>
+                        </div>
+                    </GlassCard>
+                </div>
             )}
         </div>
     );

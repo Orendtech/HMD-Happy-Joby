@@ -17,9 +17,10 @@ import {
     documentId,
     deleteDoc,
     limit,
-    addDoc
+    addDoc,
+    deleteField
 } from 'firebase/firestore';
-import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport, Reminder, WorkPlan, ActivityLog } from '../types';
+import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport, Interaction, Reminder, WorkPlan, ActivityLog } from '../types';
 
 const getUserRef = (userId: string) => doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}`);
 const getAttendanceRef = (userId: string, dateId: string) => doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance/${dateId}`);
@@ -140,24 +141,58 @@ export const checkIn = async (userId: string, location: string, lat: number, lng
     return { earnedXp, isLevelUp: newLevel > currentLevel, newLevel };
 };
 
-export const checkOut = async (userId: string, reportData: DailyReport) => {
-    const today = getTodayDateId(); const attRef = getAttendanceRef(userId, today); const userRef = getUserRef(userId);
+export const checkOut = async (userId: string, reportData: DailyReport, dateId?: string, isFinal: boolean = true) => {
+    const targetDate = dateId || getTodayDateId(); 
+    const attRef = getAttendanceRef(userId, targetDate); 
+    const userRef = getUserRef(userId);
+    
+    const attSnap = await getDoc(attRef);
+    const isAlreadyCheckedOut = attSnap.exists() && !!attSnap.data()?.checkOut;
+
     let allNewPipelineItems: PipelineData[] = [];
     if (reportData.visits) { reportData.visits.forEach(visit => { if (visit.pipeline) { allNewPipelineItems = [...allNewPipelineItems, ...visit.pipeline]; } }); }
-    const userSnap = await getDoc(userRef); const userData = userSnap.data() as UserProfile; let activePipeline = userData.activePipeline || [];
-    allNewPipelineItems.forEach(item => { const finalItem = { ...item }; if (!finalItem.id) { finalItem.id = crypto.randomUUID(); finalItem.isNew = true; } finalItem.lastUpdated = new Date().toISOString(); const existingIdx = activePipeline.findIndex(p => p.id === finalItem.id); if (existingIdx >= 0) { activePipeline[existingIdx] = finalItem; } else { activePipeline.push(finalItem); } });
     
-    // Create Activity Log for Admin
-    await addDoc(getActivityLogsCol(), {
-        userId,
-        userName: userData.name || userData.email.split('@')[0],
-        type: 'check-out',
-        location: reportData.visits?.[reportData.visits.length - 1]?.location || 'N/A',
-        timestamp: Timestamp.now()
+    const userSnap = await getDoc(userRef); 
+    const userData = userSnap.data() as UserProfile; 
+    let activePipeline = userData.activePipeline || [];
+    
+    allNewPipelineItems.forEach(item => { 
+        const finalItem = { ...item }; 
+        if (!finalItem.id) { finalItem.id = crypto.randomUUID(); finalItem.isNew = true; } 
+        finalItem.lastUpdated = new Date().toISOString(); 
+        const existingIdx = activePipeline.findIndex(p => p.id === finalItem.id); 
+        if (existingIdx >= 0) { activePipeline[existingIdx] = finalItem; } else { activePipeline.push(finalItem); } 
     });
+    
+    const updateData: any = { report: reportData };
+    
+    // Only set checkOut timestamp and log activity if it's a final checkout and hasn't been done yet
+    if (isFinal && !isAlreadyCheckedOut) {
+        updateData.checkOut = Timestamp.now();
+        
+        // Create Activity Log for Admin only on first final checkout
+        await addDoc(getActivityLogsCol(), {
+            userId,
+            userName: userData.name || userData.email.split('@')[0],
+            type: 'check-out',
+            location: reportData.visits?.[reportData.visits.length - 1]?.location || 'N/A',
+            timestamp: Timestamp.now()
+        });
+    }
 
     await updateDoc(userRef, { activePipeline: activePipeline });
-    await updateDoc(attRef, { checkOut: Timestamp.now(), report: reportData });
+    await updateDoc(attRef, updateData);
+};
+
+/**
+ * Reverts a checkout for a specific user and date.
+ * Removes the checkOut field from the attendance record.
+ */
+export const undoCheckOut = async (userId: string, dateId: string) => {
+    const attRef = getAttendanceRef(userId, dateId);
+    await updateDoc(attRef, {
+        checkOut: deleteField()
+    });
 };
 
 export const updateOpportunity = async (

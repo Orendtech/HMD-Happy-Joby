@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from 'firebase/auth';
-import { Navigation, Plus, LogOut, Calendar, ChevronRight, Sparkles, Map as MapIcon, X, Search, Check, Flame, Trophy, Zap, TrendingUp, DollarSign, Loader2, ArrowLeft, ChevronDown, ChevronUp, UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, Clock, Target, MapPin, Building, AlertCircle, MessageSquare } from 'lucide-react';
+// Added Edit icon to the import list from lucide-react
+import { Navigation, Plus, LogOut, Calendar, ChevronRight, Sparkles, Map as MapIcon, X, Search, Check, Flame, Trophy, Zap, TrendingUp, DollarSign, Loader2, ArrowLeft, ChevronDown, ChevronUp, UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, Clock, Target, MapPin, Building, AlertCircle, MessageSquare, Edit } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { getUserProfile, getTodayAttendance, checkIn, checkOut, addHospital, addCustomer, getReminders, getWorkPlans, getTodayDateId } from '../services/dbService';
 import { UserProfile, AttendanceDay, DailyReport, PipelineData, CheckInRecord, VisitReport, Interaction, Reminder, WorkPlan } from '../types';
@@ -101,22 +102,19 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
             setVisitDrafts(prev => {
                 const newDrafts = { ...prev };
                 a.checkIns.forEach((ci, idx) => {
-                    // Only populate if not already in state to avoid overwriting current edits
-                    if (!newDrafts[idx]) {
-                        // If there's already report data in DB, pull it in as draft
-                        const existingVisit = a.report?.visits?.[idx];
-                        if (existingVisit && existingVisit.interactions) {
-                            newDrafts[idx] = { 
-                                interactions: existingVisit.interactions.map(i => ({
-                                    customerName: i.customerName,
-                                    department: i.department || '',
-                                    summary: i.summary,
-                                    pipeline: i.pipeline || null
-                                })) 
-                            };
-                        } else {
-                            newDrafts[idx] = { interactions: [] };
-                        }
+                    // Always try to pull from current report in DB if it exists and local draft is empty
+                    const existingVisit = a.report?.visits?.[idx];
+                    if (existingVisit && (!newDrafts[idx] || newDrafts[idx].interactions.length === 0)) {
+                        newDrafts[idx] = { 
+                            interactions: (existingVisit.interactions || []).map(i => ({
+                                customerName: i.customerName,
+                                department: i.department || '',
+                                summary: i.summary,
+                                pipeline: i.pipeline || null
+                            })) 
+                        };
+                    } else if (!newDrafts[idx]) {
+                        newDrafts[idx] = { interactions: [] };
                     }
                 });
                 return newDrafts;
@@ -187,7 +185,35 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const removeInteraction = (visitIdx: number, interactIdx: number) => { const currentInteractions = [...visitDrafts[visitIdx].interactions]; currentInteractions.splice(interactIdx, 1); setVisitDrafts(prev => ({ ...prev, [visitIdx]: { ...prev[visitIdx], interactions: currentInteractions } })); };
     const handleExistingDealSelect = (dealId: string) => { const deal = profile?.activePipeline?.find(p => p.id === dealId); setSelectedExistingDealId(dealId); if (deal) { setPipelineProduct(deal.product); setPipelineValue(deal.value.toString()); setPipelineStage(deal.stage); setPipelineProb(deal.probability); if (deal.expectedCloseDate) setPipelineDate(deal.expectedCloseDate); } };
     
-    const confirmCheckOut = async () => { try { if (!todayData?.checkIns) return; const visits: VisitReport[] = todayData.checkIns.map((ci, idx) => { const draft = visitDrafts[idx] || { interactions: [] }; const interactions = draft.interactions.map(d => ({ customerName: d.customerName, department: d.department, summary: d.summary, pipeline: d.pipeline || undefined })); const aggregatedSummary = interactions.map(i => `${i.customerName}: ${i.summary}`).join('\n'); const aggregatedMetWith = interactions.map(i => i.customerName); const aggregatedPipeline = interactions.filter(i => i.pipeline).map(i => i.pipeline!); return { location: ci.location, checkInTime: ci.timestamp, summary: aggregatedSummary, metWith: aggregatedMetWith, pipeline: aggregatedPipeline, interactions: interactions }; }); const reportData: DailyReport = { visits }; await checkOut(user.uid, reportData); setStatusMsg('บันทึกรายงานและเช็คเอาท์เรียบร้อย'); setShowReportModal(false); refreshData(); } catch (e) { setStatusMsg('Check-out failed'); } };
+    const confirmCheckOut = async (final: boolean = true) => { 
+        try { 
+            if (!todayData?.checkIns) return; 
+            const visits: VisitReport[] = todayData.checkIns.map((ci, idx) => { 
+                const draft = visitDrafts[idx] || { interactions: [] }; 
+                const interactions = draft.interactions.map(d => ({ 
+                    customerName: d.customerName, 
+                    department: d.department, 
+                    summary: d.summary, 
+                    pipeline: d.pipeline || undefined 
+                })); 
+                const aggregatedSummary = interactions.map(i => `${i.customerName}: ${i.summary}`).join('\n'); 
+                const aggregatedMetWith = interactions.map(i => i.customerName); 
+                const aggregatedPipeline = interactions.filter(i => i.pipeline).map(i => i.pipeline!); 
+                return { location: ci.location, checkInTime: ci.timestamp, summary: aggregatedSummary, metWith: aggregatedMetWith, pipeline: aggregatedPipeline, interactions: interactions }; 
+            }); 
+            const reportData: DailyReport = { visits }; 
+            await checkOut(user.uid, reportData, undefined, final); 
+            
+            if (final) {
+                setStatusMsg(isCheckedOut ? 'อัปเดตรายงานเรียบร้อย' : 'บันทึกรายงานและเช็คเอาท์เรียบร้อย'); 
+            } else {
+                setStatusMsg('บันทึกร่างรายงานเรียบร้อยแล้ว');
+            }
+            
+            setShowReportModal(false); 
+            refreshData(); 
+        } catch (e) { setStatusMsg('Submission failed'); } 
+    };
     
     const filteredLocations = searchQuery === '' 
         ? (profile?.hospitals || []) 
@@ -251,12 +277,12 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
             <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-32 pt-12 px-4">
                 <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
                     <button onClick={() => setShowReportModal(false)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10"><ArrowLeft size={20} /></button>
-                    <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><Sparkles className="text-purple-500" size={24}/> {isFinalCheckout ? 'สรุปรายงานการปฏิบัติงาน' : 'บันทึกรายละเอียดกิจกรรม'}</h2><p className="text-sm text-slate-500 dark:text-slate-400">{isFinalCheckout ? `สรุปรายละเอียดการเข้าพบ ${todayData?.checkIns.length} สถานที่` : 'คุณสามารถบันทึกรายละเอียดแต่ละที่ไว้ก่อนได้'}</p></div>
+                    <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><Sparkles className="text-purple-500" size={24}/> {isCheckedOut ? 'แก้ไขข้อมูลรายงาน' : (isFinalCheckout ? 'สรุปรายงานการปฏิบัติงาน' : 'บันทึกรายละเอียดกิจกรรม')}</h2><p className="text-sm text-slate-500 dark:text-slate-400">{isCheckedOut ? 'คุณสามารถอัปเดตข้อมูลย้อนหลังได้' : (isFinalCheckout ? `สรุปรายละเอียดการเข้าพบ ${todayData?.checkIns.length} สถานที่` : 'คุณสามารถบันทึกรายละเอียดแต่ละที่ไว้ก่อนได้')}</p></div>
                 </div>
                 <div className="space-y-4">{todayData?.checkIns.map((ci, idx) => {
                     const isExpanded = expandedVisitIdx === idx;
                     const draft = visitDrafts[idx] || { interactions: [] };
-                    return (<div key={idx} className={`bg-white dark:bg-slate-900 border transition-all duration-300 rounded-[24px] overflow-hidden ${isExpanded ? 'border-cyan-400 dark:border-cyan-500 shadow-xl scale-[1.01]' : 'border-slate-200 dark:border-white/10 opacity-80 hover:opacity-100'}`}><div onClick={() => { setExpandedVisitIdx(isExpanded ? -1 : idx); setContactSearch(''); setIsContactDropdownOpen(false); setSelectedCustomer(null); }} className="p-4 flex items-center justify-between cursor-pointer bg-slate-50 dark:bg-white/5"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${isExpanded ? 'bg-cyan-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>{idx + 1}</div><div><div className="font-bold text-slate-900 dark:text-white text-base">{ci.location}</div><div className="text-xs text-slate-500">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</div></div></div>{isExpanded ? <ChevronUp className="text-cyan-500"/> : <ChevronDown className="text-slate-400"/>}</div>{isExpanded && (<div className="p-5 space-y-6 animate-enter bg-slate-50/50 dark:bg-slate-950/30">{draft.interactions.length > 0 && (<div className="space-y-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-wide">กิจกรรมที่บันทึกแล้ว ({draft.interactions.length})</label>{draft.interactions.map((inter, iIdx) => (<div key={iIdx} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm relative group"><button onClick={() => removeInteraction(idx, iIdx)} className="absolute top-2 right-2 text-slate-400 hover:text-rose-500"><X size={16}/></button><div className="flex items-center gap-2 mb-1"><UserIcon size={14} className="text-purple-500"/><span className="font-bold text-slate-900 dark:text-white text-sm">{inter.customerName}</span><span className="text-xs text-slate-500">({inter.department})</span></div><p className="text-xs text-slate-600 dark:text-slate-300 ml-5 mb-2 line-clamp-2">"{inter.summary}"</p>{inter.pipeline && (<div className="ml-5 flex items-center gap-2 text-[10px] bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-500/20"><TrendingUp size={10}/> <span>{inter.pipeline.product} (฿{inter.pipeline.value.toLocaleString()})</span></div>)}</div>))}</div>)}<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm space-y-4"><h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-2"><ClipboardList size={16} className="text-cyan-500"/> เพิ่มบันทึกกิจกรรม / การเข้าพบ</h3><div className="space-y-1.5 relative"><label className="text-[10px] font-bold text-slate-500 uppercase">1. เลือกลูกค้า / ผู้ติดต่อ</label><div className="relative"><Search className="absolute left-3 top-3 text-slate-400" size={14} /><input type="text" value={contactSearch} onChange={(e) => { setContactSearch(e.target.value); setIsContactDropdownOpen(true); setSelectedCustomer(null); }} placeholder="ค้นหาชื่อผู้ติดต่อ..." className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-sm" />{isContactDropdownOpen && (<div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-40 overflow-y-auto">{getFilteredCustomers(ci.location).map((c, i) => (<div key={i} onClick={() => handleSelectCustomer(c.name, c.department)} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer text-sm border-b border-slate-100 dark:border-white/5 last:border-0 flex justify-between"><span className="text-slate-900 dark:text-white">{c.name}</span><span className="text-xs text-slate-500">{c.department}</span></div>))}{contactSearch && <div onClick={() => setShowAddContactView(true)} className="px-4 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold"><Plus size={14} /> สร้างรายชื่อใหม่ "{contactSearch}"</div>}</div>)}</div>{selectedCustomer && <div className="text-xs text-emerald-500 flex items-center gap-1"><Check size={12}/> เลือกแล้ว: <b>{selectedCustomer.name}</b></div>}</div><div className="space-y-1.5"><label className="text-[10px] font-bold text-slate-500 uppercase">2. สรุปรายละเอียดการสนทนา</label><textarea value={currentSummary} onChange={(e) => setCurrentSummary(e.target.value)} placeholder="สรุปหัวข้อที่ได้พูดคุยหรือความคืบหน้า..." rows={2} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-sm resize-none" /></div><div className="space-y-2"><div className="flex items-center justify-between"><label className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1"><TrendingUp size={12}/> 3. เพิ่มโอกาสการขาย (Opportunity)?</label><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={hasOpp} onChange={(e) => setHasOpp(e.target.checked)} className="sr-only peer"/><div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div></label></div>{hasOpp && (<div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-500/20 space-y-2 animate-enter"><div className="flex p-1 bg-white/50 dark:bg-black/20 rounded-lg mb-2"><button onClick={() => { setDealMode('new'); setPipelineProduct(''); setPipelineValue(''); }} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'new' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-500'}`}>ดีลใหม่</button><button onClick={() => setDealMode('update')} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'update' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-amber-500'}`}>อัปเดตดีลเดิม</button></div>{dealMode === 'update' && (<select value={selectedExistingDealId} onChange={(e) => handleExistingDealSelect(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-amber-200 dark:border-amber-500/30 text-xs outline-none focus:border-amber-500 text-slate-700 dark:text-white appearance-none"><option value="">-- เลือกดีลที่ต้องการอัปเดต --</option>{activeDeals.map(deal => (<option key={deal.id} value={deal.id}>{deal.product} ({deal.stage})</option>))}</select>)}<div className="grid grid-cols-2 gap-2"><input value={pipelineProduct} onChange={e => setPipelineProduct(e.target.value)} placeholder="ชื่อสินค้า / โปรเจกต์" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/><input type="number" value={pipelineValue} onChange={e => setPipelineValue(e.target.value)} placeholder="มูลค่า (บาท)" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/></div><div className="grid grid-cols-2 gap-2"><select value={pipelineStage} onChange={e => setPipelineStage(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none">{pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="flex items-center gap-2 px-1 text-xs text-slate-500"><span>โอกาส: {pipelineProb}%</span><input type="range" min="0" max="100" step="10" value={pipelineProb} onChange={e => setPipelineProb(parseInt(e.target.value))} className="w-16 accent-indigo-500"/></div></div></div>)}</div><button onClick={() => addInteractionToDraft(idx)} disabled={!selectedCustomer || !currentSummary} className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"><Plus size={16} /> บันทึกข้อมูลกิจกรรม</button></div></div>)}</div>); })}</div><div className="pt-4 pb-10">{isFinalCheckout ? (<button onClick={confirmCheckOut} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all"><Check size={24} /> ส่งรายงานทั้งหมดและเช็คเอาท์</button>) : (<button onClick={() => setShowReportModal(false)} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all"><Save size={20} /> บันทึกร่างกิจกรรมและกลับ</button>)}</div></div>
+                    return (<div key={idx} className={`bg-white dark:bg-slate-900 border transition-all duration-300 rounded-[24px] overflow-hidden ${isExpanded ? 'border-cyan-400 dark:border-cyan-500 shadow-xl scale-[1.01]' : 'border-slate-200 dark:border-white/10 opacity-80 hover:opacity-100'}`}><div onClick={() => { setExpandedVisitIdx(isExpanded ? -1 : idx); setContactSearch(''); setIsContactDropdownOpen(false); setSelectedCustomer(null); }} className="p-4 flex items-center justify-between cursor-pointer bg-slate-50 dark:bg-white/5"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${isExpanded ? 'bg-cyan-500 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>{idx + 1}</div><div><div className="font-bold text-slate-900 dark:text-white text-base">{ci.location}</div><div className="text-xs text-slate-500">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</div></div></div>{isExpanded ? <ChevronUp className="text-cyan-500"/> : <ChevronDown className="text-slate-400"/>}</div>{isExpanded && (<div className="p-5 space-y-6 animate-enter bg-slate-50/50 dark:bg-slate-950/30">{draft.interactions.length > 0 && (<div className="space-y-3"><label className="text-xs font-bold text-slate-400 uppercase tracking-wide">กิจกรรมที่บันทึกแล้ว ({draft.interactions.length})</label>{draft.interactions.map((inter, iIdx) => (<div key={iIdx} className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-white/5 shadow-sm relative group"><button onClick={() => removeInteraction(idx, iIdx)} className="absolute top-2 right-2 text-slate-400 hover:text-rose-500"><X size={16}/></button><div className="flex items-center gap-2 mb-1"><UserIcon size={14} className="text-purple-500"/><span className="font-bold text-slate-900 dark:text-white text-sm">{inter.customerName}</span><span className="text-xs text-slate-500">({inter.department})</span></div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-5 mb-2 line-clamp-2">"{inter.summary}"</p>{inter.pipeline && (<div className="ml-5 flex items-center gap-2 text-[10px] bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-500/20"><TrendingUp size={10}/> <span>{inter.pipeline.product} (฿{inter.pipeline.value.toLocaleString()})</span></div>)}</div>))}</div>)}<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm space-y-4"><h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-2"><ClipboardList size={16} className="text-cyan-500"/> เพิ่มบันทึกกิจกรรม / การเข้าพบ</h3><div className="space-y-1.5 relative"><label className="text-[10px] font-bold text-slate-500 uppercase">1. เลือกลูกค้า / ผู้ติดต่อ</label><div className="relative"><Search className="absolute left-3 top-3 text-slate-400" size={14} /><input type="text" value={contactSearch} onChange={(e) => { setContactSearch(e.target.value); setIsContactDropdownOpen(true); setSelectedCustomer(null); }} placeholder="ค้นหาชื่อผู้ติดต่อ..." className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-sm" />{isContactDropdownOpen && (<div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-40 overflow-y-auto">{getFilteredCustomers(ci.location).map((c, i) => (<div key={i} onClick={() => handleSelectCustomer(c.name, c.department)} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer text-sm border-b border-slate-100 dark:border-white/5 last:border-0 flex justify-between"><span className="text-slate-900 dark:text-white">{c.name}</span><span className="text-xs text-slate-500">{c.department}</span></div>))}{contactSearch && <div onClick={() => setShowAddContactView(true)} className="px-4 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold"><Plus size={14} /> สร้างรายชื่อใหม่ "{contactSearch}"</div>}</div>)}</div>{selectedCustomer && <div className="text-xs text-emerald-500 flex items-center gap-1"><Check size={12}/> เลือกแล้ว: <b>{selectedCustomer.name}</b></div>}</div><div className="space-y-1.5"><label className="text-[10px] font-bold text-slate-500 uppercase">2. สรุปรายละเอียดการสนทนา</label><textarea value={currentSummary} onChange={(e) => setCurrentSummary(e.target.value)} placeholder="สรุปหัวข้อที่ได้พูดคุยหรือความคืบหน้า..." rows={2} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-sm resize-none" /></div><div className="space-y-2"><div className="flex items-center justify-between"><label className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1"><TrendingUp size={12}/> 3. เพิ่มโอกาสการขาย (Opportunity)?</label><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={hasOpp} onChange={(e) => setHasOpp(e.target.checked)} className="sr-only peer"/><div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div></label></div>{hasOpp && (<div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-500/20 space-y-2 animate-enter"><div className="flex p-1 bg-white/50 dark:bg-black/20 rounded-lg mb-2"><button onClick={() => { setDealMode('new'); setPipelineProduct(''); setPipelineValue(''); }} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'new' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-indigo-500'}`}>ดีลใหม่</button><button onClick={() => setDealMode('update')} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'update' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-amber-500'}`}>อัปเดตดีลเดิม</button></div>{dealMode === 'update' && (<select value={selectedExistingDealId} onChange={(e) => handleExistingDealSelect(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-amber-200 dark:border-amber-500/30 text-xs outline-none focus:border-amber-500 text-slate-700 dark:text-white appearance-none"><option value="">-- เลือกดีลที่ต้องการอัปเดต --</option>{activeDeals.map(deal => (<option key={deal.id} value={deal.id}>{deal.product} ({deal.stage})</option>))}</select>)}<div className="grid grid-cols-2 gap-2"><input value={pipelineProduct} onChange={e => setPipelineProduct(e.target.value)} placeholder="ชื่อสินค้า / โปรเจกต์" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/><input type="number" value={pipelineValue} onChange={e => setPipelineValue(e.target.value)} placeholder="มูลค่า (บาท)" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/></div><div className="grid grid-cols-2 gap-2"><select value={pipelineStage} onChange={e => setPipelineStage(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none">{pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}</select><div className="flex items-center gap-2 px-1 text-xs text-slate-500"><span>โอกาส: {pipelineProb}%</span><input type="range" min="0" max="100" step="10" value={pipelineProb} onChange={e => setPipelineProb(parseInt(e.target.value))} className="w-16 accent-indigo-500"/></div></div></div>)}</div><button onClick={() => addInteractionToDraft(idx)} disabled={!selectedCustomer || !currentSummary} className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-xl hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"><Plus size={16} /> บันทึกข้อมูลกิจกรรม</button></div></div>)}</div>); })}</div><div className="pt-4 pb-10">{isFinalCheckout ? (<button onClick={() => confirmCheckOut(true)} className={`w-full bg-gradient-to-r ${isCheckedOut ? 'from-amber-500 to-orange-600' : 'from-emerald-500 to-cyan-600'} hover:opacity-90 text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all`}><Check size={24} /> {isCheckedOut ? 'อัปเดตข้อมูลรายงาน' : 'ส่งรายงานทั้งหมดและเช็คเอาท์'}</button>) : (<button onClick={() => { confirmCheckOut(false); }} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transform active:scale-95 transition-all"><Save size={20} /> บันทึกร่างกิจกรรมและกลับ</button>)}</div></div>
         );
     }
 
@@ -337,45 +363,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                 <div className="flex-1 overflow-y-auto px-4 pt-2 pb-28 space-y-6">
                     {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-3xl px-6 py-3 rounded-full shadow-lg border-2 border-white/40"><Zap className="fill-white" size={28} /> +{p.xp}</div></div>))}
 
-                    {/* Dynamic Smart Alert Pill - Redesigned with Horizontal Marquee */}
-                    {reminders.length > 0 && (
-                        <div className="animate-enter delay-100 px-1">
-                            <div 
-                                onClick={() => navigate('/reminders')}
-                                className="group relative w-full h-11 bg-white dark:bg-slate-900 rounded-full border border-slate-200 dark:border-white/10 shadow-lg overflow-hidden flex items-center cursor-pointer transition-all hover:border-rose-500/50 active:scale-[0.98]"
-                            >
-                                {/* Leading Icon with Pulse Effect - Rose theme */}
-                                <div className="flex-shrink-0 w-11 h-full flex items-center justify-center bg-rose-500 text-white relative z-20">
-                                    <Bell size={18} className="animate-[wiggle_1s_ease-in-out_infinite]" />
-                                    <div className="absolute inset-0 bg-rose-400 animate-ping opacity-20 rounded-full"></div>
-                                </div>
-
-                                {/* Marquee Text Area */}
-                                <div className="flex-1 h-full overflow-hidden relative flex items-center whitespace-nowrap z-10">
-                                    <div className="inline-block animate-marquee pl-4">
-                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                                            {marqueeText}
-                                        </span>
-                                        {/* Seamless duplicate for infinite loop */}
-                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-200 ml-10">
-                                            {marqueeText}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Trailing Indicator */}
-                                <div className="flex-shrink-0 pr-4 pl-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm h-full flex items-center z-20 text-slate-300 group-hover:text-rose-500 transition-colors">
-                                    <ChevronRight size={16} />
-                                </div>
-
-                                {/* Active Progress Underline (Subtle Rose) */}
-                                <div className="absolute bottom-0 left-0 h-[2px] bg-rose-500/10 w-full z-30">
-                                    <div className="h-full bg-rose-500/40 w-full"></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Integrated Map & Info Section */}
                     <div className="relative rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xl overflow-visible" ref={dropdownRef}>
                         <div className="h-56 w-full relative overflow-hidden rounded-t-[32px]">
@@ -395,6 +382,30 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             ) : (
                                 <div className="h-full w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center text-slate-500 text-xs gap-2">
                                     <Navigation size={14} className="animate-spin" /> Acquiring GPS...
+                                </div>
+                            )}
+
+                            {/* Floating Map HUD - TOP LEFT: Notification Marquee (Moved here to save space) */}
+                            {reminders.length > 0 && (
+                                <div className="absolute top-4 left-4 right-14 z-30 pointer-events-auto">
+                                    <div 
+                                        onClick={() => navigate('/reminders')}
+                                        className="group relative w-full h-8 bg-slate-900/40 dark:bg-slate-900/60 backdrop-blur-md rounded-full border border-white/20 shadow-lg overflow-hidden flex items-center cursor-pointer transition-all hover:bg-slate-900/60 active:scale-[0.98]"
+                                    >
+                                        <div className="flex-shrink-0 w-8 h-full flex items-center justify-center bg-rose-500 text-white relative z-20">
+                                            <Bell size={14} className="animate-[wiggle_1s_ease-in-out_infinite]" />
+                                        </div>
+                                        <div className="flex-1 h-full overflow-hidden relative flex items-center whitespace-nowrap z-10">
+                                            <div className="inline-block animate-marquee pl-3">
+                                                <span className="text-[10px] font-black text-white uppercase tracking-wide">
+                                                    {marqueeText}
+                                                </span>
+                                                <span className="text-[10px] font-black text-white uppercase tracking-wide ml-10">
+                                                    {marqueeText}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
 
@@ -527,15 +538,17 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
                         <button 
                             onClick={handleCheckOutStart}
-                            disabled={!isCheckedInToday || isCheckedOut}
+                            disabled={!isCheckedInToday}
                             className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${
-                                !isCheckedInToday || isCheckedOut 
+                                !isCheckedInToday 
                                 ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' 
-                                : 'bg-gradient-to-br from-rose-400 to-rose-600 dark:from-rose-600 dark:to-rose-800 shadow-[0_10px_30px_-10px_rgba(244,63,94,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(244,63,94,0.6)] active:scale-95'
+                                : isCheckedOut
+                                    ? 'bg-gradient-to-br from-amber-400 to-amber-600 dark:from-amber-600 dark:to-amber-800 shadow-[0_10px_30px_-10px_rgba(245,158,11,0.4)]'
+                                    : 'bg-gradient-to-br from-rose-400 to-rose-600 dark:from-rose-600 dark:to-rose-800 shadow-[0_10px_30px_-10px_rgba(244,63,94,0.4)] hover:shadow-[0_15px_40px_-10px_rgba(244,63,94,0.6)] active:scale-95'
                             }`}
                         >
-                            <LogOut size={36} className={`${!isCheckedInToday || isCheckedOut ? 'text-slate-400' : 'text-white'} mb-2`} />
-                            <span className={`${!isCheckedInToday || isCheckedOut ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK OUT</span>
+                            {isCheckedOut ? <Edit size={36} className="text-white mb-2" /> : <LogOut size={36} className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} mb-2`} />}
+                            <span className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight uppercase`}>{isCheckedOut ? 'Edit Report' : 'Check Out'}</span>
                         </button>
                     </div>
                     
@@ -566,15 +579,13 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                                     )}
                                                 </div>
                                             </div>
-                                            {!isCheckedOut && (
-                                                <button 
-                                                    onClick={() => handleOpenVisitReport(idx)}
-                                                    className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 text-slate-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl transition-all active:scale-90 border border-transparent hover:border-cyan-100 dark:hover:border-cyan-500/20"
-                                                    title="บันทึกกิจกรรม"
-                                                >
-                                                    <MessageSquare size={18} />
-                                                </button>
-                                            )}
+                                            <button 
+                                                onClick={() => handleOpenVisitReport(idx)}
+                                                className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 text-slate-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/30 hover:text-cyan-600 dark:hover:text-cyan-400 rounded-xl transition-all active:scale-90 border border-transparent hover:border-cyan-100 dark:hover:border-cyan-500/20"
+                                                title="บันทึกกิจกรรม"
+                                            >
+                                                <MessageSquare size={18} />
+                                            </button>
                                         </div>
                                     </div>
                                 );

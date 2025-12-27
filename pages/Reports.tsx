@@ -2,14 +2,14 @@
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
-import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers, getWorkPlans } from '../services/dbService';
-import { AttendanceDay, PipelineData, UserProfile, AdminUser, WorkPlan } from '../types';
+import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers, getWorkPlans, checkOut } from '../services/dbService';
+import { AttendanceDay, PipelineData, UserProfile, AdminUser, WorkPlan, VisitReport, Interaction, DailyReport } from '../types';
 import { 
     Clock, MapPin, User as UserIcon, TrendingUp, DollarSign, 
     Edit, Save, Loader2, Building, Users, ChevronDown, 
     BarChart3, List, PieChart, Calendar, Trash2, 
     ArrowLeft, Filter, ArrowUpRight, Activity, 
-    Zap, Target, Briefcase, ChevronRight, X, Download, Percent
+    Zap, Target, Briefcase, ChevronRight, X, Download, Percent, MessageSquare
 } from 'lucide-react';
 
 interface Props {
@@ -24,6 +24,12 @@ interface EditTarget {
         interactionIdx?: number;
         legacyIdx?: number;
     };
+}
+
+interface VisitEditState {
+    dateId: string;
+    visitIdx: number;
+    interactions: Interaction[];
 }
 
 const Reports: React.FC<Props> = ({ user }) => {
@@ -43,6 +49,7 @@ const Reports: React.FC<Props> = ({ user }) => {
 
     // Edit State
     const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
+    const [visitEdit, setVisitEdit] = useState<VisitEditState | null>(null);
     const [saving, setSaving] = useState(false);
 
     const funnelStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
@@ -127,6 +134,45 @@ const Reports: React.FC<Props> = ({ user }) => {
 
     const handleEditClick = (dateId: string, data: PipelineData, location: EditTarget['location']) => {
         setEditTarget({ dateId, data: { ...data }, location });
+    };
+
+    const handleEditVisit = (dateId: string, visitIdx: number, visit: VisitReport) => {
+        setVisitEdit({
+            dateId,
+            visitIdx,
+            interactions: visit.interactions ? JSON.parse(JSON.stringify(visit.interactions)) : []
+        });
+    };
+
+    const handleSaveVisitEdit = async () => {
+        if (!visitEdit) return;
+        setSaving(true);
+        try {
+            const dayRecord = history.find(h => h.id === visitEdit.dateId);
+            if (!dayRecord || !dayRecord.report?.visits) return;
+
+            const updatedVisits = [...dayRecord.report.visits];
+            const targetVisit = updatedVisits[visitEdit.visitIdx];
+            
+            targetVisit.interactions = visitEdit.interactions;
+            // Also update the aggregated fields
+            targetVisit.summary = visitEdit.interactions.map(i => `${i.customerName}: ${i.summary}`).join('\n');
+            targetVisit.metWith = visitEdit.interactions.map(i => i.customerName);
+            
+            const newReport: DailyReport = {
+                ...dayRecord.report,
+                visits: updatedVisits
+            };
+
+            await checkOut(targetUserId, newReport, visitEdit.dateId);
+            await fetchUserData(targetUserId);
+            setVisitEdit(null);
+        } catch (e) {
+            console.error(e);
+            alert("ไม่สามารถบันทึกข้อมูลได้");
+        } finally {
+            setSaving(false);
+        }
     };
 
     // Get ALL raw opportunities from history data
@@ -234,6 +280,57 @@ const Reports: React.FC<Props> = ({ user }) => {
         document.body.removeChild(link);
     };
 
+    if (visitEdit) {
+        return (
+            <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
+                <div className="flex items-center gap-4 py-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20">
+                    <button onClick={() => setVisitEdit(null)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 active:scale-95 transition-transform"><ArrowLeft size={20} /></button>
+                    <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white">แก้ไขรายละเอียดกิจกรรม</h2><p className="text-sm text-slate-500">วันที่ {visitEdit.dateId}</p></div>
+                </div>
+                <div className="space-y-4">
+                    {visitEdit.interactions.map((inter, idx) => (
+                        <GlassCard key={idx} className="p-6 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-center gap-2">
+                                    <UserIcon size={16} className="text-indigo-500" />
+                                    <span className="font-bold text-slate-900 dark:text-white">{inter.customerName}</span>
+                                </div>
+                                <button onClick={() => {
+                                    const next = [...visitEdit.interactions];
+                                    next.splice(idx, 1);
+                                    setVisitEdit({...visitEdit, interactions: next});
+                                }} className="text-rose-400 hover:text-rose-600"><Trash2 size={16}/></button>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">สรุปการเข้าพบ</label>
+                                <textarea 
+                                    value={inter.summary} 
+                                    onChange={e => {
+                                        const next = [...visitEdit.interactions];
+                                        next[idx].summary = e.target.value;
+                                        setVisitEdit({...visitEdit, interactions: next});
+                                    }}
+                                    rows={3}
+                                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm outline-none focus:border-cyan-500 transition-all resize-none"
+                                />
+                            </div>
+                        </GlassCard>
+                    ))}
+                    {visitEdit.interactions.length === 0 && (
+                        <div className="py-12 text-center text-slate-400 font-bold italic opacity-60">ไม่มีข้อมูลบันทึกกิจกรรม</div>
+                    )}
+                </div>
+                <button 
+                    onClick={handleSaveVisitEdit} 
+                    disabled={saving} 
+                    className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                >
+                    {saving ? <Loader2 className="animate-spin"/> : <><Save size={20}/> บันทึกรายงาน</>}
+                </button>
+            </div>
+        );
+    }
+
     if (editTarget) {
         return (
             <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
@@ -243,7 +340,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                 </div>
                 <GlassCard className="p-8 space-y-6">
                     <div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">ชื่อสินค้า / โปรเจกต์</label><div className="relative"><Briefcase className="absolute left-4 top-4 text-slate-400" size={18} /><input value={editTarget.data.product} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" /></div></div>
-                    <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">มูลค่า (THB)</label><div className="relative"><DollarSign className="absolute left-4 top-4 text-emerald-500" size={18} /><input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" /></div></div><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">สถานะ (Status)</label><select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-base font-bold outline-none focus:border-cyan-500 appearance-none">{funnelStages.map(f => <option key={f} value={f}>{f}</option>)}</select></div></div>
+                    <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">มูลค่า (THB)</label><div className="relative"><DollarSign className="absolute left-4 top-4 text-emerald-500" size={18} /><input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" /></div></div><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">สถานะ (Status)</label><select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-base font-bold outline-none focus:border-cyan-500 appearance-none">{funnelStages.map(f => <option key={f} value={f}>{f}</option>)}</select></div></div>
                     <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">โอกาสสำเร็จ (%)</label><div className="relative"><Percent className="absolute left-4 top-4 text-indigo-500" size={18} /><input type="number" min="0" max="100" value={editTarget.data.probability} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" /></div></div><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">วันที่คาดว่าจะปิดดีล</label><div className="relative"><Calendar className="absolute left-4 top-4 text-cyan-500" size={18} /><input type="date" value={editTarget.data.expectedCloseDate || ''} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-base font-bold outline-none focus:border-cyan-500 appearance-none" /></div></div></div>
                 </GlassCard>
                 <div className="flex gap-4"><button onClick={handleDelete} className="p-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><Trash2 size={24}/></button><button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50">{saving ? <Loader2 className="animate-spin"/> : <><Save size={20}/> บันทึกการเปลี่ยนแปลง</>}</button></div>
@@ -369,7 +466,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                     <div className="relative pl-6 sm:pl-10 space-y-12">
                         <div className="absolute left-0 sm:left-4 top-4 bottom-4 w-1 bg-gradient-to-b from-cyan-400 via-indigo-500 to-purple-600 rounded-full opacity-30"></div>
                         {history.filter(h => h.id >= filterStartDate && h.id <= filterEndDate).map((day, idx) => {
-                            const activeVisits = (day.report?.visits || []).filter((v: any) => (v.interactions && v.interactions.length > 0) || (v.pipeline && v.pipeline.length > 0));
+                            const visits = (day.report?.visits || []);
                             return (
                                 <div key={day.id} className="relative animate-enter" style={{animationDelay: `${idx * 80}ms`}}>
                                     <div className="absolute -left-[30px] sm:-left-[34px] top-4 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-slate-950 bg-white dark:bg-slate-800 shadow-xl z-10 flex items-center justify-center"><div className={`w-2 h-2 rounded-full ${day.checkOut ? 'bg-emerald-500' : 'bg-cyan-500 animate-pulse'}`}></div></div>
@@ -379,8 +476,8 @@ const Reports: React.FC<Props> = ({ user }) => {
                                             <div className="text-right"><div className="text-2xl font-black text-slate-200 dark:text-slate-800">#{history.length - idx}</div></div>
                                         </div>
                                         <div className="p-6 space-y-8">
-                                            {activeVisits.length > 0 ? activeVisits.map((visit: any, vIdx: number) => (
-                                                <div key={vIdx} className="relative pl-6">{vIdx < activeVisits.length - 1 && (<div className="absolute left-[7px] top-4 bottom-[-32px] w-0.5 bg-slate-100 dark:bg-white/5"></div>)}<div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 bg-cyan-500 shadow-lg"></div><div className="space-y-4"><div className="flex justify-between items-start"><div><h4 className="font-black text-slate-900 dark:text-white text-base leading-tight">{visit.location}</h4><div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold text-slate-400">{visit.checkInTime?.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span></div></div></div><div className="space-y-3">{(visit.interactions || []).map((inter: any, iIdx: number) => (<div key={iIdx} className="bg-slate-50 dark:bg-white/5 p-4 rounded-[24px] border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all"><div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md"><UserIcon size={14} /></div><div><div className="text-sm font-black text-slate-900 dark:text-white">{inter.customerName}</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{inter.department || 'ไม่ระบุแผนก'}</div></div></div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-10">"{inter.summary || 'ไม่มีรายละเอียดการบันทึก'}"</p>{inter.pipeline && (<div onClick={(e) => { e.stopPropagation(); handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx }); }} className="mt-4 ml-10 p-4 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-white/10 rounded-2xl flex justify-between items-center relative transition-all hover:border-indigo-500/50 cursor-pointer hover:scale-[1.01] shadow-sm"><div className="flex items-center gap-3"><TrendingUp size={16} className="text-indigo-500" /><div><div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">{inter.pipeline.product}</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{inter.pipeline.stage}</div></div></div><div className="text-right"><div className="text-xs font-black text-indigo-600 dark:text-indigo-400">฿{(inter.pipeline.value || 0).toLocaleString()}</div></div></div>)}</div>))}</div></div></div>
+                                            {visits.length > 0 ? visits.map((visit: any, vIdx: number) => (
+                                                <div key={vIdx} className="relative pl-6">{vIdx < visits.length - 1 && (<div className="absolute left-[7px] top-4 bottom-[-32px] w-0.5 bg-slate-100 dark:bg-white/5"></div>)}<div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 bg-cyan-500 shadow-lg"></div><div className="space-y-4"><div className="flex justify-between items-start"><div><h4 className="font-black text-slate-900 dark:text-white text-base leading-tight">{visit.location}</h4><div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold text-slate-400">{visit.checkInTime?.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span></div></div>{targetUserId === user.uid && (<button onClick={() => handleEditVisit(day.id, vIdx, visit)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-500 transition-colors"><MessageSquare size={16}/></button>)}</div><div className="space-y-3">{(visit.interactions || []).map((inter: any, iIdx: number) => (<div key={iIdx} className="bg-slate-50 dark:bg-white/5 p-4 rounded-[24px] border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all"><div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md"><UserIcon size={14} /></div><div><div className="text-sm font-black text-slate-900 dark:text-white">{inter.customerName}</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{inter.department || 'ไม่ระบุแผนก'}</div></div></div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-10">"{inter.summary || 'ไม่มีรายละเอียดการบันทึก'}"</p>{inter.pipeline && (<div onClick={(e) => { e.stopPropagation(); handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx }); }} className="mt-4 ml-10 p-4 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-white/10 rounded-2xl flex justify-between items-center relative transition-all hover:border-indigo-500/50 cursor-pointer hover:scale-[1.01] shadow-sm"><div className="flex items-center gap-3"><TrendingUp size={16} className="text-indigo-500" /><div><div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">{inter.pipeline.product}</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{inter.pipeline.stage}</div></div></div><div className="text-right"><div className="text-xs font-black text-indigo-600 dark:text-indigo-400">฿{(inter.pipeline.value || 0).toLocaleString()}</div></div></div>)}</div>))}</div></div></div>
                                             )) : (<div className="py-4 text-center text-slate-400 text-xs font-medium italic opacity-60">(ไม่มีข้อมูลบันทึกในวันนี้)</div>)}
                                         </div>
                                     </GlassCard>
