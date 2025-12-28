@@ -94,8 +94,10 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             const pendingOnly = allPlans.filter(p => p.status === 'pending');
             
             if (isAdmin) {
+                // Admin sees everyone's requests (including Managers)
                 setAllPendingPlans(pendingOnly);
             } else if (isManager) {
+                // Manager only sees their team members' requests
                 const teamIds = teamMembers.map(m => m.id);
                 setAllPendingPlans(pendingOnly.filter(p => teamIds.includes(p.userId)));
             }
@@ -110,15 +112,12 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             if (hasAccess) {
                 let members: AdminUser[] = [];
                 if (userProfile?.role === 'admin') { 
-                    // Admin: Show only active (approved) users in the system
-                    const all = await getAllUsers();
-                    members = all.filter(u => u.isApproved === true || u.id === user.uid);
+                    members = await getAllUsers(); 
                 } else { 
-                    // Manager: Show only their direct reports (subordinates)
-                    const team = await getTeamMembers(user.uid); 
-                    members = team.filter(u => u.isApproved !== false || u.id === user.uid);
+                    members = await getTeamMembers(user.uid); 
                 }
-                setTeamMembers(members);
+                const filteredMembers = members.filter(u => u.isApproved !== false || u.id === user.uid);
+                setTeamMembers(filteredMembers);
             }
             await fetchData(targetUserId);
         };
@@ -285,24 +284,21 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             {activeTab === 'calendar' && (
                 <>
                     <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-sm">
-                        <div>
-                            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">ปฏิทินแผนงาน</h2>
-                            <p className="text-slate-500 text-xs font-bold mt-2 uppercase tracking-wider">จัดตารางงานของคุณ</p>
-                        </div>
+                        <div><h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">ปฏิทินแผนงาน</h2><p className="text-slate-500 text-sm font-medium mt-2">จัดตารางของ {targetUserId === user.uid ? 'คุณ' : targetUserName}</p></div>
                         <div className="flex gap-2">
-                            <button onClick={() => setShowExportOptions(!showExportOptions)} className={`p-3 rounded-2xl transition-all active:scale-95 bg-white/50 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-white/10 shadow-sm`}><Download size={22} /></button>
-                            <button onClick={() => { if(showForm) resetForm(); else setShowForm(true); }} className={`p-3.5 rounded-2xl transition-all active:scale-95 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30`}>{showForm ? <X size={22} /> : <Plus size={22} />}</button>
+                            <button onClick={() => setShowExportOptions(!showExportOptions)} className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${showExportOptions ? 'bg-emerald-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-white/5'}`}><Download size={24} /></button>
+                            <button onClick={() => { if(showForm) resetForm(); else setShowForm(true); }} className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${showForm ? 'bg-rose-500 text-white shadow-rose-500/20' : 'bg-indigo-600 text-white shadow-indigo-600/20'}`}>{showForm ? <X size={24} /> : <Plus size={24} />}</button>
                         </div>
                     </div>
 
                     {isPrivileged && (
-                        <div className="bg-white/50 dark:bg-slate-900/40 p-1.5 rounded-[28px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
-                            <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-full shrink-0"><Users size={18} /></div>
-                            <select value={targetUserId} onChange={(e) => handleUserChange(e.target.value)} className="flex-1 bg-transparent px-3 py-2 text-sm font-black text-slate-900 dark:text-white outline-none appearance-none">
+                        <div className="bg-white/50 dark:bg-slate-900/40 p-1 rounded-[24px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
+                            <div className="p-3 bg-indigo-500 text-white rounded-[20px] shadow-lg shrink-0"><Users size={20} /></div>
+                            <select value={targetUserId} onChange={(e) => handleUserChange(e.target.value)} className="flex-1 bg-transparent px-4 py-2 text-sm font-bold text-slate-900 dark:text-white outline-none appearance-none">
                                 <option value={user.uid}>มุมมองส่วนตัว (ฉัน)</option>
                                 {teamMembers.filter(u => u.id !== user.uid).map(m => (<option key={m.id} value={m.id}>{m.name || m.email}</option>))}
                             </select>
-                            <div className="pr-5 text-slate-400"><ChevronDown size={14} /></div>
+                            <div className="pr-4 text-slate-400"><ChevronDown size={16} /></div>
                         </div>
                     )}
 
@@ -377,7 +373,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                                                 <input value={newLoc} onChange={e => {setNewLoc(e.target.value); setShowLocSuggestions(true);}} onFocus={() => setShowLocSuggestions(true)} placeholder="โรงพยาบาล/สถานที่" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500" />
                                                 {showLocSuggestions && (
                                                     <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 max-h-52 overflow-y-auto ring-1 ring-black/5">
-                                                        {filteredHospitals.length > 0 ? filteredHospitals.map((h, i) => (<button key={i} onClick={() => {setNewLoc(h); setShowLocSuggestions(false);}} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"><Building size={12} className="text-indigo-400" />{h}</button>)) : newLoc && (<div className="px-4 py-3 text-[10px] text-slate-400 italic">ไม่พบรายชื่อในฐานข้อมูล</div>)}
+                                                        {filteredHospitals.length > 0 ? filteredHospitals.map((h, i) => (<button key={i} onClick={() => {setNewLoc(h); setShowLocSuggestions(false);}} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-100 dark:border-white/5 last:border-0"><Building size={12} className="text-indigo-400" />{h}</button>)) : newLoc && (<div className="px-4 py-3 text-[10px] text-slate-400 italic">ไม่พบรายชื่อในฐานข้อมูล</div>)}
                                                         {newLoc && !localProfile?.hospitals.some(h => h.toLowerCase() === newLoc.toLowerCase()) && (<button onClick={handleAddNewHospital} className="w-full text-left px-4 py-3 bg-indigo-50 dark:bg-indigo-900/40 text-xs text-indigo-600 dark:text-indigo-400 font-black border-t border-slate-200 dark:border-white/10 flex items-center gap-2 sticky bottom-0"><Plus size={14} className="bg-indigo-600 text-white rounded-full" />สร้างรายชื่อใหม่: "{newLoc}"</button>)}
                                                     </div>
                                                 )}

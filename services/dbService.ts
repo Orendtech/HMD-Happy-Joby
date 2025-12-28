@@ -82,18 +82,15 @@ export const addWorkPlan = async (plan: Omit<WorkPlan, 'id'>) => {
 };
 
 export const saveWorkPlan = async (plan: Partial<WorkPlan> & { userId: string }) => {
-    const { id, ...data } = plan;
-    if (id) {
-        const ref = doc(getWorkPlansCol(), id);
-        await updateDoc(ref, { 
-            ...data, 
-            createdAt: new Date().toISOString() 
-        });
+    if (plan.id) {
+        const ref = doc(getWorkPlansCol(), plan.id);
+        const { id, ...data } = plan;
+        await updateDoc(ref, { ...data, createdAt: new Date().toISOString() });
         return id;
     } else {
         const ref = doc(getWorkPlansCol());
         await setDoc(ref, { 
-            ...data, 
+            ...plan, 
             status: 'draft',
             createdAt: new Date().toISOString() 
         });
@@ -106,6 +103,7 @@ export const submitPlansForApproval = async (planIds: string[]) => {
     let userName = 'Unknown';
     let userId = '';
     
+    // First, let's try to get info from the first plan to log activity
     if (planIds.length > 0) {
         const firstDoc = await getDoc(doc(getWorkPlansCol(), planIds[0]));
         if (firstDoc.exists()) {
@@ -300,7 +298,7 @@ export const updateOpportunity = async (userId: string, dateId: string, location
             let activePipeline = userData.activePipeline || [];
             const idx = activePipeline.findIndex(p => p.id === targetId);
             if (updatedData === null) { if (idx !== -1) activePipeline.splice(idx, 1); } else { if (idx !== -1) activePipeline[idx] = updatedData; }
-            await updateDoc(userRef, { activePipeline });
+            await updateUserProfile(userId, { activePipeline });
         }
     }
 };
