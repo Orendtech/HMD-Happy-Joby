@@ -28,7 +28,7 @@ const Settings: React.FC<Props> = ({ user }) => {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
     const [updateLoading, setUpdateLoading] = useState(false);
-    const [appVersion] = useState("1.2.5");
+    const [appVersion] = useState("1.2.5"); // เวอร์ชันของแอป
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,39 +43,36 @@ const Settings: React.FC<Props> = ({ user }) => {
             }
         };
         load();
-        
-        // Accurate theme detection from DOM
-        setIsDarkMode(document.documentElement.classList.contains('dark'));
-
+        if (document.documentElement.classList.contains('dark')) {
+            setIsDarkMode(true);
+        } else {
+            setIsDarkMode(false);
+        }
         if ("Notification" in window) {
             setNotifPermission(Notification.permission);
         }
     }, [user]);
 
     const toggleTheme = () => {
-        const newMode = !isDarkMode;
-        setIsDarkMode(newMode);
-        
-        const metaThemeColor = document.getElementById('meta-theme-color');
-        
-        if (newMode) {
-            document.documentElement.classList.add('dark');
-            localStorage.setItem('theme', 'dark');
-            const color = '#020617';
-            if (metaThemeColor) metaThemeColor.setAttribute('content', color);
-            document.documentElement.style.backgroundColor = color;
-        } else {
+        const metaThemeColors = document.querySelectorAll('meta[name="theme-color"]');
+        if (isDarkMode) {
             document.documentElement.classList.remove('dark');
-            localStorage.setItem('theme', 'light');
-            const color = '#F5F5F7';
-            if (metaThemeColor) metaThemeColor.setAttribute('content', color);
-            document.documentElement.style.backgroundColor = color;
+            localStorage.theme = 'light';
+            metaThemeColors.forEach(tag => tag.setAttribute('content', '#F5F5F7'));
+            setIsDarkMode(false);
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.theme = 'dark';
+            metaThemeColors.forEach(tag => tag.setAttribute('content', '#020617'));
+            setIsDarkMode(true);
         }
     };
 
     const handleUpdateApp = () => {
         setUpdateLoading(true);
+        // จำลองการเช็คเวอร์ชัน 1.5 วินาที
         setTimeout(() => {
+            // บังคับ Reload หน้าเว็บเพื่อล้าง Cache
             window.location.reload();
         }, 1500);
     };

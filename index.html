@@ -9,12 +9,8 @@
     <!-- PWA & Theme Settings -->
     <meta name="theme-color" content="#F5F5F7" id="meta-theme-color">
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <!-- 'default' allows status bar text to flip between black/white based on theme-color -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
-    
-    <!-- Critical: Support both modes but we will control manually -->
-    <meta name="color-scheme" content="light dark">
 
     <!-- App Icons -->
     <link rel="icon" type="image/png" href="https://img2.pic.in.th/pic/Orendtech-1.png" />
@@ -23,24 +19,21 @@
 
     <title>Happy Joby - Intelligent Workspace</title>
     
-    <!-- Robust Theme Initialization - Run as early as possible -->
+    <!-- Theme Initialization Script -->
     <script>
       (function() {
-        const savedTheme = localStorage.getItem('theme');
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const isDark = savedTheme === 'dark' || (!savedTheme && systemDark);
-        
-        const root = document.documentElement;
-        const color = isDark ? '#020617' : '#F5F5F7';
+        const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const metaThemeColor = document.getElementById('meta-theme-color');
         
         if (isDark) {
-          root.classList.add('dark');
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.backgroundColor = '#020617';
+          if (metaThemeColor) metaThemeColor.setAttribute('content', '#020617');
         } else {
-          root.classList.remove('dark');
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.backgroundColor = '#F5F5F7';
+          if (metaThemeColor) metaThemeColor.setAttribute('content', '#F5F5F7');
         }
-        
-        // Apply background immediately to avoid the white/black flash
-        root.style.backgroundColor = color;
       })();
     </script>
 
@@ -50,29 +43,35 @@
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
      <style>
-      :root {
-        --bg-light: #F5F5F7;
-        --bg-dark: #020617;
-      }
-
+      /* Apply background color to both html and body to prevent black edges */
       html, body {
         font-family: 'Sarabun', sans-serif;
         -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.3s ease;
         margin: 0;
-        padding: 0;
-        width: 100%;
         height: 100%;
-        background-color: var(--bg-light);
+        height: -webkit-fill-available;
       }
 
-      html.dark, html.dark body {
-        background-color: var(--bg-dark);
+      html {
+        background-color: #F5F5F7;
       }
 
-      html, body, main, header, nav {
-        transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      html.dark {
+        background-color: #020617;
       }
 
+      body {
+        background-color: #F5F5F7;
+        color: #0f172a;
+      }
+
+      .dark body {
+        background-color: #020617;
+        color: #f8fafc;
+      }
+
+      /* Brand Loading Animations */
       @keyframes letter-reveal {
         0% { opacity: 0; transform: translateY(30px) scale(0.8); filter: blur(12px); }
         100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
@@ -97,6 +96,7 @@
         text-shadow: 0 0 30px rgba(6, 182, 212, 0.6);
       }
 
+      /* Utility */
       @keyframes fade-in-up {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
@@ -129,8 +129,7 @@
     "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "vite": "https://esm.sh/vite@^7.3.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
