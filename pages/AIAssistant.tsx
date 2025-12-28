@@ -2,11 +2,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-// Fix: Added User as UserIcon to imports
-import { Sparkles, Mic, MicOff, Loader2, MessageSquare, Info, ShieldCheck, ArrowLeft, TrendingUp, MapPin, Target, User as UserIcon } from 'lucide-react';
+import { Sparkles, Mic, MicOff, Loader2, MessageSquare, Info, ShieldCheck, ArrowLeft, TrendingUp, MapPin, Target, User as UserIcon, History } from 'lucide-react';
 import { GlassCard } from '../components/GlassCard';
-import { getUserProfile, getWorkPlans, getReminders, getTodayDateId } from '../services/dbService';
-import { UserProfile, WorkPlan, Reminder } from '../types';
+import { getUserProfile, getWorkPlans, getReminders, getTodayDateId, getUserHistory } from '../services/dbService';
+import { UserProfile, WorkPlan, Reminder, AttendanceDay } from '../types';
 
 interface AIAssistantProps {
     user: User;
@@ -34,28 +33,46 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, userProfile }) => {
     useEffect(() => {
         const loadContext = async () => {
             const today = getTodayDateId();
-            const [profile, plans, reminders] = await Promise.all([
+            const [profile, plans, reminders, history] = await Promise.all([
                 getUserProfile(user.uid),
                 getWorkPlans(user.uid),
-                getReminders(user.uid)
+                getReminders(user.uid),
+                getUserHistory(user.uid)
             ]);
 
             const todayPlan = plans.find(p => p.date === today);
             const activePipeline = profile?.activePipeline || [];
             const pendingTasks = reminders.filter(r => !r.isCompleted);
-
-            let contextText = `คุณคือที่ปรึกษาอัจฉริยะชื่อ "Happy Joby" สำหรับพนักงานคนนี้:
-            - ชื่อ: ${profile?.name || user.email}
-            - เขตพื้นที่: ${profile?.area || 'ไม่ระบุ'}
-            - แผนงานวันนี้: ${todayPlan ? todayPlan.title + " (" + todayPlan.itinerary.map(i => i.location).join(', ') + ")" : 'ไม่มีแผนงาน'}
-            - โอกาสขายใน Pipeline: ${activePipeline.map(p => `${p.product} มูลค่า ${p.value} สถานะ ${p.stage}`).join(' | ')}
-            - งานที่ต้องทำ: ${pendingTasks.map(t => t.title).join(', ')}
             
-            หน้าที่ของคุณคือให้คำแนะนำเชิงกลยุทธ์ เช่น:
-            1. วิเคราะห์ว่าควรไปที่ไหนก่อนจากแผนงาน
-            2. แนะนำว่าควรขายสินค้าอะไรให้ใคร โดยดูจากมูลค่าและความน่าจะเป็นใน Pipeline
-            3. สรุปภาพรวมและให้กำลังใจ
-            พูดจาเป็นกันเอง สุภาพ และเน้นช่วยให้พนักงานปิดการขายได้มากขึ้น`;
+            // Get last 5 visit reports for historical context
+            const recentVisits = history
+                .filter(h => h.report?.visits)
+                .slice(0, 5)
+                .map(h => {
+                    return `วันที่ ${h.id}: เข้าพบที่ ${h.report?.visits?.map(v => v.location).join(', ')} สรุปการคุย: ${h.report?.visits?.map(v => v.summary).join(' | ')}`;
+                }).join('\n');
+
+            let contextText = `คุณคือ "Joby Advisor" ที่ปรึกษาการขายและวางแผนงานอัจฉริยะ สำหรับคุณ ${profile?.name || user.email}
+            
+            นี่คือข้อมูลสำคัญที่คุณมีสิทธิ์เข้าถึง:
+            
+            1. [แผนงานวันนี้]: ${todayPlan ? todayPlan.title + " รายละเอียด: " + todayPlan.content + " สถานที่: " + todayPlan.itinerary.map(i => i.location).join(', ') : 'ยังไม่มีการลงแผนงานในระบบ'}
+            
+            2. [ข้อมูล Pipeline การขายปัจจุบัน]:
+            ${activePipeline.length > 0 ? activePipeline.map(p => `- ${p.product}: มูลค่า ฿${p.value.toLocaleString()}, สถานะ: ${p.stage}, โอกาสสำเร็จ: ${p.probability}% (ลูกค้า: ${p.customerName || 'ไม่ระบุ'})`).join('\n') : 'ไม่มีข้อมูลการขายใน Pipeline'}
+            
+            3. [ประวัติการเข้าพบลูกค้าล่าสุด (History)]:
+            ${recentVisits || 'ไม่มีประวัติการเข้าพบย้อนหลัง'}
+            
+            4. [งานที่ต้องทำ (Tasks)]:
+            ${pendingTasks.length > 0 ? pendingTasks.map(t => `- ${t.title} (กำหนด: ${new Date(t.dueTime).toLocaleTimeString('th-TH')})`).join('\n') : 'ไม่มีงานค้าง'}
+
+            หน้าที่ของคุณ:
+            - เมื่อผู้ใช้ถามว่า "ขายอะไรดี" ให้วิเคราะห์จาก Pipeline ว่าตัวไหนมูลค่าสูงและโอกาสปิดงานได้เยอะ แล้วแนะนำวิธีการเข้าพบ
+            - เมื่อถามว่า "ไปไหนดี" ให้ดูจากแผนงานวันนี้ และประวัติย้อนหลังว่าเจ้าไหนไม่ได้เข้านานแล้ว
+            - เป็นผู้ช่วยคิดกลยุทธ์การขาย (Consultative Selling)
+            - พูดจาฉลาด กระตือรือร้น และให้กำลังใจ
+            - ใช้ภาษาไทยที่เป็นกันเองแต่สุภาพ (เหมือนเป็นคู่คิดธุรกิจ)`;
 
             contextRef.current = contextText;
             setContextLoaded(true);
@@ -150,7 +167,6 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, userProfile }) => {
                                 sourcesRef.current.delete(source);
                                 if (sourcesRef.current.size === 0) setStatus('listening');
                             };
-                            // Fix: Changed currentRef to current
                             source.start(nextStartTimeRef.current);
                             nextStartTimeRef.current += buffer.duration;
                             sourcesRef.current.add(source);
@@ -280,18 +296,18 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ user, userProfile }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6">
                     <GlassCard className="p-4 border-slate-200/50 dark:border-white/5 opacity-80">
                         <TrendingUp size={18} className="text-emerald-500 mb-2" />
-                        <h4 className="text-[10px] font-black uppercase mb-1">ยอดขาย</h4>
-                        <p className="text-[10px] text-slate-500">"ฉันควรไปขายโปรเจกต์ไหนต่อดี?"</p>
+                        <h4 className="text-[10px] font-black uppercase mb-1">วิเคราะห์ยอด</h4>
+                        <p className="text-[10px] text-slate-500">"ตัวไหนใน Pipeline มีโอกาสปิดงานสูงสุด?"</p>
                     </GlassCard>
                     <GlassCard className="p-4 border-slate-200/50 dark:border-white/5 opacity-80">
-                        <MapPin size={18} className="text-cyan-500 mb-2" />
-                        <h4 className="text-[10px] font-black uppercase mb-1">แผนงาน</h4>
-                        <p className="text-[10px] text-slate-500">"วันนี้ฉันต้องไปที่ไหนบ้าง?"</p>
+                        <History size={18} className="text-cyan-500 mb-2" />
+                        <h4 className="text-[10px] font-black uppercase mb-1">ดูประวัติ</h4>
+                        <p className="text-[10px] text-slate-500">"คราวที่แล้วคุยอะไรไปกับลูกค้ารายนี้?"</p>
                     </GlassCard>
                     <GlassCard className="p-4 border-slate-200/50 dark:border-white/5 opacity-80">
-                        <Target size={18} className="text-indigo-500 mb-2" />
-                        <h4 className="text-[10px] font-black uppercase mb-1">คำแนะนำ</h4>
-                        <p className="text-[10px] text-slate-500">"ให้กำลังใจฉันหน่อย วันนี้เหนื่อยจัง"</p>
+                        <MapPin size={18} className="text-indigo-500 mb-2" />
+                        <h4 className="text-[10px] font-black uppercase mb-1">วางแผน</h4>
+                        <p className="text-[10px] text-slate-500">"วันนี้ไปไหนดีให้ได้ยอดปังๆ?"</p>
                     </GlassCard>
                 </div>
             )}
