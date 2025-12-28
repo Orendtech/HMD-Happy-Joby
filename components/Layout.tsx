@@ -20,29 +20,32 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const [pendingRemindersCount, setPendingRemindersCount] = useState(0);
     const [pendingPlansCount, setPendingPlansCount] = useState(0);
 
-    // Simplified Status Bar Sync - Only ensuring color matches the current HTML class
+    // Optimized Theme Sync
     useEffect(() => {
-        const syncStatusBar = () => {
-            const metaThemeColor = document.getElementById('meta-theme-color');
-            if (!metaThemeColor) return;
-
+        const syncThemeMeta = () => {
             const isDark = document.documentElement.classList.contains('dark');
             const color = isDark ? '#020617' : '#F5F5F7';
             
-            // Only update if current value is different to avoid flickering/bouncing
-            if (metaThemeColor.getAttribute('content') !== color) {
+            // Only update if value is actually different to prevent flickering
+            const metaThemeColor = document.getElementById('meta-theme-color');
+            if (metaThemeColor && metaThemeColor.getAttribute('content') !== color) {
                 metaThemeColor.setAttribute('content', color);
+            }
+            
+            if (document.documentElement.style.backgroundColor !== color) {
                 document.documentElement.style.backgroundColor = color;
             }
         };
 
-        syncStatusBar();
+        syncThemeMeta();
+
+        // Listen for storage events (e.g. theme changed in another tab/component)
+        const handleStorage = (e: StorageEvent) => {
+            if (e.key === 'theme') syncThemeMeta();
+        };
         
-        // Listen for class changes on html tag (triggered by theme toggle)
-        const observer = new MutationObserver(syncStatusBar);
-        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        
-        return () => observer.disconnect();
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
     }, []);
 
     // Update System App Badge

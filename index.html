@@ -11,6 +11,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
+    
+    <!-- Critical: Tell iOS we support both, but we will control it via JS -->
+    <meta name="color-scheme" content="light dark">
 
     <!-- App Icons -->
     <link rel="icon" type="image/png" href="https://img2.pic.in.th/pic/Orendtech-1.png" />
@@ -19,21 +22,30 @@
 
     <title>Happy Joby - Intelligent Workspace</title>
     
-    <!-- Theme Initialization Script - Runs before CSS to prevent flash of wrong color -->
+    <!-- Robust Theme Initialization - Run as early as possible -->
     <script>
       (function() {
-        const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        const metaThemeColor = document.getElementById('meta-theme-color');
+        const savedTheme = localStorage.getItem('theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = savedTheme === 'dark' || (!savedTheme && systemDark);
+        
+        const root = document.documentElement;
+        const color = isDark ? '#020617' : '#F5F5F7';
         
         if (isDark) {
-          document.documentElement.classList.add('dark');
-          document.documentElement.style.backgroundColor = '#020617';
-          if (metaThemeColor) metaThemeColor.setAttribute('content', '#020617');
+          root.classList.add('dark');
         } else {
-          document.documentElement.classList.remove('dark');
-          document.documentElement.style.backgroundColor = '#F5F5F7';
-          if (metaThemeColor) metaThemeColor.setAttribute('content', '#F5F5F7');
+          root.classList.remove('dark');
         }
+        
+        // Apply background immediately to avoid the white/black flash
+        root.style.backgroundColor = color;
+        
+        // Update meta tag immediately
+        document.addEventListener('DOMContentLoaded', () => {
+          const meta = document.getElementById('meta-theme-color');
+          if (meta) meta.setAttribute('content', color);
+        });
       })();
     </script>
 
@@ -43,7 +55,6 @@
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
      <style>
-      /* CRITICAL: Status Bar Fix for iOS PWA */
       :root {
         --bg-light: #F5F5F7;
         --bg-dark: #020617;
@@ -56,7 +67,7 @@
         padding: 0;
         width: 100%;
         height: 100%;
-        /* These ensure the safe areas inherit the background color correctly */
+        /* Force background to prevent flash */
         background-color: var(--bg-light);
       }
 
@@ -64,12 +75,10 @@
         background-color: var(--bg-dark);
       }
 
-      /* Transitions for smooth theme switching */
       html, body, main, header, nav {
-        transition: background-color 0.3s ease, border-color 0.3s ease;
+        transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
-      /* Brand Loading Animations */
       @keyframes letter-reveal {
         0% { opacity: 0; transform: translateY(30px) scale(0.8); filter: blur(12px); }
         100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
@@ -94,7 +103,6 @@
         text-shadow: 0 0 30px rgba(6, 182, 212, 0.6);
       }
 
-      /* Utility */
       @keyframes fade-in-up {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
