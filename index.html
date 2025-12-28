@@ -19,7 +19,7 @@
 
     <title>Happy Joby - Intelligent Workspace</title>
     
-    <!-- Theme Initialization Script -->
+    <!-- Theme Initialization Script - Runs before CSS to prevent flash of wrong color -->
     <script>
       (function() {
         const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -43,32 +43,30 @@
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
      <style>
-      /* Apply background color to both html and body to prevent black edges */
+      /* CRITICAL: Status Bar Fix for iOS PWA */
+      :root {
+        --bg-light: #F5F5F7;
+        --bg-dark: #020617;
+      }
+
       html, body {
         font-family: 'Sarabun', sans-serif;
         -webkit-tap-highlight-color: transparent;
-        transition: background-color 0.3s ease;
         margin: 0;
+        padding: 0;
+        width: 100%;
         height: 100%;
-        height: -webkit-fill-available;
+        /* These ensure the safe areas inherit the background color correctly */
+        background-color: var(--bg-light);
       }
 
-      html {
-        background-color: #F5F5F7;
+      html.dark, html.dark body {
+        background-color: var(--bg-dark);
       }
 
-      html.dark {
-        background-color: #020617;
-      }
-
-      body {
-        background-color: #F5F5F7;
-        color: #0f172a;
-      }
-
-      .dark body {
-        background-color: #020617;
-        color: #f8fafc;
+      /* Transitions for smooth theme switching */
+      html, body, main, header, nav {
+        transition: background-color 0.3s ease, border-color 0.3s ease;
       }
 
       /* Brand Loading Animations */
