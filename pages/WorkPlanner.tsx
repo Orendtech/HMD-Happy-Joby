@@ -31,7 +31,6 @@ interface Props {
 const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
     const [activeTab, setActiveTab] = useState<'calendar' | 'approvals'>('calendar');
     
-    // Define helper roles for the UI
     const isAdmin = userProfile?.role === 'admin';
     const isManager = userProfile?.role === 'manager';
 
@@ -45,7 +44,6 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
     const [plans, setPlans] = useState<WorkPlan[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    // Add missing state for export options toggle
     const [showExportOptions, setShowExportOptions] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(formatLocalDate(new Date()));
@@ -66,7 +64,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
-    // Menu State
+    // Context Menu State
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     const [showLocSuggestions, setShowLocSuggestions] = useState(false);
@@ -96,16 +94,15 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             const pendingOnly = allPlans.filter(p => p.status === 'pending');
             
             if (isAdmin) {
+                // Admin sees everyone's requests (including Managers)
                 setAllPendingPlans(pendingOnly);
             } else if (isManager) {
+                // Manager only sees their team members' requests
                 const teamIds = teamMembers.map(m => m.id);
                 setAllPendingPlans(pendingOnly.filter(p => teamIds.includes(p.userId)));
             }
-        } catch (e) { 
-            console.error("Fetch pending failed", e); 
-        } finally {
-            setLoading(false);
-        }
+        } catch (e) { console.error(e); }
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -194,53 +191,27 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                 title,
                 content,
                 itinerary: finalItinerary,
+                createdAt: new Date().toISOString()
             });
             resetForm();
             await fetchData(targetUserId);
             alert(editingPlanId ? "แก้ไขแผนงานเรียบร้อยแล้ว" : "บันทึกฉบับร่างเรียบร้อยแล้ว");
         } catch (error) {
             console.error("Save Plan Error:", error);
-            alert("เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง");
+            alert("เกิดข้อผิดพลาดในการบันทึก");
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleStatusChange = async (planId: string, status: 'approved' | 'rejected' | 'pending' | 'draft') => {
-        try {
-            await updateWorkPlanStatus(planId, status);
-            if (activeTab === 'approvals' && isPrivileged) { 
-                fetchGlobalPending(); 
-            } else { 
-                await fetchData(targetUserId); 
-            }
-        } catch (e) { 
-            console.error("Update status failed", e); 
-            alert("ไม่สามารถอัปเดตสถานะได้"); 
-        }
-    };
-
     const handleSendForApproval = async (planId: string) => {
-        if (!window.confirm("ยืนยันการส่งแผนงานเพื่อขออนุมัติ?")) return;
+        if (!window.confirm("ต้องการส่งแผนงานนี้เพื่อขออนุมัติหรือไม่?")) return;
         setLoading(true);
         try {
             await updateWorkPlanStatus(planId, 'pending');
             await fetchData(user.uid);
-            alert("ส่งแผนงานเรียบร้อยแล้ว");
+            alert("ส่งแผนงานเรียบร้อยแล้ว แผนงานจะถูกตรวจสอบโดยหัวหน้างานของคุณ");
         } catch (e) { alert("เกิดข้อผิดพลาด"); }
-        setLoading(false);
-    };
-
-    const handleSubmitAllDrafts = async () => {
-        const draftIds = userDrafts.map(d => d.id);
-        if (draftIds.length === 0) return;
-        if (!window.confirm(`ต้องการส่งขออนุมัติแผนงานทั้ง ${draftIds.length} รายการที่เลือกไว้หรือไม่?`)) return;
-        setLoading(true);
-        try {
-            await submitPlansForApproval(draftIds);
-            await fetchData(user.uid);
-            alert("ส่งแผนงานเรียบร้อยแล้ว หัวหน้าจะได้รับแจ้งเตือนเร็วๆ นี้");
-        } catch (e) { alert("เกิดข้อผิดพลาดในการส่งแผนงาน"); }
         setLoading(false);
     };
 
@@ -252,6 +223,27 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
         setShowForm(true);
         setOpenMenuId(null);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleStatusChange = async (planId: string, status: 'approved' | 'rejected' | 'pending' | 'draft') => {
+        try {
+            await updateWorkPlanStatus(planId, status);
+            if (activeTab === 'approvals' && isPrivileged) { fetchGlobalPending(); } 
+            else { await fetchData(targetUserId); }
+        } catch (e) { alert("ไม่สามารถอัปเดตสถานะได้"); }
+    };
+
+    const handleSubmitAllDrafts = async () => {
+        const draftIds = userDrafts.map(d => d.id);
+        if (draftIds.length === 0) return;
+        if (!window.confirm(`ต้องการส่งขออนุมัติแผนงานทั้ง ${draftIds.length} รายการที่เลือกไว้หรือไม่?`)) return;
+        setLoading(true);
+        try {
+            await submitPlansForApproval(draftIds);
+            await fetchData(user.uid);
+            alert("ส่งแผนงานเรียบร้อยแล้ว");
+        } catch (e) { alert("เกิดข้อผิดพลาด"); }
+        setLoading(false);
     };
 
     const resetForm = () => { 
@@ -266,15 +258,9 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
 
     const handleDelete = async (id: string) => { 
         if (!window.confirm("ต้องการลบแผนงานนี้ใช่หรือไม่?")) return; 
-        try {
-            await deleteWorkPlan(id); 
-            if (activeTab === 'approvals' && isPrivileged) {
-                fetchGlobalPending();
-            } else {
-                await fetchData(targetUserId);
-            }
-            setOpenMenuId(null);
-        } catch (e) { alert("ไม่สามารถลบข้อมูลได้"); }
+        await deleteWorkPlan(id); 
+        await fetchData(targetUserId); 
+        setOpenMenuId(null);
     };
 
     const getStatusUI = (status?: string) => {
@@ -300,7 +286,6 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                     <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-sm">
                         <div><h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">ปฏิทินแผนงาน</h2><p className="text-slate-500 text-sm font-medium mt-2">จัดตารางของ {targetUserId === user.uid ? 'คุณ' : targetUserName}</p></div>
                         <div className="flex gap-2">
-                            {/* Fixed: Added missing state showExportOptions and setShowExportOptions */}
                             <button onClick={() => setShowExportOptions(!showExportOptions)} className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${showExportOptions ? 'bg-emerald-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-white/5'}`}><Download size={24} /></button>
                             <button onClick={() => { if(showForm) resetForm(); else setShowForm(true); }} className={`p-4 rounded-2xl shadow-lg transition-all active:scale-95 ${showForm ? 'bg-rose-500 text-white shadow-rose-500/20' : 'bg-indigo-600 text-white shadow-indigo-600/20'}`}>{showForm ? <X size={24} /> : <Plus size={24} />}</button>
                         </div>
@@ -375,7 +360,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                             <GlassCard className="p-8 space-y-6 border-indigo-500/30 bg-white/90 dark:bg-slate-900/90 shadow-2xl overflow-visible backdrop-blur-2xl">
                                 <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-4">
                                     <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl"><Calendar size={24} /></div>
-                                    <div><h3 className="text-xl font-black text-slate-900 dark:text-white">{editingPlanId ? 'แก้ไขแผนงาน' : 'เขียนแผนงานใหม่'}</h3><p className="text-xs text-slate-500 font-bold">สำหรับวันที่ {new Date(selectedDate).toLocaleDateString('th-TH')}</p></div>
+                                    <div><h3 className="text-xl font-black text-slate-900 dark:text-white">{editingPlanId ? 'แก้ไขแผนงานเดิม' : 'เขียนแผนงานใหม่'}</h3><p className="text-xs text-slate-500 font-bold">สำหรับวันที่ {new Date(selectedDate).toLocaleDateString('th-TH')}</p></div>
                                 </div>
                                 <div className="space-y-4">
                                     <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">หัวข้อแผนงาน</label><input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500 transition-all" placeholder="เช่น นัดพบลูกค้า/ตรวจเช็คเครื่อง" /></div>
@@ -397,12 +382,12 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                                             <button onClick={handleAddLocation} className="bg-indigo-600 text-white p-2 rounded-xl active:scale-90 transition-all shadow-lg shadow-indigo-600/20"><Plus size={20}/></button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-3">
+                                    <div className="flex gap-2">
                                         <button onClick={handleSavePlan} disabled={isSaving} className="flex-1 bg-indigo-600 py-4 rounded-2xl font-black text-white dark:text-slate-900 hover:opacity-90 flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all disabled:opacity-50">
-                                            {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={20}/> {editingPlanId ? 'อัปเดตข้อมูล' : 'บันทึกเป็นฉบับร่าง'}</>}
+                                            {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={20}/> {editingPlanId ? 'อัปเดตแผนงาน' : 'บันทึกเป็นฉบับร่าง'}</>}
                                         </button>
                                         {editingPlanId && (
-                                            <button onClick={resetForm} className="px-6 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-2xl font-bold active:scale-95 transition-all">ยกเลิก</button>
+                                            <button onClick={resetForm} className="px-6 bg-slate-200 dark:bg-slate-800 rounded-2xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">ยกเลิก</button>
                                         )}
                                     </div>
                                 </div>
@@ -416,36 +401,45 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                             <div className="text-center py-12 bg-white/30 dark:bg-slate-900/30 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/10 opacity-60"><Info className="mx-auto text-slate-300 mb-4" size={32} /><p className="text-slate-400 italic text-sm font-medium">ยังไม่มีแผนงานในวันนี้...</p></div>
                         ) : selectedDayPlans.map((plan) => {
                             const statusUI = getStatusUI(plan.status);
-                            const canModify = targetUserId === user.uid && (plan.status === 'draft' || plan.status === 'rejected');
-                            
+                            const isOwnPlan = plan.userId === user.uid;
+                            const canEdit = isOwnPlan && (plan.status === 'draft' || plan.status === 'rejected');
+
                             return (
-                                <GlassCard key={plan.id} className={`p-0 overflow-hidden border-indigo-500/10 ${plan.status === 'rejected' ? 'border-rose-500/30' : ''}`}>
+                                <GlassCard key={plan.id} className={`p-0 overflow-hidden border-indigo-500/10 ${plan.status === 'rejected' ? 'opacity-70' : ''}`}>
                                     <div className="p-6 border-b flex justify-between items-start dark:border-white/5">
-                                        <div className="flex gap-4"><div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-lg"><UserIcon size={24} /></div><div><div className="flex items-center gap-2 mb-1.5"><h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">{plan.title}</h3><div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-1 ${statusUI.color}`}>{statusUI.icon} {statusUI.label}</div></div><div className="flex items-center gap-3"><span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{plan.userName}</span><span className="w-1 h-1 rounded-full bg-slate-300"></span><span className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Clock size={10} /> {new Date(plan.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span></div></div></div>
-                                        
+                                        <div className="flex gap-4">
+                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-lg"><UserIcon size={24} /></div>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1.5"><h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">{plan.title}</h3><div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-1 ${statusUI.color}`}>{statusUI.icon} {statusUI.label}</div></div>
+                                                <div className="flex items-center gap-3"><span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{plan.userName}</span><span className="w-1 h-1 rounded-full bg-slate-300"></span><span className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Clock size={10} /> {new Date(plan.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span></div>
+                                            </div>
+                                        </div>
                                         <div className="flex items-center gap-1 relative" ref={openMenuId === plan.id ? menuRef : null}>
-                                            {canModify && (
+                                            {canEdit && (
                                                 <button 
                                                     onClick={() => handleSendForApproval(plan.id)}
-                                                    className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg active:scale-90 transition-all flex items-center gap-1.5"
+                                                    className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg active:scale-90 transition-all"
                                                     title="ส่งขออนุมัติ"
                                                 >
-                                                    <Send size={14} />
-                                                    <span className="text-[10px] font-black uppercase tracking-wider">ส่ง</span>
+                                                    <Send size={16} />
                                                 </button>
                                             )}
                                             <button 
-                                                onClick={() => setOpenMenuId(openMenuId === plan.id ? null : plan.id)} 
-                                                className="p-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                                                onClick={() => setOpenMenuId(openMenuId === plan.id ? null : plan.id)}
+                                                className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all"
                                             >
                                                 <MoreVertical size={20} />
                                             </button>
                                             
-                                            {/* Action Dropdown Menu */}
+                                            {/* Dropdown Menu */}
                                             {openMenuId === plan.id && (
-                                                <div className="absolute top-full right-0 mt-2 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] py-2 animate-enter">
-                                                    <button onClick={() => handleEditPlan(plan)} className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 flex items-center gap-2"><Edit size={16} className="text-cyan-500" /> แก้ไขแผนงาน</button>
-                                                    <button onClick={() => handleDelete(plan.id)} className="w-full text-left px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 flex items-center gap-2 border-t dark:border-white/5"><Trash2 size={16} /> ลบแผนงาน</button>
+                                                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] py-2 animate-enter">
+                                                    <button onClick={() => handleEditPlan(plan)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                                        <Edit size={16} className="text-cyan-500" /> แก้ไขแผนงาน
+                                                    </button>
+                                                    <button onClick={() => handleDelete(plan.id)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors border-t dark:border-white/5">
+                                                        <Trash2 size={16} /> ลบแผนงาน
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
@@ -463,7 +457,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
 
             {activeTab === 'approvals' && (
                 <div className="space-y-6 animate-enter">
-                    <div className="flex flex-col gap-2 pt-2"><h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">การจัดการคำขอ</h2><p className="text-slate-500 text-sm font-medium mt-2">จัดการและติดตามสถานะแผนงาน{isAdmin ? 'ของทุกคน (Admin)' : isManager ? 'ของพนักงานที่รับผิดชอบ' : 'ของคุณ'}</p></div>
+                    <div className="flex flex-col gap-2 pt-2"><h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">การจัดการคำขอ</h2><p className="text-slate-500 text-sm font-medium mt-2">จัดการและติดตามสถานะแผนงาน{isAdmin ? 'ของทุกคน (Admin)' : isManager ? 'ของพนักงานที่คุณดูแล' : 'ของคุณ'}</p></div>
 
                     {loading ? (<div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>) : (
                         <div className="space-y-4">
@@ -494,9 +488,9 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                                                                 <div className={`p-2.5 rounded-xl ${plan.status === 'rejected' ? 'bg-rose-100 text-rose-500' : 'bg-slate-100 text-slate-500'}`}>{plan.status === 'rejected' ? <XCircle size={16}/> : <Edit size={16}/>}</div>
                                                                 <div><div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{plan.title}</div><div className="text-[9px] text-slate-500 font-bold uppercase mt-1">{new Date(plan.date).toLocaleDateString('th-TH', {weekday:'short', day:'numeric', month:'short'})}</div></div>
                                                             </div>
-                                                            <div className="flex items-center gap-1">
-                                                                <button onClick={() => handleSendForApproval(plan.id)} className="p-2 bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors"><Send size={14}/></button>
-                                                                <button onClick={() => handleEditPlan(plan)} className="p-2 text-slate-300 hover:text-cyan-500 transition-colors"><Edit size={14}/></button>
+                                                            <div className="flex gap-1">
+                                                                <button onClick={() => handleSendForApproval(plan.id)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Send size={16}/></button>
+                                                                <button onClick={() => handleEditPlan(plan)} className="p-2 text-slate-400 hover:text-cyan-500 rounded-lg transition-colors"><Edit size={16}/></button>
                                                             </div>
                                                         </div>
                                                     ))}
