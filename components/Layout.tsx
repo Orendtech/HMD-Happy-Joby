@@ -20,28 +20,30 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const [pendingRemindersCount, setPendingRemindersCount] = useState(0);
     const [pendingPlansCount, setPendingPlansCount] = useState(0);
 
-    // Unified Status Bar Management
+    // Simplified Status Bar Sync - Only ensuring color matches the current HTML class
     useEffect(() => {
         const syncStatusBar = () => {
             const metaThemeColor = document.getElementById('meta-theme-color');
             if (!metaThemeColor) return;
 
             const isDark = document.documentElement.classList.contains('dark');
-            let color = isDark ? '#020617' : '#F5F5F7';
-
-            if (!isHomePage) {
+            const color = isDark ? '#020617' : '#F5F5F7';
+            
+            // Only update if current value is different to avoid flickering/bouncing
+            if (metaThemeColor.getAttribute('content') !== color) {
                 metaThemeColor.setAttribute('content', color);
-            } else {
-                if (!metaThemeColor.getAttribute('content')) {
-                    metaThemeColor.setAttribute('content', color);
-                }
+                document.documentElement.style.backgroundColor = color;
             }
         };
+
         syncStatusBar();
+        
+        // Listen for class changes on html tag (triggered by theme toggle)
         const observer = new MutationObserver(syncStatusBar);
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        
         return () => observer.disconnect();
-    }, [location.pathname, isHomePage]);
+    }, []);
 
     // Update System App Badge
     useEffect(() => {
@@ -70,7 +72,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
         }
 
         const checkData = async () => {
-            // Reminders Count
             const list = await getReminders(user.uid);
             const now = new Date();
             const todayStr = getTodayDateId();
@@ -90,7 +91,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 }
             });
 
-            // Work Plans Count
             if (userProfile?.role === 'admin' || userProfile?.role === 'manager') {
                 const allPlans = await getWorkPlans();
                 const pendingOnly = allPlans.filter(p => p.status === 'pending');
@@ -103,12 +103,10 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                     setPendingPlansCount(pendingOnly.filter(p => teamIds.includes(p.userId)).length);
                 }
             } else {
-                // For users, show count of rejected plans they need to fix
                 const myPlans = await getWorkPlans(user.uid);
                 setPendingPlansCount(myPlans.filter(p => p.status === 'rejected').length);
             }
 
-            // Time attendance reminders
             const day = now.getDay();
             const hour = now.getHours();
             const minute = now.getMinutes();
@@ -178,7 +176,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                         badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
                                         vibrate: [100, 50, 100]
                                     } as any);
-                                    // Refresh counts when something happens
                                     checkData();
                                 }
                             }

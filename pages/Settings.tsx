@@ -5,7 +5,11 @@ import { auth } from '../firebaseConfig';
 import { getUserProfile, updateUserProfile } from '../services/dbService';
 import { UserProfile } from '../types';
 import { GlassCard } from '../components/GlassCard';
-import { User as UserIcon, MapPin, Calendar, Mail, Lock, Save, LogOut, Settings as SettingsIcon, Camera, Upload, Sun, Moon, BellRing, ShieldCheck } from 'lucide-react';
+import { 
+    User as UserIcon, MapPin, Calendar, Mail, Lock, Save, 
+    LogOut, Settings as SettingsIcon, Camera, Upload, 
+    Sun, Moon, BellRing, ShieldCheck, RotateCcw, Sparkles, RefreshCcw, Info
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
@@ -23,6 +27,9 @@ const Settings: React.FC<Props> = ({ user }) => {
     const [msgType, setMsgType] = useState<'success' | 'error'>('success');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
+    const [updateLoading, setUpdateLoading] = useState(false);
+    const [appVersion] = useState("1.2.5"); // เวอร์ชันของแอป
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -47,18 +54,31 @@ const Settings: React.FC<Props> = ({ user }) => {
     }, [user]);
 
     const toggleTheme = () => {
-        const metaThemeColors = document.querySelectorAll('meta[name="theme-color"]');
+        const metaThemeColor = document.getElementById('meta-theme-color');
         if (isDarkMode) {
             document.documentElement.classList.remove('dark');
             localStorage.theme = 'light';
-            metaThemeColors.forEach(tag => tag.setAttribute('content', '#F5F5F7'));
+            const color = '#F5F5F7';
+            if (metaThemeColor) metaThemeColor.setAttribute('content', color);
+            document.documentElement.style.backgroundColor = color;
             setIsDarkMode(false);
         } else {
             document.documentElement.classList.add('dark');
             localStorage.theme = 'dark';
-            metaThemeColors.forEach(tag => tag.setAttribute('content', '#020617'));
+            const color = '#020617';
+            if (metaThemeColor) metaThemeColor.setAttribute('content', color);
+            document.documentElement.style.backgroundColor = color;
             setIsDarkMode(true);
         }
+    };
+
+    const handleUpdateApp = () => {
+        setUpdateLoading(true);
+        // จำลองการเช็คเวอร์ชัน 1.5 วินาที
+        setTimeout(() => {
+            // บังคับ Reload หน้าเว็บเพื่อล้าง Cache
+            window.location.reload();
+        }, 1500);
     };
 
     const handleEnableNotifications = async () => {
@@ -239,6 +259,40 @@ const Settings: React.FC<Props> = ({ user }) => {
                 </div>
 
                 {msg && <div className={`text-center text-sm p-3 rounded-xl font-medium ${msgType === 'success' ? 'text-emerald-600 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/20' : 'text-rose-600 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/20'} animate-pulse`}>{msg}</div>}
+            </GlassCard>
+
+            {/* Application Version Section */}
+            <GlassCard className="border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-900/5">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl text-indigo-500 shadow-sm">
+                            <RotateCcw size={22} />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white">เวอร์ชันของแอป</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Version {appVersion}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-200 dark:border-emerald-500/20">
+                        <Sparkles size={10} /> ล่าสุด
+                    </div>
+                </div>
+                
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-5">
+                    แอปจะอัปเดตอัตโนมัติเมื่อมีการเปิดใหม่ หากคุณพบปัญหาหรือไม่เห็นฟีเจอร์ใหม่ สามารถกดปุ่มด้านล่างเพื่อตรวจสอบเวอร์ชันล่าสุดและโหลดหน้าใหม่ได้ทันที
+                </p>
+
+                <button 
+                    onClick={handleUpdateApp} 
+                    disabled={updateLoading}
+                    className="w-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-indigo-100 dark:border-indigo-500/30 shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                    {updateLoading ? (
+                        <RefreshCcw size={18} className="animate-spin" />
+                    ) : (
+                        <><RefreshCcw size={18} /> ตรวจสอบการอัปเดต</>
+                    )}
+                </button>
             </GlassCard>
 
              <GlassCard className="space-y-4 border-rose-100 dark:border-rose-500/20 bg-rose-50/50 dark:bg-rose-900/5">

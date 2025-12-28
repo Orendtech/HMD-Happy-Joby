@@ -7,8 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
     
     <!-- PWA & Theme Settings -->
-    <!-- Use only one theme-color tag for reliable JS control -->
-    <meta name="theme-color" content="#f8fafc" id="meta-theme-color">
+    <meta name="theme-color" content="#F5F5F7" id="meta-theme-color">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
@@ -20,7 +19,7 @@
 
     <title>Happy Joby - Intelligent Workspace</title>
     
-    <!-- Theme Initialization Script -->
+    <!-- Theme Initialization Script - Runs before CSS to prevent flash of wrong color -->
     <script>
       (function() {
         const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -28,10 +27,12 @@
         
         if (isDark) {
           document.documentElement.classList.add('dark');
+          document.documentElement.style.backgroundColor = '#020617';
           if (metaThemeColor) metaThemeColor.setAttribute('content', '#020617');
         } else {
           document.documentElement.classList.remove('dark');
-          if (metaThemeColor) metaThemeColor.setAttribute('content', '#f8fafc');
+          document.documentElement.style.backgroundColor = '#F5F5F7';
+          if (metaThemeColor) metaThemeColor.setAttribute('content', '#F5F5F7');
         }
       })();
     </script>
@@ -42,27 +43,30 @@
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
      <style>
-      body {
+      /* CRITICAL: Status Bar Fix for iOS PWA */
+      :root {
+        --bg-light: #F5F5F7;
+        --bg-dark: #020617;
+      }
+
+      html, body {
         font-family: 'Sarabun', sans-serif;
         -webkit-tap-highlight-color: transparent;
-        transition: background-color 0.3s ease;
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
-      }
-      
-      html {
-        height: -webkit-fill-available;
-      }
-
-      body {
-        background-color: #f8fafc;
-        color: #0f172a;
         margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        /* These ensure the safe areas inherit the background color correctly */
+        background-color: var(--bg-light);
       }
 
-      .dark body {
-        background-color: #020617;
-        color: #f8fafc;
+      html.dark, html.dark body {
+        background-color: var(--bg-dark);
+      }
+
+      /* Transitions for smooth theme switching */
+      html, body, main, header, nav {
+        transition: background-color 0.3s ease, border-color 0.3s ease;
       }
 
       /* Brand Loading Animations */
