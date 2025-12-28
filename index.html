@@ -9,10 +9,11 @@
     <!-- PWA & Theme Settings -->
     <meta name="theme-color" content="#F5F5F7" id="meta-theme-color">
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- 'default' allows status bar text to flip between black/white based on theme-color -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
     
-    <!-- Critical: Tell iOS we support both, but we will control it via JS -->
+    <!-- Critical: Support both modes but we will control manually -->
     <meta name="color-scheme" content="light dark">
 
     <!-- App Icons -->
@@ -40,12 +41,6 @@
         
         // Apply background immediately to avoid the white/black flash
         root.style.backgroundColor = color;
-        
-        // Update meta tag immediately
-        document.addEventListener('DOMContentLoaded', () => {
-          const meta = document.getElementById('meta-theme-color');
-          if (meta) meta.setAttribute('content', color);
-        });
       })();
     </script>
 
@@ -67,7 +62,6 @@
         padding: 0;
         width: 100%;
         height: 100%;
-        /* Force background to prevent flash */
         background-color: var(--bg-light);
       }
 

@@ -20,37 +20,53 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const [pendingRemindersCount, setPendingRemindersCount] = useState(0);
     const [pendingPlansCount, setPendingPlansCount] = useState(0);
 
-    // CRITICAL FIX: Sync theme on EVERY route change
-    // This ensures that when moving from Settings -> Home, iOS is forced to re-read the meta tag.
+    // AGGRESSIVE iOS Theme Sync
     useEffect(() => {
         const syncTheme = () => {
             const isDark = document.documentElement.classList.contains('dark');
             const color = isDark ? '#020617' : '#F5F5F7';
             
-            // 1. Update the meta theme-color tag (Controls iOS status bar background)
-            const metaThemeColor = document.getElementById('meta-theme-color');
-            if (metaThemeColor) {
-                metaThemeColor.setAttribute('content', color);
-            }
-            
-            // 2. Update the root and body background colors (Controls PWA "shell" color)
+            // 1. Force CSS Property (Sometimes iOS prefers this over meta)
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
             document.documentElement.style.backgroundColor = color;
             document.body.style.backgroundColor = color;
-            
-            // 3. Log for debugging in development if needed
-            // console.log(`[ThemeSync] Applied ${isDark ? 'Dark' : 'Light'} theme color: ${color}`);
+
+            // 2. RE-INJECT Meta Tag (Crucial for iOS PWA navigation)
+            // We remove and recreate the tag to force the OS to notice the change
+            const existingMeta = document.getElementById('meta-theme-color');
+            if (existingMeta) {
+                existingMeta.remove();
+            }
+
+            const newMeta = document.createElement('meta');
+            newMeta.id = 'meta-theme-color';
+            newMeta.name = 'theme-color';
+            newMeta.content = color;
+            document.getElementsByTagName('head')[0].appendChild(newMeta);
+
+            // 3. Ensure Status Bar Style is consistent
+            // iOS default is black text on white background (when theme-color is light)
+            const existingStatus = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+            if (existingStatus) {
+                existingStatus.setAttribute('content', 'default');
+            }
         };
 
-        // Execute immediately on route change
+        // Run on every route change
         syncTheme();
         
-        // Also listen for changes from other tabs/localstorage
+        // Run after a small delay to catch any post-navigation rendering
+        const timer = setTimeout(syncTheme, 100);
+
         window.addEventListener('storage', (e) => {
             if (e.key === 'theme') syncTheme();
         });
 
-        return () => window.removeEventListener('storage', syncTheme);
-    }, [location.pathname]); // <--- Dependency on pathname is the key!
+        return () => {
+            clearTimeout(timer);
+            window.removeEventListener('storage', syncTheme);
+        };
+    }, [location.pathname]);
 
     // Update System App Badge
     useEffect(() => {
