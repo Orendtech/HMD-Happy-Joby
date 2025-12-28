@@ -1,3 +1,4 @@
+
 {
   "short_name": "Happy Joby",
   "name": "Happy Joby - Intelligent Workspace",
@@ -17,7 +18,7 @@
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#020617",
-  "background_color": "#020617",
+  "theme_color": "#f8fafc",
+  "background_color": "#f8fafc",
   "orientation": "portrait"
 }

@@ -23,15 +23,16 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     // Global Status Bar Syncing
     useEffect(() => {
         const syncStatusBar = () => {
-            const metaThemeColor = document.querySelector('meta[name="theme-color"]');
-            if (!metaThemeColor) return;
+            const metaThemeColors = document.querySelectorAll('meta[name="theme-color"]');
+            if (metaThemeColors.length === 0) return;
 
             const isDark = document.documentElement.classList.contains('dark');
 
             // If on homepage, the Page component will handle it (dynamic leval color)
             // If on ANY other page, we sync it to the standard background color
             if (!isHomePage) {
-                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+                const color = isDark ? '#020617' : '#f8fafc';
+                metaThemeColors.forEach(tag => tag.setAttribute('content', color));
             }
         };
 
