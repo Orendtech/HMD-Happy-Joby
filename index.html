@@ -7,7 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
     
     <!-- PWA & Theme Settings -->
-    <!-- Use only one theme-color tag for reliable JS control -->
     <meta name="theme-color" content="#F5F5F7" id="meta-theme-color">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -28,9 +27,11 @@
         
         if (isDark) {
           document.documentElement.classList.add('dark');
+          document.documentElement.style.backgroundColor = '#020617';
           if (metaThemeColor) metaThemeColor.setAttribute('content', '#020617');
         } else {
           document.documentElement.classList.remove('dark');
+          document.documentElement.style.backgroundColor = '#F5F5F7';
           if (metaThemeColor) metaThemeColor.setAttribute('content', '#F5F5F7');
         }
       })();
@@ -42,22 +43,27 @@
      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
      crossorigin=""/>
      <style>
-      body {
+      /* Apply background color to both html and body to prevent black edges */
+      html, body {
         font-family: 'Sarabun', sans-serif;
         -webkit-tap-highlight-color: transparent;
         transition: background-color 0.3s ease;
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
-      }
-      
-      html {
+        margin: 0;
+        height: 100%;
         height: -webkit-fill-available;
+      }
+
+      html {
+        background-color: #F5F5F7;
+      }
+
+      html.dark {
+        background-color: #020617;
       }
 
       body {
         background-color: #F5F5F7;
         color: #0f172a;
-        margin: 0;
       }
 
       .dark body {
