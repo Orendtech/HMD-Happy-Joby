@@ -61,7 +61,7 @@ export interface UserProfile {
     currentStreak?: number;
     lastActiveDate?: string;
 }
-// Rest of types.ts remains the same...
+
 export interface CheckInRecord {
     location: string;
     timestamp: Timestamp;
@@ -111,7 +111,7 @@ export interface ActivityLog {
     id: string;
     userId: string;
     userName: string;
-    type: 'check-in' | 'check-out';
+    type: 'check-in' | 'check-out' | 'work-plan-submitted';
     location: string;
     timestamp: Timestamp;
 }

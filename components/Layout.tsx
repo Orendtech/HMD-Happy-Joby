@@ -3,8 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
 import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
-import { UserProfile, AttendanceDay, ActivityLog } from '../types';
-import { getReminders, markReminderAsNotified, getTodayAttendance, getTodayDateId } from '../services/dbService';
+import { UserProfile, AttendanceDay, ActivityLog, WorkPlan } from '../types';
+import { getReminders, markReminderAsNotified, getTodayAttendance, getTodayDateId, getWorkPlans, getTeamMembers } from '../services/dbService';
 import { db, APP_ARTIFACT_ID } from '../firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
 
@@ -17,7 +17,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const isHomePage = location.pathname === '/';
-    const [pendingCount, setPendingCount] = useState(0);
+    const [pendingRemindersCount, setPendingRemindersCount] = useState(0);
+    const [pendingPlansCount, setPendingPlansCount] = useState(0);
 
     // Unified Status Bar Management
     useEffect(() => {
@@ -26,38 +27,30 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             if (!metaThemeColor) return;
 
             const isDark = document.documentElement.classList.contains('dark');
-            
-            // Default colors based on theme
             let color = isDark ? '#020617' : '#F5F5F7';
 
-            // Special handling for homepage rank colors is delegated to TimeAttendance.tsx
-            // But we ensure that if we are NOT on homepage, we RESET it to the theme default immediately
             if (!isHomePage) {
                 metaThemeColor.setAttribute('content', color);
             } else {
-                // On homepage, if rank color isn't ready yet, set a safe default to prevent black bar
                 if (!metaThemeColor.getAttribute('content')) {
                     metaThemeColor.setAttribute('content', color);
                 }
             }
         };
-
         syncStatusBar();
-        
-        // Watch for theme class changes (from Settings toggle)
         const observer = new MutationObserver(syncStatusBar);
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-        
         return () => observer.disconnect();
     }, [location.pathname, isHomePage]);
 
     // Update System App Badge
     useEffect(() => {
+        const totalPending = pendingRemindersCount + pendingPlansCount;
         const updateAppBadge = async () => {
             if ('setAppBadge' in navigator) {
                 try {
-                    if (pendingCount > 0) {
-                        await (navigator as any).setAppBadge(pendingCount);
+                    if (totalPending > 0) {
+                        await (navigator as any).setAppBadge(totalPending);
                     } else {
                         await (navigator as any).clearAppBadge();
                     }
@@ -67,7 +60,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             }
         };
         updateAppBadge();
-    }, [pendingCount]);
+    }, [pendingRemindersCount, pendingPlansCount]);
 
     useEffect(() => {
         if (!user) return;
@@ -76,13 +69,13 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             Notification.requestPermission();
         }
 
-        const checkReminders = async () => {
+        const checkData = async () => {
+            // Reminders Count
             const list = await getReminders(user.uid);
             const now = new Date();
             const todayStr = getTodayDateId();
-            
             const uncompletedList = list.filter(r => !r.isCompleted);
-            setPendingCount(uncompletedList.length);
+            setPendingRemindersCount(uncompletedList.length);
             
             list.forEach(async (r) => {
                 const due = new Date(r.dueTime);
@@ -97,11 +90,29 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 }
             });
 
+            // Work Plans Count
+            if (userProfile?.role === 'admin' || userProfile?.role === 'manager') {
+                const allPlans = await getWorkPlans();
+                const pendingOnly = allPlans.filter(p => p.status === 'pending');
+                
+                if (userProfile.role === 'admin') {
+                    setPendingPlansCount(pendingOnly.length);
+                } else {
+                    const team = await getTeamMembers(user.uid);
+                    const teamIds = team.map(m => m.id);
+                    setPendingPlansCount(pendingOnly.filter(p => teamIds.includes(p.userId)).length);
+                }
+            } else {
+                // For users, show count of rejected plans they need to fix
+                const myPlans = await getWorkPlans(user.uid);
+                setPendingPlansCount(myPlans.filter(p => p.status === 'rejected').length);
+            }
+
+            // Time attendance reminders
             const day = now.getDay();
             const hour = now.getHours();
             const minute = now.getMinutes();
             const totalMinutes = hour * 60 + minute;
-
             const checkInTargetMinutes = 8 * 60 + 50; 
             const lastCheckInReminderKey = `attendance_reminder_sent_${user.uid}`;
             const lastCheckInSentDate = localStorage.getItem(lastCheckInReminderKey);
@@ -120,29 +131,10 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                     }
                 }
             }
-
-            const checkOutTargetMinutes = 17 * 60; 
-            const lastCheckOutReminderKey = `checkout_reminder_sent_${user.uid}`;
-            const lastCheckOutSentDate = localStorage.getItem(lastCheckOutReminderKey);
-
-            if (day >= 1 && day <= 5 && totalMinutes >= checkOutTargetMinutes && lastCheckOutSentDate !== todayStr) {
-                const todayAtt = await getTodayAttendance(user.uid);
-                if (todayAtt && todayAtt.checkIns.length > 0 && !todayAtt.checkOut) {
-                    if ("Notification" in window && Notification.permission === "granted") {
-                        new Notification("🏁 อย่าลืมเช็คเอาท์!", {
-                            body: "ขณะนี้เวลา 17:00 น. แล้ว ได้เวลาเลิกงานแล้วครับ อย่าลืมสรุปรายงานและเช็คเอาท์ด้วยนะ",
-                            icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
-                            badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
-                            vibrate: [200, 100, 200]
-                        } as any);
-                        localStorage.setItem(lastCheckOutReminderKey, todayStr);
-                    }
-                }
-            }
         };
 
-        const interval = setInterval(checkReminders, 60000);
-        checkReminders(); 
+        const interval = setInterval(checkData, 60000);
+        checkData(); 
 
         let unsubscribe: (() => void) | undefined;
         if (userProfile?.role === 'admin' || userProfile?.role === 'manager') {
@@ -161,17 +153,34 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                         const log = change.doc.data() as ActivityLog;
                         if (log.userId !== user.uid) {
                             if ("Notification" in window && Notification.permission === "granted") {
-                                const title = log.type === 'check-in' ? "📍 พนักงานเช็คอินแล้ว" : "🏁 พนักงานเช็คเอาท์แล้ว";
-                                const message = log.type === 'check-in' 
-                                    ? `${log.userName} เช็คอินที่ ${log.location}`
-                                    : `${log.userName} ส่งรายงานและเช็คเอาท์เรียบร้อย`;
+                                let title = "";
+                                let message = "";
 
-                                new Notification(title, {
-                                    body: message,
-                                    icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
-                                    badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
-                                    vibrate: [100, 50, 100]
-                                } as any);
+                                switch(log.type) {
+                                    case 'check-in':
+                                        title = "📍 พนักงานเช็คอินแล้ว";
+                                        message = `${log.userName} เช็คอินที่ ${log.location}`;
+                                        break;
+                                    case 'check-out':
+                                        title = "🏁 พนักงานเช็คเอาท์แล้ว";
+                                        message = `${log.userName} ส่งรายงานและเช็คเอาท์เรียบร้อย`;
+                                        break;
+                                    case 'work-plan-submitted':
+                                        title = "📋 มีคำขออนุมัติแผนงานใหม่";
+                                        message = `${log.userName} ได้ส่งแผนงานเพื่อขอการอนุมัติ: ${log.location}`;
+                                        break;
+                                }
+
+                                if (title) {
+                                    new Notification(title, {
+                                        body: message,
+                                        icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                                        badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                                        vibrate: [100, 50, 100]
+                                    } as any);
+                                    // Refresh counts when something happens
+                                    checkData();
+                                }
                             }
                         }
                     }
@@ -187,8 +196,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
 
     const navItems = [
         { path: '/', icon: <Clock size={24} />, label: 'ลงเวลา' },
-        { path: '/reminders', icon: <Bell size={24} />, label: 'แจ้งเตือน', badge: pendingCount },
-        { path: '/planner', icon: <MessageSquare size={24} />, label: 'แผนงาน' },
+        { path: '/reminders', icon: <Bell size={24} />, label: 'แจ้งเตือน', badge: pendingRemindersCount },
+        { path: '/planner', icon: <MessageSquare size={24} />, label: 'แผนงาน', badge: pendingPlansCount },
         { path: '/reports', icon: <FileText size={24} />, label: 'รายงาน' },
         { path: '/management', icon: <Users size={24} />, label: 'รายชื่อ' },
     ];
@@ -197,13 +206,11 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
         navItems.push({ path: '/admin', icon: <ShieldCheck size={24} />, label: 'Admin' });
     }
 
-    const roleBadge = () => {
+    const badge = (() => {
         if (userProfile?.role === 'admin') return { label: 'ADMIN', bg: 'bg-indigo-100 dark:bg-indigo-500/30 border-indigo-200 dark:border-indigo-500/50 text-indigo-600 dark:text-indigo-300' };
         if (userProfile?.role === 'manager') return { label: 'MANAGER', bg: 'bg-emerald-100 dark:bg-emerald-500/30 border-emerald-200 dark:border-emerald-500/50 text-emerald-600 dark:text-emerald-300' };
         return { label: 'USER', bg: 'bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400' };
-    };
-
-    const badge = roleBadge();
+    })();
 
     return (
         <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-[#020617] text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">

@@ -81,17 +81,19 @@ export const addWorkPlan = async (plan: Omit<WorkPlan, 'id'>) => {
     return ref.id;
 };
 
-// New function to update existing plan
 export const saveWorkPlan = async (plan: Partial<WorkPlan> & { userId: string }) => {
-    if (plan.id) {
-        const ref = doc(getWorkPlansCol(), plan.id);
-        const { id, ...data } = plan;
-        await updateDoc(ref, { ...data, createdAt: new Date().toISOString() });
+    const { id, ...data } = plan;
+    if (id) {
+        const ref = doc(getWorkPlansCol(), id);
+        await updateDoc(ref, { 
+            ...data, 
+            createdAt: new Date().toISOString() 
+        });
         return id;
     } else {
         const ref = doc(getWorkPlansCol());
         await setDoc(ref, { 
-            ...plan, 
+            ...data, 
             status: 'draft',
             createdAt: new Date().toISOString() 
         });
@@ -101,23 +103,59 @@ export const saveWorkPlan = async (plan: Partial<WorkPlan> & { userId: string })
 
 export const submitPlansForApproval = async (planIds: string[]) => {
     const batch = writeBatch(db);
+    let userName = 'Unknown';
+    let userId = '';
+    
+    if (planIds.length > 0) {
+        const firstDoc = await getDoc(doc(getWorkPlansCol(), planIds[0]));
+        if (firstDoc.exists()) {
+            const d = firstDoc.data();
+            userName = d.userName || 'พนักงาน';
+            userId = d.userId;
+        }
+    }
+
     planIds.forEach(id => {
         const ref = doc(getWorkPlansCol(), id);
         batch.update(ref, { status: 'pending' });
     });
+    
     await batch.commit();
+
+    if (userId) {
+        await addDoc(getActivityLogsCol(), {
+            userId,
+            userName,
+            type: 'work-plan-submitted',
+            location: `ส่งแผนงาน ${planIds.length} รายการ`,
+            timestamp: Timestamp.now()
+        });
+    }
 };
 
 export const updateWorkPlanStatus = async (planId: string, status: 'approved' | 'rejected' | 'pending' | 'draft') => {
     const ref = doc(getWorkPlansCol(), planId);
     await updateDoc(ref, { status });
+
+    if (status === 'pending') {
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+            const d = snap.data();
+            await addDoc(getActivityLogsCol(), {
+                userId: d.userId,
+                userName: d.userName || 'พนักงาน',
+                type: 'work-plan-submitted',
+                location: d.title || 'แผนงานใหม่',
+                timestamp: Timestamp.now()
+            });
+        }
+    }
 };
 
 export const deleteWorkPlan = async (planId: string) => {
     await deleteDoc(doc(getWorkPlansCol(), planId));
 };
 
-// ... Rest of dbService remains the same
 export const getReminders = async (userId: string): Promise<Reminder[]> => {
     try {
         const q = query(getRemindersCol(userId));
