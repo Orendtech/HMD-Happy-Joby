@@ -54,16 +54,20 @@ const Settings: React.FC<Props> = ({ user }) => {
     }, [user]);
 
     const toggleTheme = () => {
-        const metaThemeColors = document.querySelectorAll('meta[name="theme-color"]');
+        const metaThemeColor = document.getElementById('meta-theme-color');
         if (isDarkMode) {
             document.documentElement.classList.remove('dark');
             localStorage.theme = 'light';
-            metaThemeColors.forEach(tag => tag.setAttribute('content', '#F5F5F7'));
+            const color = '#F5F5F7';
+            if (metaThemeColor) metaThemeColor.setAttribute('content', color);
+            document.documentElement.style.backgroundColor = color;
             setIsDarkMode(false);
         } else {
             document.documentElement.classList.add('dark');
             localStorage.theme = 'dark';
-            metaThemeColors.forEach(tag => tag.setAttribute('content', '#020617'));
+            const color = '#020617';
+            if (metaThemeColor) metaThemeColor.setAttribute('content', color);
+            document.documentElement.style.backgroundColor = color;
             setIsDarkMode(true);
         }
     };
