@@ -54,13 +54,19 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
         return () => clearInterval(interval);
     }, [user]);
 
+    // Bottom Navigation Items
     const navItems = [
-        { path: '/', icon: <Clock size={24} />, label: 'ลงเวลา' },
-        { path: '/ai', icon: <Sparkles size={24} />, label: 'AI' },
-        { path: '/reminders', icon: <Bell size={24} />, label: 'แจ้งเตือน', badge: pendingRemindersCount },
-        { path: '/planner', icon: <MessageSquare size={24} />, label: 'แผนงาน', badge: pendingPlansCount },
-        { path: '/reports', icon: <FileText size={24} />, label: 'รายงาน' },
+        { path: '/', icon: <Clock size={22} />, label: 'ลงเวลา' },
+        { path: '/ai', icon: <Sparkles size={22} />, label: 'AI' },
+        { path: '/planner', icon: <MessageSquare size={22} />, label: 'แผนงาน', badge: pendingPlansCount },
+        { path: '/reports', icon: <FileText size={22} />, label: 'รายงาน' },
+        { path: '/management', icon: <Users size={22} />, label: 'รายชื่อ' },
     ];
+
+    // Add Admin tab for authorized users
+    if (['admin', 'manager'].includes(userProfile?.role || '')) {
+        navItems.push({ path: '/admin', icon: <ShieldCheck size={22} />, label: 'Admin' });
+    }
 
     return (
         <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-[#020617] text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">
@@ -78,6 +84,16 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        {/* Reminders moved to Header for space saving */}
+                        <button 
+                            onClick={() => navigate('/reminders')} 
+                            className="p-2.5 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-100 dark:border-slate-700 relative"
+                        >
+                            <Bell size={20} className="text-slate-400" />
+                            {pendingRemindersCount > 0 && (
+                                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-slate-800"></span>
+                            )}
+                        </button>
                         <button onClick={() => navigate('/settings')} className="p-2.5 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-100 dark:border-slate-700"><Settings size={20} className="text-slate-400" /></button>
                     </div>
                 </header>
@@ -88,18 +104,18 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             </main>
 
             <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200/50 pb-[env(safe-area-inset-bottom)] pt-2">
-                <div className="flex justify-around items-center h-16 max-w-lg mx-auto w-full px-2">
+                <div className="flex justify-around items-center h-16 max-w-lg mx-auto w-full px-1">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
-                            <button key={item.path} onClick={() => navigate(item.path)} className={`relative flex flex-col items-center justify-center w-full h-full group ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400'}`}>
-                                <div className={`transform transition-all duration-300 ${isActive ? '-translate-y-1 scale-110' : ''}`}>
+                            <button key={item.path} onClick={() => navigate(item.path)} className={`relative flex flex-col items-center justify-center w-full h-full group ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500'}`}>
+                                <div className={`transform transition-all duration-300 ${isActive ? '-translate-y-1 scale-105' : ''}`}>
                                     {item.icon}
                                     {item.badge !== undefined && item.badge > 0 && (
-                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 px-1">{item.badge}</span>
+                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[8px] font-black min-w-[14px] h-3.5 rounded-full flex items-center justify-center border border-white dark:border-slate-900 px-0.5">{item.badge}</span>
                                     )}
                                 </div>
-                                <span className={`text-[10px] font-bold mt-1 ${isActive ? 'opacity-100' : 'opacity-0 hidden'}`}>{item.label}</span>
+                                <span className={`text-[9px] font-bold mt-1 transition-all ${isActive ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'}`}>{item.label}</span>
                             </button>
                         );
                     })}
