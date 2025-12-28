@@ -20,33 +20,37 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const [pendingRemindersCount, setPendingRemindersCount] = useState(0);
     const [pendingPlansCount, setPendingPlansCount] = useState(0);
 
-    // Optimized Theme Sync
+    // CRITICAL FIX: Sync theme on EVERY route change
+    // This ensures that when moving from Settings -> Home, iOS is forced to re-read the meta tag.
     useEffect(() => {
-        const syncThemeMeta = () => {
+        const syncTheme = () => {
             const isDark = document.documentElement.classList.contains('dark');
             const color = isDark ? '#020617' : '#F5F5F7';
             
-            // Only update if value is actually different to prevent flickering
+            // 1. Update the meta theme-color tag (Controls iOS status bar background)
             const metaThemeColor = document.getElementById('meta-theme-color');
-            if (metaThemeColor && metaThemeColor.getAttribute('content') !== color) {
+            if (metaThemeColor) {
                 metaThemeColor.setAttribute('content', color);
             }
             
-            if (document.documentElement.style.backgroundColor !== color) {
-                document.documentElement.style.backgroundColor = color;
-            }
+            // 2. Update the root and body background colors (Controls PWA "shell" color)
+            document.documentElement.style.backgroundColor = color;
+            document.body.style.backgroundColor = color;
+            
+            // 3. Log for debugging in development if needed
+            // console.log(`[ThemeSync] Applied ${isDark ? 'Dark' : 'Light'} theme color: ${color}`);
         };
 
-        syncThemeMeta();
-
-        // Listen for storage events (e.g. theme changed in another tab/component)
-        const handleStorage = (e: StorageEvent) => {
-            if (e.key === 'theme') syncThemeMeta();
-        };
+        // Execute immediately on route change
+        syncTheme();
         
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
-    }, []);
+        // Also listen for changes from other tabs/localstorage
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'theme') syncTheme();
+        });
+
+        return () => window.removeEventListener('storage', syncTheme);
+    }, [location.pathname]); // <--- Dependency on pathname is the key!
 
     // Update System App Badge
     useEffect(() => {
