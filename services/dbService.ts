@@ -18,7 +18,8 @@ import {
     deleteDoc,
     limit,
     addDoc,
-    deleteField
+    deleteField,
+    writeBatch
 } from 'firebase/firestore';
 import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport, Interaction, Reminder, WorkPlan, ActivityLog } from '../types';
 
@@ -57,9 +58,9 @@ export const getWorkPlans = async (userId?: string): Promise<WorkPlan[]> => {
     try {
         let q;
         if (userId) {
-            q = query(getWorkPlansCol(), where('userId', '==', userId), limit(100));
+            q = query(getWorkPlansCol(), where('userId', '==', userId), limit(200));
         } else {
-            q = query(getWorkPlansCol(), limit(100));
+            q = query(getWorkPlansCol(), limit(300));
         }
         const snap = await getDocs(q);
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() as any } as WorkPlan));
@@ -72,15 +73,51 @@ export const getWorkPlans = async (userId?: string): Promise<WorkPlan[]> => {
 
 export const addWorkPlan = async (plan: Omit<WorkPlan, 'id'>) => {
     const ref = doc(getWorkPlansCol());
-    await setDoc(ref, { ...plan, createdAt: new Date().toISOString() });
+    await setDoc(ref, { 
+        ...plan, 
+        status: 'draft',
+        createdAt: new Date().toISOString() 
+    });
     return ref.id;
+};
+
+// New function to update existing plan
+export const saveWorkPlan = async (plan: Partial<WorkPlan> & { userId: string }) => {
+    if (plan.id) {
+        const ref = doc(getWorkPlansCol(), plan.id);
+        const { id, ...data } = plan;
+        await updateDoc(ref, { ...data, createdAt: new Date().toISOString() });
+        return id;
+    } else {
+        const ref = doc(getWorkPlansCol());
+        await setDoc(ref, { 
+            ...plan, 
+            status: 'draft',
+            createdAt: new Date().toISOString() 
+        });
+        return ref.id;
+    }
+};
+
+export const submitPlansForApproval = async (planIds: string[]) => {
+    const batch = writeBatch(db);
+    planIds.forEach(id => {
+        const ref = doc(getWorkPlansCol(), id);
+        batch.update(ref, { status: 'pending' });
+    });
+    await batch.commit();
+};
+
+export const updateWorkPlanStatus = async (planId: string, status: 'approved' | 'rejected' | 'pending' | 'draft') => {
+    const ref = doc(getWorkPlansCol(), planId);
+    await updateDoc(ref, { status });
 };
 
 export const deleteWorkPlan = async (planId: string) => {
     await deleteDoc(doc(getWorkPlansCol(), planId));
 };
 
-// Reminders CRUD
+// ... Rest of dbService remains the same
 export const getReminders = async (userId: string): Promise<Reminder[]> => {
     try {
         const q = query(getRemindersCol(userId));
@@ -122,7 +159,6 @@ export const checkIn = async (userId: string, location: string, lat: number, lng
     if (attSnap.exists()) { await updateDoc(attRef, { checkIns: arrayUnion(record) }); } else { isFirstCheckInToday = true; const newDay: AttendanceDay = { id: today, checkIns: [record] }; await setDoc(attRef, newDay); }
     const userSnap = await getDoc(userRef); const userData = userSnap.data() as UserProfile;
     
-    // Create Activity Log for Admin
     await addDoc(getActivityLogsCol(), {
         userId,
         userName: userData.name || userData.email.split('@')[0],
@@ -145,13 +181,11 @@ export const checkOut = async (userId: string, reportData: DailyReport, dateId?:
     const targetDate = dateId || getTodayDateId(); 
     const attRef = getAttendanceRef(userId, targetDate); 
     const userRef = getUserRef(userId);
-    
     const attSnap = await getDoc(attRef);
     const isAlreadyCheckedOut = attSnap.exists() && !!attSnap.data()?.checkOut;
 
     let allNewPipelineItems: PipelineData[] = [];
     if (reportData.visits) { reportData.visits.forEach(visit => { if (visit.pipeline) { allNewPipelineItems = [...allNewPipelineItems, ...visit.pipeline]; } }); }
-    
     const userSnap = await getDoc(userRef); 
     const userData = userSnap.data() as UserProfile; 
     let activePipeline = userData.activePipeline || [];
@@ -165,12 +199,8 @@ export const checkOut = async (userId: string, reportData: DailyReport, dateId?:
     });
     
     const updateData: any = { report: reportData };
-    
-    // Only set checkOut timestamp and log activity if it's a final checkout and hasn't been done yet
     if (isFinal && !isAlreadyCheckedOut) {
         updateData.checkOut = Timestamp.now();
-        
-        // Create Activity Log for Admin only on first final checkout
         await addDoc(getActivityLogsCol(), {
             userId,
             userName: userData.name || userData.email.split('@')[0],
@@ -179,28 +209,16 @@ export const checkOut = async (userId: string, reportData: DailyReport, dateId?:
             timestamp: Timestamp.now()
         });
     }
-
     await updateDoc(userRef, { activePipeline: activePipeline });
     await updateDoc(attRef, updateData);
 };
 
-/**
- * Reverts a checkout for a specific user and date.
- * Removes the checkOut field from the attendance record.
- */
 export const undoCheckOut = async (userId: string, dateId: string) => {
     const attRef = getAttendanceRef(userId, dateId);
-    await updateDoc(attRef, {
-        checkOut: deleteField()
-    });
+    await updateDoc(attRef, { checkOut: deleteField() });
 };
 
-export const updateOpportunity = async (
-    userId: string, 
-    dateId: string, 
-    location: { visitIdx?: number, interactionIdx?: number, legacyIdx?: number }, 
-    updatedData: PipelineData | null // null = delete
-) => {
+export const updateOpportunity = async (userId: string, dateId: string, location: { visitIdx?: number, interactionIdx?: number, legacyIdx?: number }, updatedData: PipelineData | null) => {
     const attRef = getAttendanceRef(userId, dateId);
     const attSnap = await getDoc(attRef);
     if (!attSnap.exists()) return;
@@ -250,7 +268,7 @@ export const updateOpportunity = async (
 };
 
 export const getTodayAttendance = async (userId: string): Promise<AttendanceDay | null> => { const today = getTodayDateId(); const snap = await getDoc(getAttendanceRef(userId, today)); return snap.exists() ? snap.data() as AttendanceDay : null; };
-export const getUserHistory = async (userId: string): Promise<AttendanceDay[]> => { try { const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance`); const q = query(attColRef); const snap = await getDocs(q); const results = snap.docs.map(d => d.data() as AttendanceDay); return results.sort((a, b) => b.id.localeCompare(a.id)); } catch (e) { return []; } };
+export const getUserHistory = async (userId: string): Promise<AttendanceDay[]> => { try { const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance`); const q = query(attColRef); const snap = await getDocs(q); const results = snap.docs.map(d => { const data = d.data() as AttendanceDay; return { ...data, id: data.id || d.id }; }); return results.sort((a, b) => b.id.localeCompare(a.id)); } catch (e) { return []; } };
 export const getAllUsers = async (): Promise<AdminUser[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); return usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as UserProfile })); } catch (e) { return []; } };
 export const getTeamMembers = async (managerId: string): Promise<AdminUser[]> => { try { const allUsers = await getAllUsers(); return allUsers.filter(u => u.reportsTo === managerId || u.id === managerId); } catch (e) { return []; } };
 export const getAllGlobalCustomers = async (): Promise<Array<Customer & { addedBy: string, userId: string }>> => { try { const users = await getAllUsers(); const allCustomers: Array<Customer & { addedBy: string, userId: string }> = []; users.forEach(user => { if (user.customers && Array.isArray(user.customers)) { user.customers.forEach(c => { allCustomers.push({ ...c, addedBy: user.name || user.email, userId: user.id }); }); } }); return allCustomers.sort((a, b) => a.hospital.localeCompare(b.hospital)); } catch (e) { return []; } };
@@ -258,4 +276,5 @@ export const toggleUserStatus = async (userId: string, currentStatus: boolean) =
 export const updateUserRole = async (userId: string, newRole: 'admin' | 'manager' | 'user') => { await updateDoc(getUserRef(userId), { role: newRole }); };
 export const adminCreateUser = async (email: string, pass: string, reportsTo?: string) => { const secondaryApp = initializeApp(firebaseConfig, "Secondary"); const secondaryAuth = getAuth(secondaryApp); try { const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass); await initializeUser(cred.user.uid, email); await updateDoc(getUserRef(cred.user.uid), { isApproved: true, reportsTo: reportsTo || '' }); await signOut(secondaryAuth); await deleteApp(secondaryApp); } catch (e) { await deleteApp(secondaryApp); throw e; } };
 export const getAllUsersTodayLocations = async (): Promise<UserLocationData[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const results: UserLocationData[] = []; const today = getTodayDateId(); for (const userDoc of usersSnap.docs) { const userId = userDoc.id; const userData = userDoc.data() as UserProfile; const attSnap = await getDoc(getAttendanceRef(userId, today)); if (attSnap.exists()) { const attData = attSnap.data() as AttendanceDay; if (attData.checkIns && attData.checkIns.length > 0) { const latest = attData.checkIns[attData.checkIns.length - 1]; results.push({ userId, email: userData.email, name: userData.name, photoBase64: userData.photoBase64, lastCheckIn: latest, isCheckedOut: !!attData.checkOut }); } } } return results; } catch (e) { return []; } };
-export const getGlobalReportRange = async (startDate: string, endDate: string): Promise<any[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const reportData: any[] = []; for (const userDoc of usersSnap.docs) { const userId = userDoc.id; const userData = userDoc.data() as UserProfile; const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance`); const q = query(attColRef, where(documentId(), '>=', startDate), where(documentId(), '<=', endDate)); const attSnaps = await getDocs(q); attSnaps.forEach(attSnap => { const attData = attSnap.data() as AttendanceDay; if (attData.report && attData.report.visits && attData.report.visits.length > 0) { attData.report.visits.forEach((visit) => { let pipelineStr = ''; if (visit.pipeline) { pipelineStr = visit.pipeline.map(p => `${p.product} (${p.stage})`).join(' | '); } let metWithStr = visit.metWith ? visit.metWith.join(', ') : ''; reportData.push({ userEmail: userData.email, userName: userData.name || userData.email.split('@')[0], date: attData.id, checkInTime: visit.checkInTime ? visit.checkInTime.toDate().toLocaleTimeString('th-TH') : '-', checkOutTime: attData.checkOut?.toDate().toLocaleTimeString('th-TH') || '-', locations: visit.location, checkInCount: 1, hospitalCount: 1, reportSummary: visit.summary || '', metWith: metWithStr, pipeline: pipelineStr }); }); } else { const checkInCount = attData.checkIns.length; const locationNames = attData.checkIns.map(c => c.location); const uniqueLocations = new Set(locationNames).size; let metWithStr = ''; if (Array.isArray(attData.report?.metWith)) { metWithStr = attData.report.metWith.join(' | '); } else if (typeof attData.report?.metWith === 'string') { metWithStr = attData.report.metWith; } let pipelineStr = ''; if (Array.isArray(attData.report?.pipeline)) { pipelineStr = attData.report.pipeline.map(p => `${p.product} (${p.stage})`).join(' | '); } reportData.push({ userEmail: userData.email, userName: userData.name || userData.email.split('@')[0], date: attData.id, checkInTime: attData.checkIns[0]?.timestamp.toDate().toLocaleTimeString('th-TH') || '-', checkOutTime: attData.checkOut?.toDate().toLocaleTimeString('th-TH') || '-', locations: locationNames.join(', '), checkInCount: checkInCount, hospitalCount: uniqueLocations, reportSummary: attData.report?.summary || '', metWith: metWithStr, pipeline: pipelineStr }); } }); } return reportData.sort((a, b) => { if (a.date !== b.date) return a.date.localeCompare(b.date); return a.userEmail.localeCompare(b.userEmail); }); } catch (e) { return []; } };
+export const getGlobalReportRange = async (startDate: string, endDate: string): Promise<any[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const reportData: any[] = []; for (const userDoc of usersSnap.docs) { const userId = userDoc.id; const userData = userDoc.data() as UserProfile; const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance`); const q = query(attColRef, where(documentId(), '>=', startDate), where(documentId(), '<=', endDate)); const attSnaps = await getDocs(q); attSnaps.forEach(attSnap => { const attData = attSnap.data() as AttendanceDay; if (attData.report && attData.report.visits && attData.report.visits.length > 0) { attData.report.visits.forEach((visit) => { let pipelineStr = ''; if (visit.pipeline) { pipelineStr = visit.pipeline.map(p => `${p.product} (${p.stage})`).join(' | '); } let metWithStr = visit.metWith ? visit.metWith.join(', ') : ''; reportData.push({ userEmail: userData.email, userName: userData.name || userData.email.split('@')[0], date: attData.id, checkInTime: formatTimestamp(visit.checkInTime), checkOutTime: formatTimestamp(attData.checkOut), locations: visit.location, checkInCount: 1, hospitalCount: 1, reportSummary: visit.summary || '', metWith: metWithStr, pipeline: pipelineStr }); }); } else { const checkInCount = attData.checkIns.length; const locationNames = attData.checkIns.map(c => c.location); const uniqueLocations = new Set(locationNames).size; let metWithStr = ''; if (Array.isArray(attData.report?.metWith)) { metWithStr = attData.report.metWith.join(' | '); } else if (typeof attData.report?.metWith === 'string') { metWithStr = attData.report.metWith; } let pipelineStr = ''; if (Array.isArray(attData.report?.pipeline)) { pipelineStr = attData.report.pipeline.map(p => `${p.product} (${p.stage})`).join(' | '); } reportData.push({ userEmail: userData.email, userName: userData.name || userData.email.split('@')[0], date: attData.id, checkInTime: formatTimestamp(attData.checkIns[0]?.timestamp), checkOutTime: formatTimestamp(attData.checkOut), locations: locationNames.join(', '), checkInCount: checkInCount, hospitalCount: uniqueLocations, reportSummary: attData.report?.summary || '', metWith: metWithStr, pipeline: pipelineStr }); } }); } return reportData.sort((a, b) => { if (a.date !== b.date) return a.date.localeCompare(b.date); return a.userEmail.localeCompare(b.userEmail); }); } catch (e) { return []; } };
+const formatTimestamp = (ts: any) => { if (!ts) return '-'; try { if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString('th-TH'); if (ts.seconds !== undefined) return new Date(ts.seconds * 1000).toLocaleTimeString('th-TH'); return new Date(ts).toLocaleTimeString('th-TH'); } catch (e) { return '-'; } };

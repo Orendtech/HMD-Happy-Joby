@@ -4,7 +4,6 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
 import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
 import { UserProfile, AttendanceDay, ActivityLog } from '../types';
-// Fix: Import db and APP_ARTIFACT_ID from firebaseConfig instead of dbService
 import { getReminders, markReminderAsNotified, getTodayAttendance, getTodayDateId } from '../services/dbService';
 import { db, APP_ARTIFACT_ID } from '../firebaseConfig';
 import { collection, query, orderBy, limit, onSnapshot, where, Timestamp } from 'firebase/firestore';
@@ -20,31 +19,39 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const isHomePage = location.pathname === '/';
     const [pendingCount, setPendingCount] = useState(0);
 
-    // Global Status Bar Syncing
+    // Unified Status Bar Management
     useEffect(() => {
         const syncStatusBar = () => {
-            const metaThemeColors = document.querySelectorAll('meta[name="theme-color"]');
-            if (metaThemeColors.length === 0) return;
+            const metaThemeColor = document.getElementById('meta-theme-color');
+            if (!metaThemeColor) return;
 
             const isDark = document.documentElement.classList.contains('dark');
+            
+            // Default colors based on theme
+            let color = isDark ? '#020617' : '#F5F5F7';
 
-            // If on homepage, the Page component will handle it (dynamic leval color)
-            // If on ANY other page, we sync it to the standard background color
+            // Special handling for homepage rank colors is delegated to TimeAttendance.tsx
+            // But we ensure that if we are NOT on homepage, we RESET it to the theme default immediately
             if (!isHomePage) {
-                const color = isDark ? '#020617' : '#f8fafc';
-                metaThemeColors.forEach(tag => tag.setAttribute('content', color));
+                metaThemeColor.setAttribute('content', color);
+            } else {
+                // On homepage, if rank color isn't ready yet, set a safe default to prevent black bar
+                if (!metaThemeColor.getAttribute('content')) {
+                    metaThemeColor.setAttribute('content', color);
+                }
             }
         };
 
         syncStatusBar();
-        // Listener for theme changes manually if needed
+        
+        // Watch for theme class changes (from Settings toggle)
         const observer = new MutationObserver(syncStatusBar);
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         
         return () => observer.disconnect();
     }, [location.pathname, isHomePage]);
 
-    // Update System App Badge (Home Screen Icon)
+    // Update System App Badge
     useEffect(() => {
         const updateAppBadge = async () => {
             if ('setAppBadge' in navigator) {
@@ -65,12 +72,10 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     useEffect(() => {
         if (!user) return;
 
-        // 1. Request Notification Permission on Mount
         if ("Notification" in window && Notification.permission === "default") {
             Notification.requestPermission();
         }
 
-        // 2. Attendance Watchdog and Reminders
         const checkReminders = async () => {
             const list = await getReminders(user.uid);
             const now = new Date();
@@ -79,7 +84,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             const uncompletedList = list.filter(r => !r.isCompleted);
             setPendingCount(uncompletedList.length);
             
-            // Custom User Reminders
             list.forEach(async (r) => {
                 const due = new Date(r.dueTime);
                 if (!r.isCompleted && !r.notified && due <= now) {
@@ -93,13 +97,11 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 }
             });
 
-            // Attendance Watchdog Trigger
-            const day = now.getDay(); // 0-6 (Sun-Sat)
+            const day = now.getDay();
             const hour = now.getHours();
             const minute = now.getMinutes();
             const totalMinutes = hour * 60 + minute;
 
-            // Check-in Reminder at 08:50 AM
             const checkInTargetMinutes = 8 * 60 + 50; 
             const lastCheckInReminderKey = `attendance_reminder_sent_${user.uid}`;
             const lastCheckInSentDate = localStorage.getItem(lastCheckInReminderKey);
@@ -119,14 +121,12 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 }
             }
 
-            // Check-out Reminder at 05:00 PM (17:00)
             const checkOutTargetMinutes = 17 * 60; 
             const lastCheckOutReminderKey = `checkout_reminder_sent_${user.uid}`;
             const lastCheckOutSentDate = localStorage.getItem(lastCheckOutReminderKey);
 
             if (day >= 1 && day <= 5 && totalMinutes >= checkOutTargetMinutes && lastCheckOutSentDate !== todayStr) {
                 const todayAtt = await getTodayAttendance(user.uid);
-                // แจ้งเตือนถ้าเช็คอินแล้วแต่ยังไม่ได้เช็คเอาท์
                 if (todayAtt && todayAtt.checkIns.length > 0 && !todayAtt.checkOut) {
                     if ("Notification" in window && Notification.permission === "granted") {
                         new Notification("🏁 อย่าลืมเช็คเอาท์!", {
@@ -141,14 +141,13 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             }
         };
 
-        const interval = setInterval(checkReminders, 60000); // Check every minute
+        const interval = setInterval(checkReminders, 60000);
         checkReminders(); 
 
-        // 3. Admin/Manager Activity Notification (Real-time)
         let unsubscribe: (() => void) | undefined;
         if (userProfile?.role === 'admin' || userProfile?.role === 'manager') {
             const logsCol = collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_logs`);
-            const startTime = Timestamp.now(); // Start listening from now
+            const startTime = Timestamp.now();
             const q = query(
                 logsCol,
                 where('timestamp', '>', startTime),
@@ -160,7 +159,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === "added") {
                         const log = change.doc.data() as ActivityLog;
-                        // Avoid notifying self
                         if (log.userId !== user.uid) {
                             if ("Notification" in window && Notification.permission === "granted") {
                                 const title = log.type === 'check-in' ? "📍 พนักงานเช็คอินแล้ว" : "🏁 พนักงานเช็คเอาท์แล้ว";

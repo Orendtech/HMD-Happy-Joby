@@ -52,6 +52,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
     const isManager = viewerProfile?.role === 'manager';
     const potentialManagers = users.filter(u => u.role === 'admin' || u.role === 'manager');
 
+    const formatTime = (ts: any) => {
+        if (!ts) return '-';
+        try {
+            if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+            if (ts.seconds !== undefined) return new Date(ts.seconds * 1000).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+            return new Date(ts).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+        } catch (e) {
+            return '-';
+        }
+    };
+
     const fetchUsers = async () => { 
         const allUsers = await getAllUsers();
         setUsers(allUsers);
@@ -136,14 +147,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
                                     v.interactions.forEach((i: any) => {
                                         rows.push([
                                             dateStr, `"${u.name || u.email}"`, `"${planTitle.replace(/"/g, '""')}"`, `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
-                                            `"${v.location}"`, v.checkInTime?.toDate().toLocaleTimeString('th-TH'), dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                                            `"${v.location}"`, formatTime(v.checkInTime), formatTime(dayReport.checkOut),
                                             `"${i.customerName}"`, `"${i.department || '-'}"`, `"${(i.summary || '').replace(/"/g, '""')}"`
                                         ]);
                                     });
                                 } else {
                                     rows.push([
                                         dateStr, `"${u.name || u.email}"`, `"${planTitle.replace(/"/g, '""')}"`, `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
-                                        `"${v.location}"`, v.checkInTime?.toDate().toLocaleTimeString('th-TH'), dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-', '-', '-', '"(ไม่มีบันทึกกิจกรรม)"'
+                                        `"${v.location}"`, formatTime(v.checkInTime), formatTime(dayReport.checkOut), '-', '-', '"(ไม่มีบันทึกกิจกรรม)"'
                                     ]);
                                 }
                             });
@@ -268,7 +279,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ viewerProfile }) => {
                                                     <MapPin size={10} className="text-cyan-500"/>
                                                     <span className="truncate">{status.lastCheckIn.location}</span>
                                                     <span className="opacity-50">•</span>
-                                                    <span>{status.lastCheckIn.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span>
+                                                    <span>{formatTime(status.lastCheckIn.timestamp)}</span>
                                                 </div>
                                             )}
                                         </div>

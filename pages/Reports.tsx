@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
 import { getUserHistory, updateOpportunity, getUserProfile, getAllUsers, getTeamMembers, getWorkPlans, checkOut } from '../services/dbService';
@@ -54,6 +54,17 @@ const Reports: React.FC<Props> = ({ user }) => {
 
     const funnelStages = ['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'];
 
+    const formatTime = (ts: any) => {
+        if (!ts) return '-';
+        try {
+            if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+            if (ts.seconds) return new Date(ts.seconds * 1000).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+            return new Date(ts).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
+        } catch (e) {
+            return '-';
+        }
+    };
+
     useEffect(() => {
         const init = async () => {
             setLoading(true);
@@ -79,7 +90,6 @@ const Reports: React.FC<Props> = ({ user }) => {
         };
         init();
         
-        // Set initial filter to current month
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
         const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
@@ -98,6 +108,15 @@ const Reports: React.FC<Props> = ({ user }) => {
         setLoading(true); 
         await fetchUserData(newUserId); 
         setLoading(false);
+    };
+
+    // Fix for handleEditClick not found error
+    const handleEditClick = (dateId: string, data: PipelineData, location: { visitIdx?: number, interactionIdx?: number, legacyIdx?: number }) => {
+        setEditTarget({
+            dateId,
+            data: { ...data },
+            location
+        });
     };
 
     const fetchUserData = async (uid: string) => {
@@ -132,10 +151,6 @@ const Reports: React.FC<Props> = ({ user }) => {
         } catch (e) { alert("เกิดข้อผิดพลาดในการลบข้อมูล"); } finally { setSaving(false); }
     };
 
-    const handleEditClick = (dateId: string, data: PipelineData, location: EditTarget['location']) => {
-        setEditTarget({ dateId, data: { ...data }, location });
-    };
-
     const handleEditVisit = (dateId: string, visitIdx: number, visit: VisitReport) => {
         setVisitEdit({
             dateId,
@@ -155,7 +170,6 @@ const Reports: React.FC<Props> = ({ user }) => {
             const targetVisit = updatedVisits[visitEdit.visitIdx];
             
             targetVisit.interactions = visitEdit.interactions;
-            // Also update the aggregated fields
             targetVisit.summary = visitEdit.interactions.map(i => `${i.customerName}: ${i.summary}`).join('\n');
             targetVisit.metWith = visitEdit.interactions.map(i => i.customerName);
             
@@ -175,8 +189,8 @@ const Reports: React.FC<Props> = ({ user }) => {
         }
     };
 
-    // Get ALL raw opportunities from history data
-    const getRawOpportunities = () => {
+    // Memoized opportunities to prevent hanging during tab switches
+    const allDealsInRange = useMemo(() => {
         const opportunities: any[] = [];
         history.forEach(day => {
             const extract = (p: PipelineData, loc: string, meta: any) => {
@@ -192,31 +206,31 @@ const Reports: React.FC<Props> = ({ user }) => {
                 pipes.forEach((p, pIdx) => extract(p, day.checkIns[0]?.location || 'Unknown', { legacyIdx: pIdx }));
             }
         });
-        // Only filter by Date for the raw pool
         return opportunities.filter(op => {
             const d = op.expectedCloseDate || op.date;
             return d >= filterStartDate && d <= filterEndDate;
         });
-    };
-
-    const allDealsInRange = getRawOpportunities();
+    }, [history, filterStartDate, filterEndDate]);
     
-    // Stats calculation from all deals in range
-    const activeDeals = allDealsInRange.filter(d => d.stage !== 'Closed Won' && d.stage !== 'Closed Lost');
-    const wonDeals = allDealsInRange.filter(d => d.stage === 'Closed Won');
-    
-    const totalPipelineValue = activeDeals.reduce((sum, item) => sum + (item.value || 0), 0);
-    const forecastValue = activeDeals.reduce((sum, item) => sum + ((item.value || 0) * (item.probability / 100)), 0);
-    const wonRevenue = wonDeals.reduce((sum, item) => sum + (item.value || 0), 0);
-
     // List view filtered by stage chips
-    const displayedDeals = allDealsInRange.filter(op => {
-        if (filterStages.length === 0) {
-            // Default: Show everything except lost
-            return op.stage !== 'Closed Lost';
-        }
-        return filterStages.includes(op.stage);
-    }).sort((a, b) => (a.expectedCloseDate || a.date).localeCompare(b.expectedCloseDate || b.date));
+    const displayedDeals = useMemo(() => {
+        return allDealsInRange.filter(op => {
+            if (filterStages.length === 0) return op.stage !== 'Closed Lost';
+            return filterStages.includes(op.stage);
+        }).sort((a, b) => (a.expectedCloseDate || a.date).localeCompare(b.expectedCloseDate || b.date));
+    }, [allDealsInRange, filterStages]);
+
+    // Stats calculations
+    const activeDeals = useMemo(() => allDealsInRange.filter(d => d.stage !== 'Closed Won' && d.stage !== 'Closed Lost'), [allDealsInRange]);
+    const wonDeals = useMemo(() => allDealsInRange.filter(d => d.stage === 'Closed Won'), [allDealsInRange]);
+    const totalPipelineValue = useMemo(() => activeDeals.reduce((sum, item) => sum + (item.value || 0), 0), [activeDeals]);
+    const forecastValue = useMemo(() => activeDeals.reduce((sum, item) => sum + ((item.value || 0) * (item.probability / 100)), 0), [activeDeals]);
+    const wonRevenue = useMemo(() => wonDeals.reduce((sum, item) => sum + (item.value || 0), 0), [wonDeals]);
+
+    // Journal specific history filtering
+    const journalHistory = useMemo(() => {
+        return history.filter(h => h.id >= filterStartDate && h.id <= filterEndDate);
+    }, [history, filterStartDate, filterEndDate]);
 
     const exportToCSV = () => {
         let headers: string[] = [];
@@ -232,30 +246,29 @@ const Reports: React.FC<Props> = ({ user }) => {
         } else {
             headers = ["วันที่", "พนักงาน", "แผนงาน: หัวข้อ", "แผนงาน: รายละเอียด", "แผนงาน: จุดนัดพบ/เป้าหมาย", "รายงาน: สถานที่เช็คอิน", "รายงาน: เวลาเช็คอิน", "รายงาน: เวลาเช็คเอาท์", "รายงาน: ผู้ติดต่อ", "รายงาน: แผนก", "รายงาน: สรุปกิจกรรม"];
             
-            let curr = new Date(filterStartDate);
-            const endD = new Date(filterEndDate);
-            while (curr <= endD) {
-                const dateStr = curr.toISOString().split('T')[0];
+            journalHistory.forEach(dayReport => {
+                const dateStr = dayReport.id;
                 const dayPlan = plans.find(p => p.date === dateStr);
-                const dayReport = history.find(h => h.id === dateStr);
                 const planTitle = dayPlan?.title || '-';
                 const planContent = dayPlan?.content || '-';
                 const planItinerary = dayPlan?.itinerary ? dayPlan.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ') : '-';
 
-                if (dayReport?.report?.visits && dayReport.report.visits.length > 0) {
+                if (dayReport.report?.visits && dayReport.report.visits.length > 0) {
                     dayReport.report.visits.forEach((v: any) => {
+                        const checkInStr = formatTime(v.checkInTime);
+                        const checkOutStr = formatTime(dayReport.checkOut);
                         if (v.interactions && v.interactions.length > 0) {
                             v.interactions.forEach((i: any) => {
                                 rows.push([
                                     dateStr, `"${targetUserName}"`, `"${planTitle.replace(/"/g, '""')}"`, `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
-                                    `"${v.location}"`, v.checkInTime?.toDate().toLocaleTimeString('th-TH'), dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-',
+                                    `"${v.location}"`, checkInStr, checkOutStr,
                                     `"${i.customerName}"`, `"${i.department || '-'}"`, `"${(i.summary || '').replace(/"/g, '""')}"`
                                 ]);
                             });
                         } else {
                             rows.push([
                                 dateStr, `"${targetUserName}"`, `"${planTitle.replace(/"/g, '""')}"`, `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
-                                `"${v.location}"`, v.checkInTime?.toDate().toLocaleTimeString('th-TH'), dayReport.checkOut?.toDate().toLocaleTimeString('th-TH') || '-', '-', '-', '"(ไม่มีบันทึกกิจกรรม)"'
+                                `"${v.location}"`, checkInStr, checkOutStr, '-', '-', '"(ไม่มีบันทึกกิจกรรม)"'
                             ]);
                         }
                     });
@@ -265,8 +278,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                         '-', '-', '-', '-', '-', '"(ยังไม่มีข้อมูลรายงาน)"'
                     ]);
                 }
-                curr.setDate(curr.getDate() + 1);
-            }
+            });
             filename = `performance_${targetUserName}_${filterStartDate}_to_${filterEndDate}.csv`;
         }
 
@@ -359,8 +371,8 @@ const Reports: React.FC<Props> = ({ user }) => {
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                         <button onClick={exportToCSV} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"><Download size={20} /><span className="sm:hidden font-bold text-xs">Download CSV</span></button>
                         <div className="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md p-1.5 rounded-[20px] flex gap-1 border border-slate-200 dark:border-white/5">
-                            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}>Intelligence</button>
-                            <button onClick={() => setActiveTab('reports')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'reports' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}>Journal</button>
+                            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}>ข้อมูลสรุป</button>
+                            <button onClick={() => setActiveTab('reports')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'reports' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}>บันทึกรายวัน</button>
                         </div>
                     </div>
                 </div>
@@ -417,7 +429,6 @@ const Reports: React.FC<Props> = ({ user }) => {
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2 px-2">
                                 <Briefcase size={16} className="text-slate-400" /> ดีลและการขาย
                             </h3>
-                            {/* Stage Filter Chips */}
                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2">
                                 {funnelStages.map(stage => (
                                     <button 
@@ -462,22 +473,22 @@ const Reports: React.FC<Props> = ({ user }) => {
 
             {activeTab === 'reports' && (
                 <div className="space-y-10 animate-enter">
-                    {history.length === 0 && <div className="py-20 text-center text-slate-400 font-black uppercase tracking-widest opacity-30">ไม่มีบันทึกใน Journal</div>}
+                    {journalHistory.length === 0 && <div className="py-20 text-center text-slate-400 font-black uppercase tracking-widest opacity-30">ไม่มีบันทึกกิจกรรมในหน้านี้</div>}
                     <div className="relative pl-6 sm:pl-10 space-y-12">
                         <div className="absolute left-0 sm:left-4 top-4 bottom-4 w-1 bg-gradient-to-b from-cyan-400 via-indigo-500 to-purple-600 rounded-full opacity-30"></div>
-                        {history.filter(h => h.id >= filterStartDate && h.id <= filterEndDate).map((day, idx) => {
+                        {journalHistory.map((day, idx) => {
                             const visits = (day.report?.visits || []);
                             return (
-                                <div key={day.id} className="relative animate-enter" style={{animationDelay: `${idx * 80}ms`}}>
+                                <div key={day.id || idx} className="relative animate-enter" style={{animationDelay: `${Math.min(idx, 10) * 80}ms`}}>
                                     <div className="absolute -left-[30px] sm:-left-[34px] top-4 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-slate-950 bg-white dark:bg-slate-800 shadow-xl z-10 flex items-center justify-center"><div className={`w-2 h-2 rounded-full ${day.checkOut ? 'bg-emerald-500' : 'bg-cyan-500 animate-pulse'}`}></div></div>
                                     <GlassCard className="p-0 overflow-hidden border-white/50 dark:border-white/5">
                                         <div className="p-6 bg-slate-50 dark:bg-white/5 flex justify-between items-center border-b border-slate-100 dark:border-white/5">
-                                            <div><h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{new Date(day.id).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</h3><div className="flex items-center gap-3 mt-1.5"><div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest"><Clock size={12} className="text-cyan-500" />{day.checkIns[0]?.timestamp.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}{day.checkOut && ` — ${day.checkOut.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}`}</div>{day.checkOut && <div className="text-[8px] px-2 py-0.5 bg-emerald-500 text-white rounded-full font-black uppercase">เรียบร้อย</div>}</div></div>
-                                            <div className="text-right"><div className="text-2xl font-black text-slate-200 dark:text-slate-800">#{history.length - idx}</div></div>
+                                            <div><h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{new Date(day.id).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</h3><div className="flex items-center gap-3 mt-1.5"><div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest"><Clock size={12} className="text-cyan-500" />{formatTime(day.checkIns[0]?.timestamp)}{day.checkOut && ` — ${formatTime(day.checkOut)}`}</div>{day.checkOut && <div className="text-[8px] px-2 py-0.5 bg-emerald-500 text-white rounded-full font-black uppercase">เรียบร้อย</div>}</div></div>
+                                            <div className="text-right"><div className="text-2xl font-black text-slate-200 dark:text-slate-800">#{journalHistory.length - idx}</div></div>
                                         </div>
                                         <div className="p-6 space-y-8">
                                             {visits.length > 0 ? visits.map((visit: any, vIdx: number) => (
-                                                <div key={vIdx} className="relative pl-6">{vIdx < visits.length - 1 && (<div className="absolute left-[7px] top-4 bottom-[-32px] w-0.5 bg-slate-100 dark:bg-white/5"></div>)}<div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 bg-cyan-500 shadow-lg"></div><div className="space-y-4"><div className="flex justify-between items-start"><div><h4 className="font-black text-slate-900 dark:text-white text-base leading-tight">{visit.location}</h4><div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold text-slate-400">{visit.checkInTime?.toDate().toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span></div></div>{targetUserId === user.uid && (<button onClick={() => handleEditVisit(day.id, vIdx, visit)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-500 transition-colors"><MessageSquare size={16}/></button>)}</div><div className="space-y-3">{(visit.interactions || []).map((inter: any, iIdx: number) => (<div key={iIdx} className="bg-slate-50 dark:bg-white/5 p-4 rounded-[24px] border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all"><div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md"><UserIcon size={14} /></div><div><div className="text-sm font-black text-slate-900 dark:text-white">{inter.customerName}</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{inter.department || 'ไม่ระบุแผนก'}</div></div></div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-10">"{inter.summary || 'ไม่มีรายละเอียดการบันทึก'}"</p>{inter.pipeline && (<div onClick={(e) => { e.stopPropagation(); handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx }); }} className="mt-4 ml-10 p-4 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-white/10 rounded-2xl flex justify-between items-center relative transition-all hover:border-indigo-500/50 cursor-pointer hover:scale-[1.01] shadow-sm"><div className="flex items-center gap-3"><TrendingUp size={16} className="text-indigo-500" /><div><div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">{inter.pipeline.product}</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{inter.pipeline.stage}</div></div></div><div className="text-right"><div className="text-xs font-black text-indigo-600 dark:text-indigo-400">฿{(inter.pipeline.value || 0).toLocaleString()}</div></div></div>)}</div>))}</div></div></div>
+                                                <div key={vIdx} className="relative pl-6">{vIdx < visits.length - 1 && (<div className="absolute left-[7px] top-4 bottom-[-32px] w-0.5 bg-slate-100 dark:bg-white/5"></div>)}<div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 bg-cyan-500 shadow-lg"></div><div className="space-y-4"><div className="flex justify-between items-start"><div><h4 className="font-black text-slate-900 dark:text-white text-base leading-tight">{visit.location}</h4><div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold text-slate-400">{formatTime(visit.checkInTime)}</span></div></div>{targetUserId === user.uid && (<button onClick={() => handleEditVisit(day.id, vIdx, visit)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-500 transition-colors"><MessageSquare size={16}/></button>)}</div><div className="space-y-3">{(visit.interactions || []).map((inter: any, iIdx: number) => (<div key={iIdx} className="bg-slate-50 dark:bg-white/5 p-4 rounded-[24px] border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all"><div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md"><UserIcon size={14} /></div><div><div className="text-sm font-black text-slate-900 dark:text-white">{inter.customerName}</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{inter.department || 'ไม่ระบุแผนก'}</div></div></div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-10">"{inter.summary || 'ไม่มีรายละเอียดการบันทึก'}"</p>{inter.pipeline && (<div onClick={(e) => { e.stopPropagation(); handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx }); }} className="mt-4 ml-10 p-4 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-white/10 rounded-2xl flex justify-between items-center relative transition-all hover:border-indigo-500/50 cursor-pointer hover:scale-[1.01] shadow-sm"><div className="flex items-center gap-3"><TrendingUp size={16} className="text-indigo-500" /><div><div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">{inter.pipeline.product}</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{inter.pipeline.stage}</div></div></div><div className="text-right"><div className="text-xs font-black text-indigo-600 dark:text-indigo-400">฿{(inter.pipeline.value || 0).toLocaleString()}</div></div></div>)}</div>))}</div></div></div>
                                             )) : (<div className="py-4 text-center text-slate-400 text-xs font-medium italic opacity-60">(ไม่มีข้อมูลบันทึกในวันนี้)</div>)}
                                         </div>
                                     </GlassCard>

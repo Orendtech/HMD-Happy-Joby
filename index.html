@@ -7,8 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
     
     <!-- PWA & Theme Settings -->
-    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
+    <!-- Use only one theme-color tag for reliable JS control -->
+    <meta name="theme-color" content="#f8fafc" id="meta-theme-color">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
@@ -24,14 +24,14 @@
     <script>
       (function() {
         const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        const metaTags = document.querySelectorAll('meta[name="theme-color"]');
+        const metaThemeColor = document.getElementById('meta-theme-color');
         
         if (isDark) {
           document.documentElement.classList.add('dark');
-          metaTags.forEach(tag => tag.setAttribute('content', '#020617'));
+          if (metaThemeColor) metaThemeColor.setAttribute('content', '#020617');
         } else {
           document.documentElement.classList.remove('dark');
-          metaTags.forEach(tag => tag.setAttribute('content', '#f8fafc'));
+          if (metaThemeColor) metaThemeColor.setAttribute('content', '#f8fafc');
         }
       })();
     </script>
@@ -67,23 +67,10 @@
 
       /* Brand Loading Animations */
       @keyframes letter-reveal {
-        0% { 
-          opacity: 0; 
-          transform: translateY(30px) scale(0.8); 
-          filter: blur(12px);
-        }
-        100% { 
-          opacity: 1; 
-          transform: translateY(0) scale(1); 
-          filter: blur(0px);
-        }
+        0% { opacity: 0; transform: translateY(30px) scale(0.8); filter: blur(12px); }
+        100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
       }
       
-      @keyframes float-subtle {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-5px); }
-      }
-
       @keyframes glow-line {
         0% { transform: translateX(-100%); }
         100% { transform: translateX(200%); }

@@ -40,6 +40,7 @@ export interface WorkPlan {
     content: string;
     itinerary: { location: string; objective: string }[];
     createdAt: string;
+    status?: 'draft' | 'pending' | 'approved' | 'rejected';
 }
 
 export interface UserProfile {
@@ -60,21 +61,19 @@ export interface UserProfile {
     currentStreak?: number;
     lastActiveDate?: string;
 }
-
+// Rest of types.ts remains the same...
 export interface CheckInRecord {
     location: string;
     timestamp: Timestamp;
     latitude: number;
     longitude: number;
 }
-
 export interface Interaction {
     customerName: string;
     department?: string;
     summary: string;
     pipeline?: PipelineData;
 }
-
 export interface VisitReport {
     location: string;
     checkInTime: Timestamp;
@@ -85,21 +84,18 @@ export interface VisitReport {
     latitude?: number;
     longitude?: number;
 }
-
 export interface DailyReport {
     summary?: string; 
     metWith?: string[] | string;
     pipeline?: PipelineData[] | PipelineData;
     visits?: VisitReport[];
 }
-
 export interface AttendanceDay {
     id: string; 
     checkIns: CheckInRecord[];
     checkOut?: Timestamp;
     report?: DailyReport;
 }
-
 export interface UserLocationData {
     userId: string;
     email: string;
@@ -108,11 +104,9 @@ export interface UserLocationData {
     lastCheckIn: CheckInRecord | null;
     isCheckedOut?: boolean;
 }
-
 export interface AdminUser extends UserProfile {
     id: string;
 }
-
 export interface ActivityLog {
     id: string;
     userId: string;

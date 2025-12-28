@@ -47,7 +47,6 @@ const getRankTitle = (level: number) => {
     return { title: 'ROOKIE', color: 'text-slate-400', themeColor: '' }; 
 };
 
-// Helper function to remove undefined fields recursively for Firestore safety
 const cleanFirestoreData = (obj: any): any => {
     if (Array.isArray(obj)) {
         return obj.map(v => cleanFirestoreData(v));
@@ -158,14 +157,15 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const currentLevel = profile?.level || 1; 
     const rank = getRankTitle(currentLevel);
 
+    // Dynamic Rank Status Bar Sync
     useEffect(() => {
-        const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        const metaThemeColor = document.getElementById('meta-theme-color');
         if (metaThemeColor) {
             if (rank.themeColor) {
                 metaThemeColor.setAttribute('content', rank.themeColor);
             } else {
                 const isDark = document.documentElement.classList.contains('dark');
-                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#f8fafc');
+                metaThemeColor.setAttribute('content', isDark ? '#020617' : '#F5F5F7');
             }
         }
     }, [currentLevel, rank.themeColor]);
@@ -200,7 +200,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         if (!location) { getLocation(); return; }
         if (!selectedPlace) { setStatusMsg('กรุณาเลือกสถานที่ (Select Location)'); return; }
         
-        // Haptic feedback
         if ("vibrate" in navigator) navigator.vibrate(100);
 
         try {
@@ -212,7 +211,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
             setTimeout(() => { setXpParticles(prev => prev.filter(p => p.id !== newParticle.id)); }, 1200);
             setTimeout(() => { setIsHudBouncing(true); setTimeout(() => setIsHudBouncing(false), 300); refreshData(); }, 900);
             if (result.isLevelUp) { 
-                // Long vibrate for level up
                 if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
                 setTimeout(() => { setNewLevelDisplay(result.newLevel); setShowLevelUp(true); }, 1000); 
             }
@@ -300,7 +298,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
             const visits: VisitReport[] = todayData.checkIns.map((ci, idx) => { 
                 const draft = visitDrafts[idx] || { interactions: [] }; 
                 
-                // Construct and CLEAN data
                 const interactions = draft.interactions.map(d => {
                     const interaction: Interaction = {
                         customerName: d.customerName,
@@ -332,7 +329,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
             
             await checkOut(user.uid, cleanedReport, undefined, final); 
             
-            // Haptic success signal
             if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
 
             if (final) {
@@ -392,7 +388,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     };
 
     const handleCheckOutStart = () => {
-        // Haptic feedback
         if ("vibrate" in navigator) navigator.vibrate(100);
         
         setIsFinalCheckout(true);
