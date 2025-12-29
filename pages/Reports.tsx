@@ -9,7 +9,8 @@ import {
     Edit, Save, Loader2, Building, Users, ChevronDown, 
     BarChart3, List, PieChart, Calendar, Trash2, 
     ArrowLeft, Filter, ArrowUpRight, Activity, 
-    Zap, Target, Briefcase, ChevronRight, X, Download, Percent, MessageSquare
+    Zap, Target, Briefcase, ChevronRight, X, Download, Percent, MessageSquare, Info, FilterX,
+    LayoutDashboard, History
 } from 'lucide-react';
 
 interface Props {
@@ -110,7 +111,6 @@ const Reports: React.FC<Props> = ({ user }) => {
         setLoading(false);
     };
 
-    // Fix for handleEditClick not found error
     const handleEditClick = (dateId: string, data: PipelineData, location: { visitIdx?: number, interactionIdx?: number, legacyIdx?: number }) => {
         setEditTarget({
             dateId,
@@ -189,7 +189,6 @@ const Reports: React.FC<Props> = ({ user }) => {
         }
     };
 
-    // Memoized opportunities to prevent hanging during tab switches
     const allDealsInRange = useMemo(() => {
         const opportunities: any[] = [];
         history.forEach(day => {
@@ -212,7 +211,6 @@ const Reports: React.FC<Props> = ({ user }) => {
         });
     }, [history, filterStartDate, filterEndDate]);
     
-    // List view filtered by stage chips
     const displayedDeals = useMemo(() => {
         return allDealsInRange.filter(op => {
             if (filterStages.length === 0) return op.stage !== 'Closed Lost';
@@ -220,14 +218,35 @@ const Reports: React.FC<Props> = ({ user }) => {
         }).sort((a, b) => (a.expectedCloseDate || a.date).localeCompare(b.expectedCloseDate || b.date));
     }, [allDealsInRange, filterStages]);
 
-    // Stats calculations
     const activeDeals = useMemo(() => allDealsInRange.filter(d => d.stage !== 'Closed Won' && d.stage !== 'Closed Lost'), [allDealsInRange]);
     const wonDeals = useMemo(() => allDealsInRange.filter(d => d.stage === 'Closed Won'), [allDealsInRange]);
     const totalPipelineValue = useMemo(() => activeDeals.reduce((sum, item) => sum + (item.value || 0), 0), [activeDeals]);
     const forecastValue = useMemo(() => activeDeals.reduce((sum, item) => sum + ((item.value || 0) * (item.probability / 100)), 0), [activeDeals]);
     const wonRevenue = useMemo(() => wonDeals.reduce((sum, item) => sum + (item.value || 0), 0), [wonDeals]);
 
-    // Journal specific history filtering
+    // Funnel Data Calculation - Translated to Thai
+    const funnelData = useMemo(() => {
+        const stats = {
+            'Prospecting': { count: 0, value: 0, color: 'bg-lime-600', label: 'สร้างการรับรู้', thaiStage: 'กำลังค้นหาลูกค้า' },
+            'Qualification': { count: 0, value: 0, color: 'bg-yellow-400', label: 'สนใจ/ติดต่อ', thaiStage: 'ตรวจสอบความต้องการ' },
+            'Proposal': { count: 0, value: 0, color: 'bg-amber-500', label: 'นำเสนอ/ส่งมอบ', thaiStage: 'เสนอราคา/บริการ' },
+            'Negotiation': { count: 0, value: 0, color: 'bg-rose-600', label: 'มีโอกาสปิด', thaiStage: 'กำลังต่อรอง' },
+            'Closed Won': { count: 0, value: 0, color: 'bg-blue-500', label: 'ปิดการขายสำเร็จ', thaiStage: 'สำเร็จ' }
+        };
+
+        allDealsInRange.forEach(d => {
+            if (stats[d.stage]) {
+                stats[d.stage].count += 1;
+                stats[d.stage].value += (d.value || 0);
+            }
+        });
+
+        return Object.entries(stats).map(([stage, data]) => ({
+            stage,
+            ...data
+        }));
+    }, [allDealsInRange]);
+
     const journalHistory = useMemo(() => {
         return history.filter(h => h.id >= filterStartDate && h.id <= filterEndDate);
     }, [history, filterStartDate, filterEndDate]);
@@ -292,74 +311,6 @@ const Reports: React.FC<Props> = ({ user }) => {
         document.body.removeChild(link);
     };
 
-    if (visitEdit) {
-        return (
-            <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
-                <div className="flex items-center gap-4 py-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20">
-                    <button onClick={() => setVisitEdit(null)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 active:scale-95 transition-transform"><ArrowLeft size={20} /></button>
-                    <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white">แก้ไขรายละเอียดกิจกรรม</h2><p className="text-sm text-slate-500">วันที่ {visitEdit.dateId}</p></div>
-                </div>
-                <div className="space-y-4">
-                    {visitEdit.interactions.map((inter, idx) => (
-                        <GlassCard key={idx} className="p-6 space-y-4">
-                            <div className="flex justify-between items-start">
-                                <div className="flex items-center gap-2">
-                                    <UserIcon size={16} className="text-indigo-500" />
-                                    <span className="font-bold text-slate-900 dark:text-white">{inter.customerName}</span>
-                                </div>
-                                <button onClick={() => {
-                                    const next = [...visitEdit.interactions];
-                                    next.splice(idx, 1);
-                                    setVisitEdit({...visitEdit, interactions: next});
-                                }} className="text-rose-400 hover:text-rose-600"><Trash2 size={16}/></button>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">สรุปการเข้าพบ</label>
-                                <textarea 
-                                    value={inter.summary} 
-                                    onChange={e => {
-                                        const next = [...visitEdit.interactions];
-                                        next[idx].summary = e.target.value;
-                                        setVisitEdit({...visitEdit, interactions: next});
-                                    }}
-                                    rows={3}
-                                    className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-sm outline-none focus:border-cyan-500 transition-all resize-none"
-                                />
-                            </div>
-                        </GlassCard>
-                    ))}
-                    {visitEdit.interactions.length === 0 && (
-                        <div className="py-12 text-center text-slate-400 font-bold italic opacity-60">ไม่มีข้อมูลบันทึกกิจกรรม</div>
-                    )}
-                </div>
-                <button 
-                    onClick={handleSaveVisitEdit} 
-                    disabled={saving} 
-                    className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                >
-                    {saving ? <Loader2 className="animate-spin"/> : <><Save size={20}/> บันทึกรายงาน</>}
-                </button>
-            </div>
-        );
-    }
-
-    if (editTarget) {
-        return (
-            <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-4 px-4">
-                <div className="flex items-center gap-4 py-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20">
-                    <button onClick={() => setEditTarget(null)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 active:scale-95 transition-transform"><ArrowLeft size={20} /></button>
-                    <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white">แก้ไขโอกาสการขาย</h2><p className="text-sm text-slate-500">{editTarget.data.product}</p></div>
-                </div>
-                <GlassCard className="p-8 space-y-6">
-                    <div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">ชื่อสินค้า / โปรเจกต์</label><div className="relative"><Briefcase className="absolute left-4 top-4 text-slate-400" size={18} /><input value={editTarget.data.product} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, product: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" /></div></div>
-                    <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">มูลค่า (THB)</label><div className="relative"><DollarSign className="absolute left-4 top-4 text-emerald-500" size={18} /><input type="number" value={editTarget.data.value} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, value: parseFloat(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" /></div></div><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">สถานะ (Status)</label><select value={editTarget.data.stage} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, stage: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-base font-bold outline-none focus:border-cyan-500 appearance-none">{funnelStages.map(f => <option key={f} value={f}>{f}</option>)}</select></div></div>
-                    <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">โอกาสสำเร็จ (%)</label><div className="relative"><Percent className="absolute left-4 top-4 text-indigo-500" size={18} /><input type="number" min="0" max="100" value={editTarget.data.probability} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, probability: parseInt(e.target.value)}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-lg font-bold outline-none focus:border-cyan-500 transition-all" /></div></div><div className="space-y-1.5"><label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">วันที่คาดว่าจะปิดดีล</label><div className="relative"><Calendar className="absolute left-4 top-4 text-cyan-500" size={18} /><input type="date" value={editTarget.data.expectedCloseDate || ''} onChange={e => setEditTarget({...editTarget, data: {...editTarget.data, expectedCloseDate: e.target.value}})} className="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-4 text-base font-bold outline-none focus:border-cyan-500 appearance-none" /></div></div></div>
-                </GlassCard>
-                <div className="flex gap-4"><button onClick={handleDelete} className="p-4 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-2xl border border-rose-100 dark:border-rose-500/20 active:scale-95 transition-all"><Trash2 size={24}/></button><button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50">{saving ? <Loader2 className="animate-spin"/> : <><Save size={20}/> บันทึกการเปลี่ยนแปลง</>}</button></div>
-            </div>
-        );
-    }
-
     return (
         <div className="max-w-4xl mx-auto space-y-8 animate-enter pb-28 px-4 sm:px-6">
             <div className="flex flex-col gap-6 pt-6">
@@ -369,10 +320,10 @@ const Reports: React.FC<Props> = ({ user }) => {
                         <p className="text-slate-500 text-sm mt-2 font-medium flex items-center gap-2"><Activity size={14} className="text-cyan-500" /> ข้อมูลเชิงลึกทางธุรกิจ</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                        <button onClick={exportToCSV} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"><Download size={20} /><span className="sm:hidden font-bold text-xs">Download CSV</span></button>
-                        <div className="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md p-1.5 rounded-[20px] flex gap-1 border border-slate-200 dark:border-white/5">
-                            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'dashboard' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}>ข้อมูลสรุป</button>
-                            <button onClick={() => setActiveTab('reports')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'reports' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}>บันทึกรายวัน</button>
+                        <button onClick={exportToCSV} className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95"><Download size={20} /><span className="sm:hidden font-bold text-xs">ส่งออกข้อมูล</span></button>
+                        <div className="bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-md p-1.5 rounded-[20px] flex gap-1 border border-slate-200 dark:border-white/5 shadow-inner">
+                            <button onClick={() => setActiveTab('dashboard')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'dashboard' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}><LayoutDashboard size={14} /> ข้อมูลสรุป</button>
+                            <button onClick={() => setActiveTab('reports')} className={`flex-1 sm:px-6 py-2.5 rounded-[14px] text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'reports' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}><History size={14} /> บันทึกรายวัน</button>
                         </div>
                     </div>
                 </div>
@@ -382,7 +333,7 @@ const Reports: React.FC<Props> = ({ user }) => {
                         <div className="p-2 bg-cyan-500 text-white rounded-xl shadow-md shrink-0"><Calendar size={18} /></div>
                         <div className="flex flex-1 items-center gap-2">
                             <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none w-full" />
-                            <span className="text-slate-400 text-xs">to</span>
+                            <span className="text-slate-400 text-xs font-bold">ถึง</span>
                             <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} className="bg-transparent text-xs font-bold text-slate-900 dark:text-white outline-none w-full" />
                         </div>
                     </div>
@@ -401,33 +352,110 @@ const Reports: React.FC<Props> = ({ user }) => {
 
             {activeTab === 'dashboard' && (
                 <div className="space-y-8 animate-enter">
+                    {/* Top KPI Cards - Translated */}
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <div className="bg-gradient-to-br from-indigo-500 to-indigo-700 p-6 rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
                             <Target size={40} className="absolute -right-2 -bottom-2 opacity-20" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Pipeline</p>
-                            <h3 className="text-3xl font-black">฿{(totalPipelineValue/1000).toFixed(1)}k</h3>
-                            <p className="text-[10px] mt-2 bg-white/20 w-fit px-2 py-0.5 rounded-full">{activeDeals.length} ACTIVE</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">มูลค่ารวมในพอร์ต</p>
+                            <h3 className="text-2xl sm:text-3xl font-black truncate">฿{(totalPipelineValue/1000).toFixed(1)}k</h3>
+                            <p className="text-[10px] mt-2 bg-white/20 w-fit px-2 py-0.5 rounded-full">{activeDeals.length} ดีลที่กำลังดำเนินอยู่</p>
                         </div>
                         <div className="bg-gradient-to-br from-amber-400 to-orange-600 p-6 rounded-[32px] text-white shadow-2xl relative overflow-hidden group">
                             <Zap size={40} className="absolute -right-2 -bottom-2 opacity-20" />
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Forecast</p>
-                            <h3 className="text-3xl font-black">฿{(forecastValue/1000).toFixed(1)}k</h3>
-                            <p className="text-[10px] mt-2 bg-white/20 w-fit px-2 py-0.5 rounded-full">WEIGHTED</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">ยอดขายคาดการณ์</p>
+                            <h3 className="text-2xl sm:text-3xl font-black truncate">฿{(forecastValue/1000).toFixed(1)}k</h3>
+                            <p className="text-[10px] mt-2 bg-white/20 w-fit px-2 py-0.5 rounded-full">คำนวณตามน้ำหนักความน่าจะเป็น</p>
                         </div>
                         <div className="col-span-2 md:col-span-1 bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-xl flex flex-col justify-center">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Won Revenue</p>
-                            <h3 className="text-3xl font-black text-emerald-500">฿{(wonRevenue/1000).toFixed(1)}k</h3>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">ยอดขายที่ทำได้จริง</p>
+                            <h3 className="text-2xl sm:text-3xl font-black text-emerald-500 truncate">฿{(wonRevenue/1000).toFixed(1)}k</h3>
                             <div className="flex items-center gap-1 mt-2">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span className="text-[10px] font-bold text-slate-500">REALIZED THIS PERIOD</span>
+                                <span className="text-[10px] font-bold text-slate-500 line-clamp-1 uppercase">สำเร็จในช่วงเวลานี้</span>
                             </div>
                         </div>
                     </div>
 
+                    {/* Sales Funnel Visualization - Translated Labels */}
                     <div className="space-y-4">
+                        <div className="flex items-center justify-between px-2">
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <BarChart3 size={16} className="text-cyan-500" /> สถิติกรวยการขาย (Sales Funnel)
+                            </h3>
+                            <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-400">
+                                <Info size={14} />
+                            </div>
+                        </div>
+
+                        <GlassCard className="p-6 sm:p-10 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 overflow-visible">
+                            <div className="flex flex-col items-center gap-1.5 max-w-full">
+                                {funnelData.map((item: any, idx: number) => {
+                                    const baseWidth = 95;
+                                    const widthPercent = baseWidth - (idx * 15);
+                                    
+                                    return (
+                                        <div 
+                                            key={idx} 
+                                            className="w-full flex flex-col items-center group relative"
+                                            style={{ zIndex: funnelData.length - idx }}
+                                        >
+                                            <div 
+                                                className={`h-14 sm:h-16 flex items-center justify-between px-4 sm:px-6 transition-all duration-500 hover:brightness-110 shadow-lg ${item.color} rounded-2xl relative border border-white/10`}
+                                                style={{ 
+                                                    width: `${widthPercent}%`, 
+                                                    minWidth: '160px', 
+                                                    marginBottom: '2px' 
+                                                }}
+                                            >
+                                                <div className="flex flex-col min-w-0 pr-2">
+                                                    <span className="text-[8px] sm:text-[10px] font-black text-white/80 uppercase tracking-wider truncate">
+                                                        {item.label}
+                                                    </span>
+                                                    <span className="text-[10px] sm:text-xs font-black text-white truncate">
+                                                        {item.thaiStage}
+                                                    </span>
+                                                </div>
+
+                                                <div className="text-right shrink-0">
+                                                    <div className="text-sm sm:text-lg font-black text-white leading-none">
+                                                        ฿{(item.value / 1000).toFixed(1)}k
+                                                    </div>
+                                                    <div className="text-[8px] sm:text-[9px] font-bold text-white/90">
+                                                        {item.count} ดีล
+                                                    </div>
+                                                </div>
+
+                                                <div className="absolute inset-0 bg-white/5 pointer-events-none rounded-2xl overflow-hidden">
+                                                    <div className="absolute top-0 right-0 w-full h-full bg-gradient-to-l from-black/10 to-transparent"></div>
+                                                </div>
+                                            </div>
+                                            
+                                            {idx < funnelData.length - 1 && (
+                                                <div className="h-1.5 w-0.5 bg-slate-200 dark:bg-slate-700/50 my-0.5"></div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="mt-10 grid grid-cols-5 gap-1 border-t border-slate-100 dark:border-white/5 pt-6 px-1">
+                                {funnelData.map((item: any, idx: number) => (
+                                    <div key={idx} className="flex flex-col items-center gap-1.5">
+                                        <div className={`w-3 h-3 rounded-full ${item.color} shadow-sm`}></div>
+                                        <span className="text-[7px] sm:text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase text-center leading-tight">
+                                            {item.label}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </GlassCard>
+                    </div>
+
+                    {/* Deals List */}
+                    <div className="space-y-4 pt-4">
                         <div className="flex flex-col gap-3">
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2 px-2">
-                                <Briefcase size={16} className="text-slate-400" /> ดีลและการขาย
+                                <Briefcase size={16} className="text-slate-400" /> รายการดีลทั้งหมด
                             </h3>
                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 px-2">
                                 {funnelStages.map(stage => (
@@ -440,32 +468,39 @@ const Reports: React.FC<Props> = ({ user }) => {
                                             : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-white/5 text-slate-500'
                                         }`}
                                     >
-                                        {stage}
+                                        {stage === 'Prospecting' ? 'ค้นหาลูกค้า' : 
+                                         stage === 'Qualification' ? 'ตรวจสอบ' : 
+                                         stage === 'Proposal' ? 'เสนอราคา' : 
+                                         stage === 'Negotiation' ? 'ต่อรอง' : 
+                                         stage === 'Closed Won' ? 'สำเร็จ' : 'ไม่สำเร็จ'}
                                     </button>
                                 ))}
+                                {filterStages.length > 0 && (
+                                    <button onClick={() => setFilterStages([])} className="p-2 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-full border border-rose-100 dark:border-rose-500/20 shrink-0"><FilterX size={14}/></button>
+                                )}
                             </div>
                         </div>
                         
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-12">
                             {displayedDeals.map((deal, idx) => (
                                 <div key={idx} onClick={() => handleEditClick(deal.editMetadata.dateId, deal, deal.editMetadata.location)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/5 p-5 rounded-[32px] shadow-sm hover:shadow-xl hover:scale-[1.01] transition-all cursor-pointer group flex flex-col gap-4">
                                     <div className="flex justify-between items-start">
-                                        <div>
-                                            <div className="font-black text-slate-900 dark:text-white text-lg leading-tight group-hover:text-indigo-500 transition-colors">{deal.product}</div>
-                                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1 flex items-center gap-2"><Building size={12} className="text-cyan-500" /> {deal.locationName}</div>
+                                        <div className="min-w-0 pr-2">
+                                            <div className="font-black text-slate-900 dark:text-white text-lg leading-tight group-hover:text-indigo-500 transition-colors truncate">{deal.product}</div>
+                                            <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wide mt-1 flex items-center gap-2"><Building size={12} className="text-cyan-500 shrink-0" /> <span className="truncate">{deal.locationName}</span></div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">฿{(deal.value || 0).toLocaleString()}</div>
-                                            <div className={`text-[10px] font-black px-2 py-0.5 rounded-full inline-block uppercase mt-1 ${deal.probability >= 70 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{deal.probability}% Prob.</div>
+                                        <div className="text-right shrink-0">
+                                            <div className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400">฿{(deal.value || 0).toLocaleString()}</div>
+                                            <div className={`text-[9px] font-black px-2 py-0.5 rounded-full inline-block uppercase mt-1 ${deal.probability >= 70 ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{deal.probability}% โอกาสสำเร็จ</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-white/5">
                                         <span className="text-[10px] px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 font-black rounded-full uppercase border border-indigo-100 dark:border-indigo-500/20">{deal.stage}</span>
-                                        <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold"><Calendar size={12} /> {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('th-TH') : '-'}</div>
+                                        <div className="flex items-center gap-1.5 text-slate-400 text-[10px] font-bold shrink-0"><Calendar size={12} /> {deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString('th-TH') : 'ไม่ระบุวันปิดการขาย'}</div>
                                     </div>
                                 </div>
                             ))}
-                            {displayedDeals.length === 0 && <div className="col-span-full py-12 text-center text-slate-400 font-bold italic opacity-50 bg-slate-50 dark:bg-slate-900/50 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/10">ไม่มีข้อมูลในช่วงเวลานี้</div>}
+                            {displayedDeals.length === 0 && <div className="col-span-full py-12 text-center text-slate-400 font-bold italic opacity-50 bg-slate-50 dark:bg-slate-900/50 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/10 uppercase tracking-widest text-xs">ไม่มีข้อมูลดีลในช่วงเวลานี้</div>}
                         </div>
                     </div>
                 </div>
@@ -480,16 +515,16 @@ const Reports: React.FC<Props> = ({ user }) => {
                             const visits = (day.report?.visits || []);
                             return (
                                 <div key={day.id || idx} className="relative animate-enter" style={{animationDelay: `${Math.min(idx, 10) * 80}ms`}}>
-                                    <div className="absolute -left-[30px] sm:-left-[34px] top-4 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-slate-950 bg-white dark:bg-slate-800 shadow-xl z-10 flex items-center justify-center"><div className={`w-2 h-2 rounded-full ${day.checkOut ? 'bg-emerald-500' : 'bg-cyan-500 animate-pulse'}`}></div></div>
-                                    <GlassCard className="p-0 overflow-hidden border-white/50 dark:border-white/5">
+                                    <div className="absolute -left-[30px] sm:-left-[34px] top-4 w-6 h-6 rounded-full border-4 border-slate-50 dark:border-slate-950 bg-white dark:bg-slate-800 shadow-xl z-10 flex items-center justify-center shadow-emerald-500/20"><div className={`w-2 h-2 rounded-full ${day.checkOut ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-cyan-500 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.5)]'}`}></div></div>
+                                    <GlassCard className="p-0 overflow-hidden border-white/50 dark:border-white/5 shadow-lg">
                                         <div className="p-6 bg-slate-50 dark:bg-white/5 flex justify-between items-center border-b border-slate-100 dark:border-white/5">
-                                            <div><h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{new Date(day.id).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</h3><div className="flex items-center gap-3 mt-1.5"><div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest"><Clock size={12} className="text-cyan-500" />{formatTime(day.checkIns[0]?.timestamp)}{day.checkOut && ` — ${formatTime(day.checkOut)}`}</div>{day.checkOut && <div className="text-[8px] px-2 py-0.5 bg-emerald-500 text-white rounded-full font-black uppercase">เรียบร้อย</div>}</div></div>
-                                            <div className="text-right"><div className="text-2xl font-black text-slate-200 dark:text-slate-800">#{journalHistory.length - idx}</div></div>
+                                            <div><h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">{new Date(day.id).toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long' })}</h3><div className="flex items-center gap-3 mt-1.5"><div className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest"><Clock size={12} className="text-cyan-500" />{formatTime(day.checkIns[0]?.timestamp)}{day.checkOut && ` — ${formatTime(day.checkOut)}`}</div>{day.checkOut && <div className="text-[8px] px-2 py-0.5 bg-emerald-500 text-white rounded-full font-black uppercase tracking-tighter">สำเร็จ</div>}</div></div>
+                                            <div className="text-right shrink-0"><div className="text-2xl font-black text-slate-200 dark:text-slate-800">#{journalHistory.length - idx}</div></div>
                                         </div>
                                         <div className="p-6 space-y-8">
                                             {visits.length > 0 ? visits.map((visit: any, vIdx: number) => (
-                                                <div key={vIdx} className="relative pl-6">{vIdx < visits.length - 1 && (<div className="absolute left-[7px] top-4 bottom-[-32px] w-0.5 bg-slate-100 dark:bg-white/5"></div>)}<div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 bg-cyan-500 shadow-lg"></div><div className="space-y-4"><div className="flex justify-between items-start"><div><h4 className="font-black text-slate-900 dark:text-white text-base leading-tight">{visit.location}</h4><div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold text-slate-400">{formatTime(visit.checkInTime)}</span></div></div>{targetUserId === user.uid && (<button onClick={() => handleEditVisit(day.id, vIdx, visit)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-500 transition-colors"><MessageSquare size={16}/></button>)}</div><div className="space-y-3">{(visit.interactions || []).map((inter: any, iIdx: number) => (<div key={iIdx} className="bg-slate-50 dark:bg-white/5 p-4 rounded-[24px] border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all"><div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-md"><UserIcon size={14} /></div><div><div className="text-sm font-black text-slate-900 dark:text-white">{inter.customerName}</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{inter.department || 'ไม่ระบุแผนก'}</div></div></div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-10">"{inter.summary || 'ไม่มีรายละเอียดการบันทึก'}"</p>{inter.pipeline && (<div onClick={(e) => { e.stopPropagation(); handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx }); }} className="mt-4 ml-10 p-4 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-white/10 rounded-2xl flex justify-between items-center relative transition-all hover:border-indigo-500/50 cursor-pointer hover:scale-[1.01] shadow-sm"><div className="flex items-center gap-3"><TrendingUp size={16} className="text-indigo-500" /><div><div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">{inter.pipeline.product}</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{inter.pipeline.stage}</div></div></div><div className="text-right"><div className="text-xs font-black text-indigo-600 dark:text-indigo-400">฿{(inter.pipeline.value || 0).toLocaleString()}</div></div></div>)}</div>))}</div></div></div>
-                                            )) : (<div className="py-4 text-center text-slate-400 text-xs font-medium italic opacity-60">(ไม่มีข้อมูลบันทึกในวันนี้)</div>)}
+                                                <div key={vIdx} className="relative pl-6">{vIdx < visits.length - 1 && (<div className="absolute left-[7px] top-4 bottom-[-32px] w-0.5 bg-slate-100 dark:bg-white/5"></div>)}<div className="absolute left-0 top-1 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 bg-cyan-500 shadow-md"></div><div className="space-y-4"><div className="flex justify-between items-start"><div><h4 className="font-black text-slate-900 dark:text-white text-base leading-tight truncate max-w-[200px]">{visit.location}</h4><div className="flex items-center gap-3 mt-1"><span className="text-[10px] font-bold text-slate-400 uppercase">{formatTime(visit.checkInTime)}</span></div></div>{targetUserId === user.uid && (<button onClick={() => handleEditVisit(day.id, vIdx, visit)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 hover:text-indigo-500 transition-colors shadow-sm"><MessageSquare size={16}/></button>)}</div><div className="space-y-3">{(visit.interactions || []).map((inter: any, iIdx: number) => (<div key={iIdx} className="bg-slate-50 dark:bg-white/5 p-4 rounded-[24px] border border-slate-100 dark:border-white/5 group hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm"><div className="flex items-center gap-2 mb-3"><div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-sm shrink-0"><UserIcon size={14} /></div><div className="min-w-0 flex-1"><div className="text-sm font-black text-slate-900 dark:text-white truncate">{inter.customerName}</div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{inter.department || 'ไม่ระบุแผนก'}</div></div></div><p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-0 sm:pl-10 italic">"{inter.summary || 'ไม่มีรายละเอียดการบันทึก'}"</p>{inter.pipeline && (<div onClick={(e) => { e.stopPropagation(); handleEditClick(day.id, inter.pipeline!, { visitIdx: vIdx, interactionIdx: iIdx }); }} className="mt-4 sm:ml-10 p-4 bg-white dark:bg-slate-950/50 border border-slate-100 dark:border-white/10 rounded-2xl flex justify-between items-center relative transition-all hover:border-indigo-500/50 cursor-pointer hover:scale-[1.01] shadow-sm"><div className="flex items-center gap-3 min-w-0 flex-1"><TrendingUp size={16} className="text-indigo-500 shrink-0" /><div className="min-w-0"><div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter truncate">{inter.pipeline.product}</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">{inter.pipeline.stage}</div></div></div><div className="text-right shrink-0"><div className="text-xs font-black text-indigo-600 dark:text-indigo-400">฿{(inter.pipeline.value || 0).toLocaleString()}</div></div></div>)}</div>))}</div></div></div>
+                                            )) : (<div className="py-4 text-center text-slate-400 text-xs font-medium italic opacity-60 uppercase tracking-widest">(ไม่มีข้อมูลบันทึกในวันนี้)</div>)}
                                         </div>
                                     </GlassCard>
                                 </div>

@@ -4,7 +4,7 @@ import {
     Navigation, Plus, LogOut, Calendar, Sparkles, X, Search, Check, 
     Flame, Zap, TrendingUp, Loader2, ArrowLeft, ChevronDown, ChevronUp, 
     UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, 
-    Target, MapPin, Building, MessageSquare, Edit 
+    Target, MapPin, Building, MessageSquare, Edit, Send
 } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { 
@@ -60,6 +60,16 @@ const cleanFirestoreData = (obj: any): any => {
         return newObj;
     }
     return obj;
+};
+
+// Thai translations for stages
+const stageLabels: Record<string, string> = {
+    'Prospecting': 'ค้นหาลูกค้า',
+    'Qualification': 'ตรวจสอบความต้องการ',
+    'Proposal': 'เสนอราคา/บริการ',
+    'Negotiation': 'กำลังต่อรอง',
+    'Closed Won': 'สำเร็จ',
+    'Closed Lost': 'ไม่สำเร็จ'
 };
 
 const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) => {
@@ -213,7 +223,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                 if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
                 setTimeout(() => { setNewLevelDisplay(result.newLevel); setShowLevelUp(true); }, 1000); 
             }
-        } catch (e) { setStatusMsg('Check-in failed'); }
+        } catch (e) { setStatusMsg('การเช็คอินล้มเหลว'); }
     };
 
     const handleSelectCustomer = (name: string, dept: string) => { 
@@ -352,7 +362,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         : (profile?.hospitals.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase())) || []);
 
     const handleSelectLocation = (loc: string) => { setSelectedPlace(loc); setSearchQuery(loc); setIsDropdownOpen(false); };
-    const handleAddNewLocation = async () => { if (!searchQuery.trim()) return; try { await addHospital(user.uid, searchQuery.trim()); await refreshData(); handleSelectLocation(searchQuery.trim()); } catch (e) { setStatusMsg('Failed to add new location'); } };
+    const handleAddNewLocation = async () => { if (!searchQuery.trim()) return; try { await addHospital(user.uid, searchQuery.trim()); await refreshData(); handleSelectLocation(searchQuery.trim()); } catch (e) { setStatusMsg('เพิ่มสถานที่ล้มเหลว'); } };
 
     const isCheckedInToday = todayData && todayData.checkIns.length > 0;
     const isCheckedOut = todayData && !!todayData.checkOut;
@@ -377,8 +387,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     const theme = getTheme(currentLevel);
     const badge = currentLevel >= 3 
-        ? { label: profile?.role?.toUpperCase() || 'USER', bg: 'bg-black/20 border-white/30 text-white' } 
-        : { label: profile?.role?.toUpperCase() || 'USER', bg: 'bg-slate-500/10 border-slate-500/20 text-slate-500' };
+        ? { label: profile?.role?.toUpperCase() === 'ADMIN' ? 'ผู้ดูแลระบบ' : profile?.role?.toUpperCase() === 'MANAGER' ? 'หัวหน้างาน' : 'พนักงาน', bg: 'bg-black/20 border-white/30 text-white' } 
+        : { label: profile?.role?.toUpperCase() === 'ADMIN' ? 'ผู้ดูแลระบบ' : profile?.role?.toUpperCase() === 'MANAGER' ? 'หัวหน้างาน' : 'พนักงาน', bg: 'bg-slate-500/10 border-slate-500/20 text-slate-500' };
 
     const handleOpenVisitReport = (idx: number) => {
         setExpandedVisitIdx(idx);
@@ -449,7 +459,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                                         <button onClick={() => removeInteraction(idx, iIdx)} className="absolute top-2 right-2 text-slate-400 hover:text-rose-500"><X size={16}/></button>
                                                         <div className="flex items-center gap-2 mb-1"><UserIcon size={14} className="text-purple-500"/><span className="font-bold text-slate-900 dark:text-white text-sm">{inter.customerName}</span><span className="text-xs text-slate-500">({inter.department})</span></div>
                                                         <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-10">"{inter.summary}"</p>
-                                                        {inter.pipeline && (<div className="ml-5 flex items-center gap-2 text-[10px] bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-500/20"><TrendingUp size={10}/> <span>{inter.pipeline.product} (฿{inter.pipeline.value.toLocaleString()})</span></div>)}
+                                                        {inter.pipeline && (<div className="ml-5 flex items-center gap-2 text-[10px] bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 px-2 py-1 rounded w-fit border border-indigo-100 dark:border-indigo-500/20"><TrendingUp size={10}/> <span>{inter.pipeline.product} (฿{inter.pipeline.value.toLocaleString()}) — {stageLabels[inter.pipeline.stage] || inter.pipeline.stage}</span></div>)}
                                                     </div>
                                                 ))}
                                             </div>
@@ -481,7 +491,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                             </div>
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
-                                                    <label className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1"><TrendingUp size={12}/> 3. เพิ่มโอกาสการขาย (Opportunity)?</label>
+                                                    <label className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1"><TrendingUp size={12}/> 3. เพิ่มโอกาสการขาย (โอกาสเดิมหรือดีลใหม่)?</label>
                                                     <label className="relative inline-flex items-center cursor-pointer">
                                                         <input type="checkbox" checked={hasOpp} onChange={(e) => setHasOpp(e.target.checked)} className="sr-only peer"/>
                                                         <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
@@ -496,7 +506,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                                         {dealMode === 'update' && (
                                                             <select value={selectedExistingDealId} onChange={(e) => handleExistingDealSelect(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-amber-200 dark:border-amber-500/30 text-xs outline-none focus:border-amber-500 text-slate-700 dark:text-white appearance-none">
                                                                 <option value="">-- เลือกดีลที่ต้องการอัปเดต --</option>
-                                                                {activeDeals.map(deal => (<option key={deal.id} value={deal.id}>{deal.product} ({deal.stage})</option>))}
+                                                                {activeDeals.map(deal => (<option key={deal.id} value={deal.id}>{deal.product} ({stageLabels[deal.stage] || deal.stage})</option>))}
                                                             </select>
                                                         )}
                                                         <div className="grid grid-cols-2 gap-2">
@@ -504,7 +514,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                                             <input type="number" value={pipelineValue} onChange={e => setPipelineValue(e.target.value)} placeholder="มูลค่า (บาท)" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-2">
-                                                            <select value={pipelineStage} onChange={e => setPipelineStage(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none">{pipelineStages.map(s => <option key={s} value={s}>{s}</option>)}</select>
+                                                            <select value={pipelineStage} onChange={e => setPipelineStage(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none">
+                                                                {pipelineStages.map(s => <option key={s} value={s}>{stageLabels[s] || s}</option>)}
+                                                            </select>
                                                             <div className="flex items-center gap-2 px-1 text-xs text-slate-500"><span>โอกาส: {pipelineProb}%</span><input type="range" min="0" max="100" step="10" value={pipelineProb} onChange={e => setPipelineProb(parseInt(e.target.value))} className="w-16 accent-indigo-500"/></div>
                                                         </div>
                                                     </div>
@@ -606,7 +618,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                     <Flame size={20} />
                                     <span className={`text-xl font-bold ${theme.textPrimary}`}>{profile?.currentStreak || 0}</span>
                                 </div>
-                                <span className={`text-[8px] font-bold uppercase tracking-wider ${theme.textSecondary}`}>Streak</span>
+                                <span className={`text-[8px] font-bold uppercase tracking-wider ${theme.textSecondary}`}>ความต่อเนื่อง</span>
                             </div>
                         </div>
                     </div>
@@ -623,13 +635,13 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                     markers={[{
                                         lat: location.lat,
                                         lng: location.lng,
-                                        text: profile?.name || user.email || 'My Location',
+                                        text: profile?.name || user.email || 'ตำแหน่งของฉัน',
                                         photo: profile?.photoBase64
                                     }]}
                                     className="h-full w-full" zoom={15} 
                                 />
                             ) : (
-                                <div className="h-full w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center text-slate-500 text-xs gap-2"><Navigation size={14} className="animate-spin" /> Acquiring GPS...</div>
+                                <div className="h-full w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center text-slate-500 text-xs gap-2"><Navigation size={14} className="animate-spin" /> ค้นหาตำแหน่ง GPS...</div>
                             )}
                             {marqueeItems.length > 0 && (
                                 <div className="absolute top-4 left-4 right-14 z-30 pointer-events-auto">
@@ -643,10 +655,10 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 via-black/30 to-transparent pointer-events-none z-10"></div>
                             <div className="absolute bottom-4 left-4 z-20 pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
                                 <div className="text-3xl font-black text-white leading-none">{time.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div>
-                                <div className="text-[10px] text-white/90 font-black uppercase tracking-wider mt-1">{time.toLocaleDateString('en-US', {weekday: 'short', day: 'numeric', month: 'short'})}</div>
+                                <div className="text-[10px] text-white/90 font-black uppercase tracking-wider mt-1">{time.toLocaleDateString('th-TH', {weekday: 'short', day: 'numeric', month: 'short'})}</div>
                             </div>
                             <div className="absolute bottom-4 right-4 z-20">
-                                <div className={`px-3 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest shadow-xl backdrop-blur-md ${currentStage === 'working' ? 'bg-emerald-500/80 border-emerald-400 text-white' : currentStage === 'completed' ? 'bg-slate-600/80 border-slate-500 text-white' : 'bg-cyan-500/80 border-cyan-400 text-white'}`}>{currentStage === 'working' ? 'ON DUTY' : currentStage === 'completed' ? 'OFF DUTY' : 'READY'}</div>
+                                <div className={`px-3 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest shadow-xl backdrop-blur-md ${currentStage === 'working' ? 'bg-emerald-500/80 border-emerald-400 text-white' : currentStage === 'completed' ? 'bg-slate-600/80 border-slate-500 text-white' : 'bg-cyan-500/80 border-cyan-400 text-white'}`}>{currentStage === 'working' ? 'กำลังทำงาน' : currentStage === 'completed' ? 'เลิกงานแล้ว' : 'พร้อมทำงาน'}</div>
                             </div>
                         </div>
                         <div className="p-4 space-y-4">
@@ -682,8 +694,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                        <button onClick={handleCheckIn} disabled={isCheckedOut || !selectedPlace} className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${isCheckedOut || !selectedPlace ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' : 'bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-600 dark:to-emerald-800 shadow-emerald-500/20 active:scale-95'}`}><Plus size={36} className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} mb-2`} /><span className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>CHECK IN</span></button>
-                        <button onClick={handleCheckOutStart} disabled={!isCheckedInToday} className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${!isCheckedInToday ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' : isCheckedOut ? 'bg-gradient-to-br from-amber-400 to-amber-600' : 'bg-gradient-to-br from-rose-400 to-rose-600 shadow-rose-500/20 active:scale-95'}`}>{isCheckedOut ? <Edit size={36} className="text-white mb-2" /> : <LogOut size={36} className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} mb-2`} />}<span className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight uppercase`}>{isCheckedOut ? 'Edit Report' : 'Check Out'}</span></button>
+                        <button onClick={handleCheckIn} disabled={isCheckedOut || !selectedPlace} className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${isCheckedOut || !selectedPlace ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' : 'bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-600 dark:to-emerald-800 shadow-emerald-500/20 active:scale-95'}`}><Plus size={36} className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} mb-2`} /><span className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>เช็คอิน</span></button>
+                        <button onClick={handleCheckOutStart} disabled={!isCheckedInToday} className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${!isCheckedInToday ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' : isCheckedOut ? 'bg-gradient-to-br from-amber-400 to-amber-600' : 'bg-gradient-to-br from-rose-400 to-rose-600 shadow-rose-500/20 active:scale-95'}`}>{isCheckedOut ? <Edit size={36} className="text-white mb-2" /> : <LogOut size={36} className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} mb-2`} />}<span className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight uppercase`}>{isCheckedOut ? 'แก้ไขรายงาน' : 'เช็คเอาท์'}</span></button>
                     </div>
                     {statusMsg && <div className="text-center text-cyan-600 text-sm py-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-2xl border border-cyan-100 dark:border-cyan-500/20">{statusMsg}</div>}
                     <div className="pt-2 pb-10">
@@ -701,7 +713,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</span>
                                                     {hasInteractions && (
-                                                        <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[8px] font-black rounded-full uppercase border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1"><Check size={8}/> {draft.interactions.length} Note</span>
+                                                        <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[8px] font-black rounded-full uppercase border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1"><Check size={8}/> บันทึก {draft.interactions.length} รายการ</span>
                                                     )}
                                                 </div>
                                             </div>

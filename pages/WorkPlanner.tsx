@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
@@ -20,7 +19,7 @@ import {
     X, Loader2, MessageSquare, User as UserIcon, 
     ChevronRight, Info, Save, Clock, ChevronLeft, Building, Search, Download, Users, ChevronDown,
     CheckCircle, XCircle, AlertTriangle, RotateCcw, ShieldCheck, ListChecks, CalendarDays, Send,
-    Edit, MoreVertical
+    Edit, MoreVertical, Target, FileText, Quote, ArrowUpRight
 } from 'lucide-react';
 
 interface Props {
@@ -108,17 +107,17 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             const hasAccess = userProfile?.role === 'admin' || userProfile?.role === 'manager';
             setIsPrivileged(hasAccess);
             if (hasAccess) {
-                let members: AdminUser[] = [];
+                let rawMembers: AdminUser[] = [];
                 if (userProfile?.role === 'admin') { 
-                    // Admin: Show only active (approved) users in the system
-                    const all = await getAllUsers();
-                    members = all.filter(u => u.isApproved === true || u.id === user.uid);
+                    rawMembers = await getAllUsers();
                 } else { 
-                    // Manager: Show only their direct reports (subordinates)
-                    const team = await getTeamMembers(user.uid); 
-                    members = team.filter(u => u.isApproved !== false || u.id === user.uid);
+                    rawMembers = await getTeamMembers(user.uid); 
                 }
-                setTeamMembers(members);
+                
+                const filteredMembers = rawMembers.filter(u => 
+                    (u.isApproved !== false && (u.xp || 0) > 0) || u.id === user.uid
+                );
+                setTeamMembers(filteredMembers);
             }
             await fetchData(targetUserId);
         };
@@ -277,7 +276,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-32 px-4 pt-6">
-            <div className="bg-slate-200 dark:bg-slate-900/50 p-1.5 rounded-[24px] flex gap-1 border border-slate-200 dark:border-white/5 shadow-inner">
+            <div className="bg-slate-200 dark:bg-slate-900/80 p-1.5 rounded-[24px] flex gap-1 border border-slate-200 dark:border-white/10 shadow-sm backdrop-blur-xl">
                 <button onClick={() => setActiveTab('calendar')} className={`flex-1 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'calendar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}><CalendarDays size={16} /> แผนงาน</button>
                 <button onClick={() => setActiveTab('approvals')} className={`flex-1 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'approvals' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}><ListChecks size={16} /> การอนุมัติ {((isPrivileged && allPendingPlans.length > 0) || (!isPrivileged && userDrafts.length > 0)) && (<span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] animate-pulse">{isPrivileged ? allPendingPlans.length : userDrafts.length}</span>)}</button>
             </div>
@@ -296,13 +295,13 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                     </div>
 
                     {isPrivileged && (
-                        <div className="bg-white/50 dark:bg-slate-900/40 p-1.5 rounded-[28px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
-                            <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-full shrink-0"><Users size={18} /></div>
-                            <select value={targetUserId} onChange={(e) => handleUserChange(e.target.value)} className="flex-1 bg-transparent px-3 py-2 text-sm font-black text-slate-900 dark:text-white outline-none appearance-none">
+                        <div className="bg-white/50 dark:bg-slate-900/40 p-1 rounded-[24px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
+                            <div className="p-3 bg-indigo-500 text-white rounded-[20px] shadow-lg shrink-0"><Users size={20} /></div>
+                            <select value={targetUserId} onChange={(e) => handleUserChange(e.target.value)} className="flex-1 bg-transparent px-4 py-2 text-sm font-bold text-slate-900 dark:text-white outline-none appearance-none">
                                 <option value={user.uid}>มุมมองส่วนตัว (ฉัน)</option>
                                 {teamMembers.filter(u => u.id !== user.uid).map(m => (<option key={m.id} value={m.id}>{m.name || m.email}</option>))}
                             </select>
-                            <div className="pr-5 text-slate-400"><ChevronDown size={14} /></div>
+                            <div className="pr-4 pointer-events-none text-slate-400"><ChevronDown size={16} /></div>
                         </div>
                     )}
 
@@ -461,18 +460,107 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
 
             {activeTab === 'approvals' && (
                 <div className="space-y-6 animate-enter">
-                    <div className="flex flex-col gap-2 pt-2"><h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">การจัดการคำขอ</h2><p className="text-slate-500 text-sm font-medium mt-2">จัดการและติดตามสถานะแผนงาน{isAdmin ? 'ของทุกคน (Admin)' : isManager ? 'ของพนักงานที่คุณดูแล' : 'ของคุณ'}</p></div>
+                    <div className="flex flex-col gap-2 pt-2">
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">การจัดการคำขอ</h2>
+                        <p className="text-slate-500 text-sm font-medium mt-2">จัดการและติดตามสถานะแผนงาน{isAdmin ? 'ของทุกคน (Admin)' : isManager ? 'ของพนักงานที่คุณดูแล' : 'ของคุณ'}</p>
+                    </div>
 
                     {loading ? (<div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>) : (
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                             {isPrivileged ? (
                                 allPendingPlans.length === 0 ? (
                                     <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/20 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-white/10"><CheckCircle className="mx-auto text-emerald-500/50 mb-4" size={48} /><h3 className="text-slate-900 dark:text-white font-black uppercase tracking-widest">ทุกอย่างเรียบร้อย</h3><p className="text-slate-400 text-sm mt-1">ไม่มีแผนงานค้างรอการอนุมัติ</p></div>
                                 ) : (
                                     allPendingPlans.map((plan) => (
-                                        <GlassCard key={plan.id} className="p-6 border-amber-500/20 shadow-lg">
-                                            <div className="flex justify-between items-start mb-4"><div className="flex items-center gap-3"><div className="p-3 bg-amber-100 text-amber-600 rounded-2xl"><Clock size={20} /></div><div><h4 className="font-black text-slate-900 dark:text-white leading-tight">{plan.title}</h4><p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5"><CalendarDays size={10} className="text-indigo-500" /> {new Date(plan.date).toLocaleDateString('th-TH', { weekday:'short', day:'numeric', month:'short' })} <span className="opacity-30">•</span> <UserIcon size={10} className="text-indigo-500" /> {plan.userName}</p></div></div></div>
-                                            <div className="space-y-3"><p className="text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-black/20 p-3 rounded-xl border dark:border-white/5 font-medium">{plan.content}</p><div className="flex gap-2 pt-2"><button onClick={() => handleStatusChange(plan.id, 'approved')} className="flex-1 bg-emerald-500 text-white font-black py-3 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all"><CheckCircle size={14}/> อนุมัติ</button><button onClick={() => handleStatusChange(plan.id, 'rejected')} className="flex-1 bg-white dark:bg-slate-800 text-rose-500 border border-rose-200 font-black py-3 rounded-xl text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all"><XCircle size={14}/> ปฏิเสธ</button></div></div>
+                                        <GlassCard key={plan.id} className="p-0 border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden bg-white dark:bg-slate-900/90 ring-1 ring-black/5 dark:ring-white/10">
+                                            {/* Card Top: Profile & Date */}
+                                            <div className="p-6 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 border-b dark:border-white/5">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-14 h-14 rounded-2xl bg-indigo-500 shadow-lg shadow-indigo-500/20 flex items-center justify-center text-white relative overflow-hidden group">
+                                                            <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                                                            <UserIcon size={28} />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-black text-slate-900 dark:text-white text-lg leading-tight">{plan.userName}</h4>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest px-2 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-full border border-indigo-100 dark:border-indigo-500/20">SALES REP</span>
+                                                                <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Clock size={10} /> {new Date(plan.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">DATE</div>
+                                                        <div className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-sm text-sm font-black text-slate-900 dark:text-white">
+                                                            {new Date(plan.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    {/* Plan Title & Header */}
+                                                    <div className="relative pl-4 border-l-4 border-indigo-500">
+                                                        <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{plan.title}</h3>
+                                                        <div className="mt-2 flex items-start gap-2 bg-white dark:bg-black/30 p-3 rounded-2xl border dark:border-white/5 text-sm text-slate-600 dark:text-slate-300 italic">
+                                                            <Quote size={14} className="text-slate-400 shrink-0 mt-1" />
+                                                            <span>{plan.content}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Itinerary Timeline */}
+                                            <div className="p-6 space-y-4 bg-white/50 dark:bg-transparent">
+                                                <div className="flex items-center gap-2 px-1 mb-2">
+                                                    <Target size={14} className="text-indigo-500" />
+                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Planned Route & Objectives</span>
+                                                </div>
+
+                                                <div className="relative space-y-1">
+                                                    {plan.itinerary.map((it, i) => (
+                                                        <div key={i} className="group flex gap-4 relative">
+                                                            {/* Vertical Connector */}
+                                                            {i < plan.itinerary.length - 1 && (
+                                                                <div className="absolute left-[19px] top-10 bottom-[-16px] w-[2px] bg-slate-200 dark:bg-slate-800"></div>
+                                                            )}
+                                                            
+                                                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center relative z-10 shadow-sm transition-transform group-hover:scale-110">
+                                                                <Building size={16} className="text-indigo-500" />
+                                                            </div>
+
+                                                            <div className="flex-1 pb-6">
+                                                                <div className="p-4 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-white/5 rounded-[24px] shadow-sm group-hover:border-indigo-500/30 transition-all">
+                                                                    <div className="flex justify-between items-start mb-1">
+                                                                        <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                                            {it.location}
+                                                                        </span>
+                                                                        <div className="text-[9px] font-black text-slate-300 dark:text-slate-700 tracking-tighter">STOP 0{i+1}</div>
+                                                                    </div>
+                                                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed bg-slate-50 dark:bg-black/20 px-3 py-2 rounded-xl mt-2 border border-slate-100 dark:border-white/5">
+                                                                        {it.objective}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Action Bar - Thai Only Labels as requested */}
+                                            <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-white/5 flex gap-3">
+                                                <button 
+                                                    onClick={() => handleStatusChange(plan.id, 'approved')} 
+                                                    className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                                                >
+                                                    <CheckCircle size={18}/> อนุมัติ
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleStatusChange(plan.id, 'rejected')} 
+                                                    className="flex-1 bg-white dark:bg-slate-800 text-rose-500 border border-rose-200 dark:border-rose-500/20 font-black py-4 rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+                                                >
+                                                    <XCircle size={18}/> ปฏิเสธ
+                                                </button>
+                                            </div>
                                         </GlassCard>
                                     ))
                                 )
