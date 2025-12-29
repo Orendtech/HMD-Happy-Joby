@@ -55,8 +55,8 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
 export const addHospital = async (userId: string, hospital: string) => { await updateDoc(getUserRef(userId), { hospitals: arrayUnion(hospital) }); };
 export const addCustomer = async (userId: string, customer: Customer) => { await updateDoc(getUserRef(userId), { customers: arrayUnion(customer) }); };
 
-// AI Specific Service
-export const addInteractionByAi = async (userId: string, locationName: string, customerName: string, summary: string) => {
+// AI Specific Services
+export const addInteractionByAi = async (userId: string, locationName: string, customerName: string, summary: string, department: string = '') => {
     const today = getTodayDateId();
     const attRef = getAttendanceRef(userId, today);
     const attSnap = await getDoc(attRef);
@@ -89,7 +89,7 @@ export const addInteractionByAi = async (userId: string, locationName: string, c
         });
     }
 
-    const interaction: Interaction = { customerName, summary, department: '' };
+    const interaction: Interaction = { customerName, summary, department };
     if (!report.visits[visitIdx].interactions) report.visits[visitIdx].interactions = [];
     report.visits[visitIdx].interactions!.push(interaction);
     
@@ -97,7 +97,15 @@ export const addInteractionByAi = async (userId: string, locationName: string, c
     report.visits[visitIdx].summary = report.visits[visitIdx].interactions!.map(i => `${i.customerName}: ${i.summary}`).join('\n');
 
     await updateDoc(attRef, { report });
-    return `บันทึกข้อมูลพบ ${customerName} ที่ ${checkIns[visitIdx].location} สำเร็จแล้วครับ`;
+    return `บันทึกข้อมูลพบ ${customerName} (${department}) ที่ ${checkIns[visitIdx].location} สำเร็จแล้วครับ`;
+};
+
+export const createContactByAi = async (userId: string, name: string, hospital: string, department: string, phone: string = '') => {
+    const customer: Customer = { name, hospital, department, phone };
+    await updateDoc(getUserRef(userId), {
+        customers: arrayUnion(customer)
+    });
+    return `สร้างรายชื่อผู้ติดต่อใหม่: ${name} (${department}) ที่ ${hospital} เรียบร้อยแล้วครับ`;
 };
 
 export const finalizeCheckoutByAi = async (userId: string) => {
@@ -378,7 +386,6 @@ export const updateOpportunity = async (userId: string, dateId: string, location
          }
     }
     else if (location.legacyIdx !== undefined) {
-        // Fix: Simplified logic to assume pipeline is always an array or undefined per types.ts fix
         let pipelines = Array.isArray(report.pipeline) ? report.pipeline : [];
         if (pipelines[location.legacyIdx]) {
             targetId = pipelines[location.legacyIdx].id;
