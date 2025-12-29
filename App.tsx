@@ -4,7 +4,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './firebaseConfig';
 import { initializeUser, getUserProfile } from './services/dbService';
-import { Lock, Sparkles, Orbit } from 'lucide-react';
+import { Lock, Sparkles, Orbit, AlertTriangle } from 'lucide-react';
 import { UserProfile } from './types';
 
 // Pages
@@ -20,69 +20,40 @@ import Reminders from './pages/Reminders';
 import WorkPlanner from './pages/WorkPlanner';
 
 const FullPageLoader = () => {
-  const brandName = "Happy Joby";
-  
   return (
     <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#020617] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-700">
-      {/* Dynamic Background Elements */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-20 dark:opacity-30 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600 rounded-full blur-[120px] animate-pulse delay-1000"></div>
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
-        {/* Animated Text Logo */}
         <div className="flex flex-wrap justify-center items-center gap-x-2 sm:gap-x-4">
           <div className="flex">
             {"Happy".split("").map((char, i) => (
-              <span 
-                key={i} 
-                className="text-5xl sm:text-7xl font-black tracking-tighter text-slate-900 dark:text-white letter-anim glow-text"
-                style={{ animationDelay: `${i * 0.1}s` }}
-              >
-                {char}
-              </span>
+              <span key={i} className="text-5xl sm:text-7xl font-black tracking-tighter text-slate-900 dark:text-white letter-anim glow-text" style={{ animationDelay: `${i * 0.1}s` }}>{char}</span>
             ))}
           </div>
           <div className="flex">
             {"Joby".split("").map((char, i) => (
-              <span 
-                key={i} 
-                className="text-5xl sm:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-cyan-500 to-blue-600 letter-anim glow-text"
-                style={{ animationDelay: `${(i + 5) * 0.1}s` }}
-              >
-                {char}
-              </span>
+              <span key={i} className="text-5xl sm:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-cyan-500 to-blue-600 letter-anim glow-text" style={{ animationDelay: `${(i + 5) * 0.1}s` }}>{char}</span>
             ))}
           </div>
         </div>
         
-        {/* Animated Subtitle */}
-        <div 
-          className="mt-8 flex items-center gap-3 px-5 py-2.5 bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-full border border-slate-200 dark:border-white/10 shadow-lg animate-enter opacity-0"
-          style={{ animationDelay: '1.2s' }}
-        >
-          <div className="relative">
-            <Sparkles className="text-cyan-500 w-4 h-4 animate-pulse" />
-            <div className="absolute inset-0 bg-cyan-500/20 blur-sm rounded-full animate-ping"></div>
-          </div>
-          <span className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">
-            Intelligent Workspace
-          </span>
+        <div className="mt-8 flex items-center gap-3 px-5 py-2.5 bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-full border border-slate-200 dark:border-white/10 shadow-lg animate-enter opacity-0" style={{ animationDelay: '0.8s' }}>
+          <Sparkles className="text-cyan-500 w-4 h-4 animate-pulse" />
+          <span className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">Intelligent Workspace</span>
         </div>
       </div>
 
-      {/* Progress/Status Indicator */}
-      <div 
-        className="absolute bottom-16 flex flex-col items-center gap-4 animate-enter opacity-0"
-        style={{ animationDelay: '1.5s' }}
-      >
+      <div className="absolute bottom-16 flex flex-col items-center gap-4 animate-enter opacity-0" style={{ animationDelay: '1s' }}>
         <div className="w-48 h-[2px] bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent w-full h-full animate-[glow-line_2s_infinite]"></div>
         </div>
         <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">
            <Orbit size={12} className="animate-spin duration-[3s]" />
-           Connecting to cloud services
+           Initializing Services
         </div>
       </div>
     </div>
@@ -93,30 +64,76 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-         await initializeUser(currentUser.uid, currentUser.email || 'unknown');
-         const profile = await getUserProfile(currentUser.uid);
-         setUserProfile(profile);
-      } else {
-         setUserProfile(null);
-      }
-      setUser(currentUser);
-      
-      // หน่วงเวลา 3 วินาทีเพื่อให้เห็น Animation สวยๆ ครบวงจร
-      const timer = setTimeout(() => {
+    let isMounted = true;
+
+    // Safe Boot Timeout: ถ้าโหลดนานเกิน 10 วินาที ให้เลิกโหลด
+    const safeBootTimer = setTimeout(() => {
+      if (loading && isMounted) {
+        console.warn("Initialization taking too long, forcing load complete.");
         setLoading(false);
-      }, 3000);
-      
-      return () => clearTimeout(timer);
+      }
+    }, 10000);
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      try {
+        if (currentUser && isMounted) {
+           setUser(currentUser);
+           // ห่อหุ้ม async การโหลดโปรไฟล์ด้วย try-catch
+           try {
+             await initializeUser(currentUser.uid, currentUser.email || 'unknown');
+             const profile = await getUserProfile(currentUser.uid);
+             if (isMounted) setUserProfile(profile);
+           } catch (profileErr) {
+             console.error("Profile Load Error:", profileErr);
+             // ถึงโหลดโปรไฟล์ไม่ได้ ก็ให้เข้าหน้าแอป (เผื่อทำงานออฟไลน์หรือ Network ชั่วคราว)
+           }
+        } else if (isMounted) {
+           setUser(null);
+           setUserProfile(null);
+        }
+
+        // หน่วงเวลาขั้นต่ำเพื่อให้ Animation แสดงผลสวยงาม
+        setTimeout(() => {
+          if (isMounted) setLoading(false);
+          clearTimeout(safeBootTimer);
+        }, 2000);
+
+      } catch (authErr: any) {
+        console.error("Auth Listener Error:", authErr);
+        if (isMounted) {
+          setInitError(authErr.message || "การเชื่อมต่อล้มเหลว");
+          setLoading(false);
+        }
+      }
     });
-    return () => unsubscribe();
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+      clearTimeout(safeBootTimer);
+    };
   }, []);
 
   if (loading) {
     return <FullPageLoader />;
+  }
+
+  if (initError) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-6 text-center space-y-6">
+        <div className="p-4 bg-rose-500/10 rounded-full border border-rose-500/20">
+            <AlertTriangle className="w-12 h-12 text-rose-500" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold mb-2">ไม่สามารถเริ่มต้นระบบได้</h1>
+          <p className="text-slate-400 text-sm">{initError}</p>
+        </div>
+        <button onClick={() => window.location.reload()} className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold transition-all shadow-lg shadow-cyan-600/20">ลองใหม่อีกครั้ง</button>
+      </div>
+    );
   }
 
   if (user && userProfile && userProfile.isApproved === false) {
