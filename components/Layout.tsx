@@ -123,9 +123,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             {!isHomePage && (
                 <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
                     <div className="flex items-center gap-4">
-                        {/* Avatar with Role Badge Overlap */}
-                        <div className="relative">
-                            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden shrink-0">
+                        <div className="relative shrink-0">
+                            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden">
                                     {userProfile?.photoBase64 ? (
                                         <img src={userProfile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
@@ -143,7 +142,6 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                             </div>
                         </div>
 
-                        {/* Name and Area returned to stacked position next to avatar */}
                         <div className="flex flex-col leading-tight ml-1">
                             <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
                                 {userProfile?.name || user.email?.split('@')[0]}
@@ -165,7 +163,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 </header>
             )}
 
-            <main className={`flex-1 overflow-y-auto pb-28 z-0 scroll-smooth ${isHomePage ? 'pt-0 px-0' : 'pt-4 px-4'}`}>
+            <main className={`flex-1 overflow-y-auto pb-24 z-0 scroll-smooth pt-4 px-4`}>
                 <Outlet />
             </main>
 
