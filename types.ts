@@ -60,8 +60,8 @@ export interface UserProfile {
     level?: number;
     currentStreak?: number;
     lastActiveDate?: string;
-    // Track the last month a reward was claimed (Format: YYYY-MM)
     lastRewardClaimedMonth?: string;
+    aiApiKey?: string; // New field for Gemini API Key management
 }
 
 export interface CheckInRecord {
@@ -89,7 +89,8 @@ export interface VisitReport {
 export interface DailyReport {
     summary?: string; 
     metWith?: string[] | string;
-    pipeline?: PipelineData[] | PipelineData;
+    // Fix: Changed pipeline from recursive union to PipelineData[]
+    pipeline?: PipelineData[];
     visits?: VisitReport[];
 }
 export interface AttendanceDay {

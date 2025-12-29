@@ -55,6 +55,78 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
 export const addHospital = async (userId: string, hospital: string) => { await updateDoc(getUserRef(userId), { hospitals: arrayUnion(hospital) }); };
 export const addCustomer = async (userId: string, customer: Customer) => { await updateDoc(getUserRef(userId), { customers: arrayUnion(customer) }); };
 
+// AI Specific Service
+export const addInteractionByAi = async (userId: string, locationName: string, customerName: string, summary: string) => {
+    const today = getTodayDateId();
+    const attRef = getAttendanceRef(userId, today);
+    const attSnap = await getDoc(attRef);
+    
+    if (!attSnap.exists()) {
+        throw new Error("ยังไม่ได้เช็คอินในวันนี้ กรุณาเช็คอินก่อนกรอกรายงาน");
+    }
+
+    const data = attSnap.data() as AttendanceDay;
+    const checkIns = data.checkIns || [];
+    
+    let visitIdx = checkIns.findIndex(ci => ci.location.toLowerCase().includes(locationName.toLowerCase()) || locationName.toLowerCase().includes(ci.location.toLowerCase()));
+    
+    if (visitIdx === -1) {
+        throw new Error(`ไม่พบรายการเช็คอินที่ ${locationName} ในวันนี้ กรุณาเช็คอินที่นี่ก่อนครับ หรือระบุชื่อสถานที่ให้ชัดเจน`);
+    }
+
+    const report = data.report || { visits: [] };
+    if (!report.visits) report.visits = [];
+    
+    while (report.visits.length < checkIns.length) {
+        const idx = report.visits.length;
+        report.visits.push({
+            location: checkIns[idx].location,
+            checkInTime: checkIns[idx].timestamp,
+            summary: '',
+            metWith: [],
+            pipeline: [],
+            interactions: []
+        });
+    }
+
+    const interaction: Interaction = { customerName, summary, department: '' };
+    if (!report.visits[visitIdx].interactions) report.visits[visitIdx].interactions = [];
+    report.visits[visitIdx].interactions!.push(interaction);
+    
+    report.visits[visitIdx].metWith = report.visits[visitIdx].interactions!.map(i => i.customerName);
+    report.visits[visitIdx].summary = report.visits[visitIdx].interactions!.map(i => `${i.customerName}: ${i.summary}`).join('\n');
+
+    await updateDoc(attRef, { report });
+    return `บันทึกข้อมูลพบ ${customerName} ที่ ${checkIns[visitIdx].location} สำเร็จแล้วครับ`;
+};
+
+export const finalizeCheckoutByAi = async (userId: string) => {
+    const today = getTodayDateId();
+    const attRef = getAttendanceRef(userId, today);
+    const attSnap = await getDoc(attRef);
+    
+    if (!attSnap.exists()) throw new Error("ไม่พบข้อมูลการทำงานของวันนี้");
+    const data = attSnap.data() as AttendanceDay;
+    
+    if (data.checkOut) return "วันนี้คุณเช็คเอาท์เรียบร้อยแล้วครับ";
+    
+    const userRef = getUserRef(userId);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data() as UserProfile;
+
+    await updateDoc(attRef, { checkOut: Timestamp.now() });
+    
+    await addDoc(getActivityLogsCol(), {
+        userId,
+        userName: userData.name || userData.email.split('@')[0],
+        type: 'check-out',
+        location: data.checkIns[data.checkIns.length - 1]?.location || 'N/A',
+        timestamp: Timestamp.now()
+    });
+
+    return "เช็คเอาท์และส่งรายงานสรุปผลปฏิบัติงานเรียบร้อยแล้วครับ พักผ่อนได้เลย!";
+};
+
 // Activity Feed functions
 export const createActivityPost = async (post: Omit<ActivityPost, 'id' | 'likes' | 'comments' | 'timestamp'>) => {
     const ref = doc(getActivityPostsCol());
@@ -306,7 +378,8 @@ export const updateOpportunity = async (userId: string, dateId: string, location
          }
     }
     else if (location.legacyIdx !== undefined) {
-        let pipelines = Array.isArray(report.pipeline) ? report.pipeline : (report.pipeline ? [report.pipeline] : []);
+        // Fix: Simplified logic to assume pipeline is always an array or undefined per types.ts fix
+        let pipelines = Array.isArray(report.pipeline) ? report.pipeline : [];
         if (pipelines[location.legacyIdx]) {
             targetId = pipelines[location.legacyIdx].id;
             if (updatedData === null) { pipelines.splice(location.legacyIdx, 1); } else { pipelines[location.legacyIdx] = updatedData; targetId = updatedData.id; }

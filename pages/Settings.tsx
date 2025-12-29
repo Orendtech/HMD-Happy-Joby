@@ -8,7 +8,7 @@ import { GlassCard } from '../components/GlassCard';
 import { 
     User as UserIcon, MapPin, Calendar, Mail, Lock, Save, 
     LogOut, Settings as SettingsIcon, Camera, Upload, 
-    Sun, Moon, BellRing, ShieldCheck, RotateCcw, Sparkles, RefreshCcw, Info
+    Sun, Moon, BellRing, ShieldCheck, RotateCcw, Sparkles, RefreshCcw, Info, Key, Eye, EyeOff, Bot, Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,17 +18,20 @@ interface Props {
 
 const Settings: React.FC<Props> = ({ user }) => {
     const navigate = useNavigate();
+    const [profile, setProfile] = useState<UserProfile | null>(null);
     const [name, setName] = useState('');
     const [area, setArea] = useState('');
     const [startDate, setStartDate] = useState('');
     const [photoBase64, setPhotoBase64] = useState('');
+    const [aiApiKey, setAiApiKey] = useState('');
+    const [showApiKey, setShowApiKey] = useState(false);
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState('');
     const [msgType, setMsgType] = useState<'success' | 'error'>('success');
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
     const [updateLoading, setUpdateLoading] = useState(false);
-    const [appVersion] = useState("1.2.5"); // เวอร์ชันของแอป
+    const [appVersion] = useState("1.2.5");
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,10 +39,12 @@ const Settings: React.FC<Props> = ({ user }) => {
         const load = async () => {
             const p = await getUserProfile(user.uid);
             if (p) {
+                setProfile(p);
                 setName(p.name || '');
                 setArea(p.area || '');
                 setStartDate(p.startDate || '');
                 setPhotoBase64(p.photoBase64 || '');
+                setAiApiKey(p.aiApiKey || '');
             }
         };
         load();
@@ -87,9 +92,10 @@ const Settings: React.FC<Props> = ({ user }) => {
         const permission = await Notification.requestPermission();
         setNotifPermission(permission);
         if (permission === 'granted') {
-            new Notification("🚨 ทดสอบระบบแจ้งเตือน", {
-                body: "ระบบพร้อมแจ้งเตือนเช็คอิน (08:50) และเช็คเอาท์ (17:30) แล้วครับ",
+            new Notification("🚨 อย่าลืมเช็คอิน!", {
+                body: "ขณะนี้เวลา 08:50 น. แล้ว อีก 10 นาทีจะถึงเวลาเข้างาน กรุณาเช็คอินด้วยครับ",
                 icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
+                badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
                 vibrate: [200, 100, 200]
             } as any);
         }
@@ -122,7 +128,11 @@ const Settings: React.FC<Props> = ({ user }) => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            await updateUserProfile(user.uid, { name, area, startDate, photoBase64 });
+            const updateData: Partial<UserProfile> = { name, area, startDate, photoBase64 };
+            if (profile?.role === 'admin') {
+                updateData.aiApiKey = aiApiKey;
+            }
+            await updateUserProfile(user.uid, updateData);
             setMsg('บันทึกข้อมูลเรียบร้อย'); setMsgType('success');
             setTimeout(() => { setMsg(''); window.location.reload(); }, 1500);
         } catch (e) { setMsg('เกิดข้อผิดพลาดในการบันทึก'); setMsgType('error'); }
@@ -135,6 +145,8 @@ const Settings: React.FC<Props> = ({ user }) => {
     };
 
     const handleLogout = () => { auth.signOut(); navigate('/login'); };
+
+    const isAdmin = profile?.role === 'admin';
 
     return (
         <div className="max-w-lg mx-auto space-y-6 pb-20">
@@ -164,16 +176,15 @@ const Settings: React.FC<Props> = ({ user }) => {
                     </button>
                 </div>
 
-                {/* Notifications Setup */}
                 <div className="p-5 bg-cyan-50 dark:bg-cyan-900/10 rounded-[28px] border border-cyan-100 dark:border-cyan-500/20 space-y-4">
                     <div className="flex items-start gap-4">
                         <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl text-cyan-600 dark:text-cyan-400 shadow-sm shrink-0">
                             <BellRing size={24} />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">ระบบแจ้งเตือนอัจฉริยะ</h3>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">ระบบแจ้งเตือนเข้างาน</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                เตือนเช็คอิน (08:50 น.) และเตือนเช็คเอาท์ (17:30 น.) หากยังไม่ได้ทำรายการ
+                                แจ้งเตือนเมื่อลืมเช็คอิน (จ-ศ 08:50 น.) 
                                 {notifPermission === 'granted' ? 
                                     <span className="text-emerald-500 font-bold ml-1 flex items-center gap-1 mt-1"><ShieldCheck size={12}/> เปิดใช้งานแล้ว</span> : 
                                     <span className="text-slate-400 ml-1 italic font-medium"> (ยังไม่ได้เปิดใช้งาน)</span>
@@ -187,14 +198,6 @@ const Settings: React.FC<Props> = ({ user }) => {
                             className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-600/20 transition-all active:scale-95 text-sm"
                         >
                             เปิดการแจ้งเตือนบนมือถือ
-                        </button>
-                    )}
-                    {notifPermission === 'granted' && (
-                        <button 
-                            onClick={handleEnableNotifications}
-                            className="w-full py-2 bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 font-bold rounded-xl border border-cyan-200 dark:border-cyan-500/30 transition-all active:scale-95 text-xs"
-                        >
-                            ทดสอบส่งการแจ้งเตือน
                         </button>
                     )}
                 </div>
@@ -241,12 +244,6 @@ const Settings: React.FC<Props> = ({ user }) => {
                         </label>
                         <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all" />
                     </div>
-                    <div className="space-y-2 opacity-60">
-                        <label className="text-sm text-slate-500 dark:text-gray-400 flex items-center gap-2 font-medium">
-                            <Mail size={14}/> อีเมล (เปลี่ยนไม่ได้)
-                        </label>
-                        <input value={user.email || ''} disabled className="w-full bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-xl p-3 text-slate-500 dark:text-gray-400 cursor-not-allowed" />
-                    </div>
                 </div>
 
                 <div className="pt-2">
@@ -257,6 +254,62 @@ const Settings: React.FC<Props> = ({ user }) => {
 
                 {msg && <div className={`text-center text-sm p-3 rounded-xl font-medium ${msgType === 'success' ? 'text-emerald-600 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/20' : 'text-rose-600 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/20'} animate-pulse`}>{msg}</div>}
             </GlassCard>
+
+            {/* Admin Exclusive AI Key Settings */}
+            {isAdmin && (
+                <GlassCard className="border-indigo-500/30 bg-indigo-50/10 dark:bg-indigo-900/10 shadow-indigo-500/10">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg relative">
+                            <Bot size={24} />
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full animate-pulse"></div>
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Advanced AI Settings</h3>
+                                <span className="text-[8px] font-black bg-indigo-500 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Admin Only</span>
+                            </div>
+                            <p className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold uppercase tracking-widest mt-0.5">Gemini AI Engine Configuration</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <Key size={12} className="text-indigo-500" /> Google Gemini API Key
+                            </label>
+                            <div className="relative group">
+                                <input 
+                                    type={showApiKey ? "text" : "password"} 
+                                    value={aiApiKey} 
+                                    onChange={e => setAiApiKey(e.target.value)} 
+                                    className="w-full bg-white/70 dark:bg-black/30 border-2 border-indigo-100 dark:border-indigo-500/20 rounded-2xl p-4 text-sm font-mono text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all shadow-inner" 
+                                    placeholder="AIzaSy..." 
+                                />
+                                <button
+                                    onClick={() => setShowApiKey(!showApiKey)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-500 transition-colors"
+                                >
+                                    {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            </div>
+                            <div className="flex items-start gap-2 mt-2 px-1">
+                                <Info size={12} className="text-indigo-400 shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed italic">
+                                    คีย์นี้จะถูกใช้เป็นลำดับแรกสำหรับการทำงานของ AI Coach หากไม่ได้ระบุไว้ ระบบจะใช้คีย์มาตรฐานจาก Environment Variable
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <button 
+                            onClick={handleSave} 
+                            disabled={loading}
+                            className="w-full bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/20 active:scale-95 transition-all uppercase tracking-widest text-xs"
+                        >
+                            {loading ? <Loader2 className="animate-spin" /> : <><Save size={18} /> อัปเดตการกำหนดค่าระบบ</>}
+                        </button>
+                    </div>
+                </GlassCard>
+            )}
 
             <GlassCard className="border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-900/5">
                 <div className="flex items-center justify-between mb-4">
