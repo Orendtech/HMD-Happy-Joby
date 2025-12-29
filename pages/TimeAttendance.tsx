@@ -125,7 +125,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     const [isSavingReport, setIsSavingReport] = useState(false);
 
-    // คำนวณความคืบหน้าของวัน (ระดับน้ำในปุ่ม)
     const dailyProgress = useMemo(() => {
         if (!todayData) return 0;
         const target = 5; 
@@ -383,10 +382,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     if (showRewardModal) {
         return (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950 px-6 overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.15)_0%,transparent_70%)]"></div>
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-6 overflow-hidden transition-colors duration-500">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.1)_0%,transparent_70%)] dark:bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.15)_0%,transparent_70%)]"></div>
                 
-                {/* Confetti Particles (Simplified) */}
                 <div className="absolute inset-0 pointer-events-none">
                     {Array.from({ length: 20 }).map((_, i) => (
                         <div key={i} 
@@ -404,31 +402,31 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
                 <div className="relative w-full max-w-sm text-center space-y-8 animate-bounce-in">
                     <div className="relative inline-block">
-                        <div className="absolute -inset-8 bg-amber-500/30 rounded-full blur-[40px] animate-pulse"></div>
-                        <div className="w-32 h-32 bg-gradient-to-br from-amber-400 to-orange-600 rounded-[40px] flex items-center justify-center shadow-[0_20px_50px_rgba(245,158,11,0.5)] border-4 border-white/30 relative z-10 rotate-12">
+                        <div className="absolute -inset-8 bg-amber-500/20 dark:bg-amber-500/30 rounded-full blur-[40px] animate-pulse"></div>
+                        <div className="w-32 h-32 bg-gradient-to-br from-amber-400 to-orange-600 rounded-[40px] flex items-center justify-center shadow-[0_20px_50px_rgba(245,158,11,0.3)] dark:shadow-[0_20px_50px_rgba(245,158,11,0.5)] border-4 border-white/50 dark:border-white/30 relative z-10 rotate-12">
                             <PartyPopper size={64} className="text-white fill-white/20" />
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        <h2 className="text-4xl font-black text-white tracking-tighter uppercase">Quest Complete!</h2>
-                        <p className="text-amber-400 font-black text-xs uppercase tracking-[0.3em]">ภารกิจรายเดือนสำเร็จแล้ว</p>
+                        <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Quest Complete!</h2>
+                        <p className="text-amber-600 dark:text-amber-400 font-black text-xs uppercase tracking-[0.3em]">ภารกิจรายเดือนสำเร็จแล้ว</p>
                     </div>
 
-                    <div className="bg-white/5 border border-white/10 rounded-[32px] p-8 backdrop-blur-xl">
-                        <p className="text-slate-400 text-xs font-bold uppercase mb-2">You Unlocked</p>
+                    <div className="bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-8 backdrop-blur-xl shadow-xl dark:shadow-none">
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase mb-2">You Unlocked</p>
                         <div className="flex items-center justify-center gap-3">
                             <Coins className="text-amber-500" size={32} />
-                            <span className="text-5xl font-black text-white tracking-tight">฿500</span>
+                            <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tight">฿500</span>
                         </div>
-                        <p className="text-slate-500 text-[10px] font-medium mt-4 leading-relaxed">
+                        <p className="text-slate-600 dark:text-slate-500 text-[10px] font-medium mt-4 leading-relaxed">
                             ระบบได้ทำการบันทึกรางวัลของคุณเข้าสู่พอร์ตสะสมเรียบร้อยแล้ว ขอบคุณสำหรับความตั้งใจตลอดเดือนที่ผ่านมา
                         </p>
                     </div>
 
                     <button 
                         onClick={() => setShowRewardModal(false)}
-                        className="w-full bg-white text-slate-950 font-black py-5 rounded-[24px] shadow-2xl active:scale-95 transition-all uppercase tracking-widest text-sm"
+                        className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-black py-5 rounded-[24px] shadow-2xl active:scale-95 transition-all uppercase tracking-widest text-sm"
                     >
                         Great! Continue Work
                     </button>
@@ -446,22 +444,22 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     if (showQuestPage) {
         return (
-            <div className="h-[100dvh] flex flex-col bg-slate-950 text-white animate-enter overflow-hidden">
-                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4 flex items-center gap-4 z-20 bg-slate-900/50 backdrop-blur-xl border-b border-white/5 shrink-0">
-                    <button onClick={() => setShowQuestPage(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all active:scale-95"><ChevronLeft size={24} /></button>
-                    <div><h2 className="text-2xl font-black text-white tracking-tighter">Monthly Quest</h2><p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">สะสมรางวัลภารกิจรายเดือน</p></div>
+            <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-slate-950 text-slate-900 dark:text-white animate-enter overflow-hidden transition-colors duration-500">
+                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4 flex items-center gap-4 z-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 shrink-0">
+                    <button onClick={() => setShowQuestPage(false)} className="p-3 bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 rounded-2xl text-slate-700 dark:text-white transition-all active:scale-95"><ChevronLeft size={24} /></button>
+                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Monthly Quest</h2><p className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">สะสมรางวัลภารกิจรายเดือน</p></div>
                 </header>
 
                 <main className="flex-1 overflow-y-auto pb-10 px-4 pt-6 space-y-6 relative">
-                    <div className="absolute top-20 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-                    <div className="absolute bottom-20 left-0 w-80 h-80 bg-orange-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+                    <div className="absolute top-20 right-0 w-64 h-64 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+                    <div className="absolute bottom-20 left-0 w-80 h-80 bg-orange-600/5 dark:bg-orange-600/10 rounded-full blur-[120px] pointer-events-none"></div>
 
                     <div className="relative z-10 space-y-6">
-                        <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-[32px] p-6 shadow-2xl relative overflow-hidden group">
+                        <div className="flex justify-between items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-6 shadow-xl dark:shadow-2xl relative overflow-hidden group">
                             <Coins className="absolute -right-6 -bottom-6 text-amber-500/10 w-40 h-40 rotate-12 group-hover:scale-110 transition-transform duration-1000" />
                             <div className="flex items-center gap-4 relative z-10">
                                 <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-2xl animate-pulse"><Trophy size={36} className="text-slate-900 fill-slate-900" /></div>
-                                <div><h3 className="text-white font-black text-3xl tracking-tight leading-none">฿500</h3><p className="text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cash Rewards</p></div>
+                                <div><h3 className="text-slate-900 dark:text-white font-black text-3xl tracking-tight leading-none">฿500</h3><p className="text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cash Rewards</p></div>
                             </div>
                             <div className="text-right relative z-10">
                                 <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</div>
@@ -471,18 +469,22 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             </div>
                         </div>
 
-                        <div className="bg-white/5 p-6 rounded-[36px] border border-white/5 shadow-inner space-y-4">
+                        <div className="bg-white/70 dark:bg-white/5 p-6 rounded-[36px] border border-slate-200 dark:border-white/5 shadow-inner space-y-4 backdrop-blur-md">
                             <div className="flex justify-between items-end">
-                                <div className="flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Tracker</span><span className="text-lg font-black text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} <span className="text-slate-500 font-bold text-sm">DAYS</span></span></div>
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 rounded-full border border-amber-500/30"><Star size={12} className="text-amber-500 fill-amber-500" /><span className="text-xs font-black text-amber-500">{Math.round(monthlyQuestStats.progress)}%</span></div>
+                                <div className="flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Tracker</span><span className="text-lg font-black text-slate-900 dark:text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} <span className="text-slate-500 font-bold text-sm">DAYS</span></span></div>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 dark:bg-amber-500/20 rounded-full border border-amber-500/20 dark:border-amber-500/30"><Star size={12} className="text-amber-600 dark:text-amber-500 fill-amber-600 dark:fill-amber-500" /><span className="text-xs font-black text-amber-600 dark:text-amber-500">{Math.round(monthlyQuestStats.progress)}%</span></div>
                             </div>
-                            <div className="h-6 w-full bg-black/40 rounded-full overflow-hidden border border-white/10 p-1"><div style={{ width: `${monthlyQuestStats.progress}%` }} className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative"><div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%)] bg-[length:20px_20px] animate-[progress-shine_2s_linear_infinite]"></div></div></div>
+                            <div className="h-6 w-full bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden border border-slate-300 dark:border-white/10 p-1">
+                                <div style={{ width: `${monthlyQuestStats.progress}%` }} className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative">
+                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%)] bg-[length:20px_20px] animate-[progress-shine_2s_linear_infinite]"></div>
+                                </div>
+                            </div>
                             <div className="grid grid-cols-7 gap-2.5 pt-4">
                                 {Array.from({ length: monthlyQuestStats.targetDays }).map((_, i) => {
                                     const isDone = i < monthlyQuestStats.completedDays;
                                     const isCurrent = i === monthlyQuestStats.completedDays;
                                     return (
-                                        <div key={i} className={`aspect-square rounded-xl flex items-center justify-center transition-all duration-500 ${isDone ? 'bg-amber-500 text-slate-900 shadow-[0_0_12px_rgba(245,158,11,0.6)] scale-100' : isCurrent ? 'bg-slate-800 border-2 border-dashed border-amber-500/50 animate-pulse' : 'bg-slate-800/50 text-slate-600 border border-white/5'}`}>
+                                        <div key={i} className={`aspect-square rounded-xl flex items-center justify-center transition-all duration-500 ${isDone ? 'bg-amber-500 text-slate-900 shadow-lg scale-100' : isCurrent ? 'bg-slate-200 dark:bg-slate-800 border-2 border-dashed border-amber-500/50 animate-pulse' : 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-white/5'}`}>
                                             {isDone ? <Star size={16} fill="currentColor" className="animate-enter" /> : <div className="text-[10px] font-black opacity-50">{i + 1}</div>}
                                         </div>
                                     );
@@ -490,17 +492,16 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             </div>
                         </div>
 
-                        <div className="bg-white/5 border border-white/5 rounded-[40px] p-8 space-y-6">
-                            <div className="flex items-center gap-3 mb-2"><div className="p-2 bg-amber-500/10 rounded-xl text-amber-500"><Info size={20} /></div><h4 className="text-white font-black text-sm uppercase tracking-widest">กติกาการรับรางวัล (RULES)</h4></div>
+                        <div className="bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-[40px] p-8 space-y-6 backdrop-blur-md shadow-sm">
+                            <div className="flex items-center gap-3 mb-2"><div className="p-2 bg-amber-500/10 rounded-xl text-amber-600 dark:text-amber-500"><Info size={20} /></div><h4 className="text-slate-900 dark:text-white font-black text-sm uppercase tracking-widest">กติกาการรับรางวัล (RULES)</h4></div>
                             <div className="space-y-6">
-                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/20">1</div><p className="text-sm text-slate-300 font-medium leading-relaxed"><span className="text-white font-bold block mb-1">เช็คอิน (Check-in)</span> ในสถานที่ปฏิบัติงานจริงทุกวันทำงาน (จันทร์-ศุกร์) ตลอดเดือน</p></div>
-                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/20">2</div><p className="text-sm text-slate-300 font-medium leading-relaxed"><span className="text-white font-bold block mb-1">บันทึกรายงานกิจกรรม (Visit Report)</span> ให้ครบถ้วนทุกสถานที่ที่ท่านได้เข้าพบในวันนั้นๆ อย่างละเอียด</p></div>
-                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/20">3</div><p className="text-sm text-slate-300 font-medium leading-relaxed"><span className="text-white font-bold block mb-1">เช็คเอาท์ (Check-out)</span> เพื่อสรุปยอดและส่งรายงานการปฏิบัติงานเมื่อจบวันทุกครั้ง</p></div>
+                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/10 dark:border-amber-500/20">1</div><p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed"><span className="text-slate-900 dark:text-white font-bold block mb-1">เช็คอิน (Check-in)</span> ในสถานที่ปฏิบัติงานจริงทุกวันทำงาน (จันทร์-ศุกร์) ตลอดเดือน</p></div>
+                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/10 dark:border-amber-500/20">2</div><p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed"><span className="text-slate-900 dark:text-white font-bold block mb-1">บันทึกรายงานกิจกรรม (Visit Report)</span> ให้ครบถ้วนทุกสถานที่ที่ท่านได้เข้าพบในวันนั้นๆ อย่างละเอียด</p></div>
+                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/10 dark:border-amber-500/20">3</div><p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed"><span className="text-slate-900 dark:text-white font-bold block mb-1">เช็คเอาท์ (Check-out)</span> เพื่อสรุปยอดและส่งรายงานการปฏิบัติงานเมื่อจบวันทุกครั้ง</p></div>
                             </div>
-                            <div className="pt-6 border-t border-white/5 flex gap-3"><AlertCircle size={16} className="text-amber-400 shrink-0" /><p className="text-[11px] text-amber-400/80 italic leading-relaxed">* หากทำครบเงื่อนไข ระบบจะปลดล็อกเงินรางวัล 500 บาท และโอนเข้าพอร์ตสะสมของคุณโดยอัตโนมัติเมื่อกดรับสิทธิ์</p></div>
+                            <div className="pt-6 border-t border-slate-200 dark:border-white/5 flex gap-3"><AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" /><p className="text-[11px] text-amber-600 dark:text-amber-400/80 italic leading-relaxed">* หากทำครบเงื่อนไข ระบบจะปลดล็อกเงินรางวัล 500 บาท และโอนเข้าพอร์ตสะสมของคุณโดยอัตโนมัติเมื่อกดรับสิทธิ์</p></div>
                         </div>
 
-                        {/* Updated Reward Footer with Claim Logic */}
                         <div className="pb-10">
                             {monthlyQuestStats.isClaimed ? (
                                 <div className="bg-emerald-500 rounded-[32px] p-6 flex items-center justify-between shadow-2xl shadow-emerald-500/20">
@@ -508,7 +509,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                         <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center"><CheckCircle2 className="text-emerald-500" size={28} /></div>
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Status</span>
-                                            <span className="text-sm font-black text-slate-950 uppercase">REWARD CLAIMED!</span>
+                                            <span className="text-sm font-black text-white uppercase">REWARD CLAIMED!</span>
                                         </div>
                                     </div>
                                     <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full text-white">SUCCESS</span>
@@ -517,7 +518,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                 <button 
                                     onClick={handleClaimReward}
                                     disabled={isSavingReport}
-                                    className="w-full bg-gradient-to-r from-amber-400 to-orange-600 rounded-[32px] p-6 flex items-center justify-between shadow-[0_20px_50px_rgba(245,158,11,0.4)] animate-pulse active:scale-95 transition-all group"
+                                    className="w-full bg-gradient-to-r from-amber-400 to-orange-600 rounded-[32px] p-6 flex items-center justify-between shadow-2xl animate-pulse active:scale-95 transition-all group"
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className="w-12 h-12 bg-slate-950 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform">
@@ -531,15 +532,15 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                     <ChevronRight className="text-slate-950 group-hover:translate-x-1 transition-transform" size={32} />
                                 </button>
                             ) : (
-                                <div className="bg-white/10 rounded-[32px] p-6 flex items-center justify-between border border-white/5">
+                                <div className="bg-slate-200/50 dark:bg-white/10 rounded-[32px] p-6 flex items-center justify-between border border-slate-300 dark:border-white/5 shadow-sm dark:shadow-none backdrop-blur-sm">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center"><Gift className="text-slate-500" size={24} /></div>
+                                        <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-sm"><Gift className="text-slate-400 dark:text-slate-500" size={24} /></div>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Next Target</span>
-                                            <span className="text-sm font-black text-slate-300 uppercase">อีก {monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วันเพื่อรับรางวัล</span>
+                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Next Target</span>
+                                            <span className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase">อีก {monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วันเพื่อรับรางวัล</span>
                                         </div>
                                     </div>
-                                    <Info className="text-slate-600" size={20} />
+                                    <Info className="text-slate-400 dark:text-slate-600" size={20} />
                                 </div>
                             )}
                         </div>
@@ -617,7 +618,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     }
 
     return (
-        <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617]">
+        <div className="h-full flex flex-col bg-[#F5F5F7] dark:bg-[#020617] transition-colors duration-500">
             <div className="w-full max-w-2xl mx-auto flex flex-col min-h-full">
                 <div className="px-4 pt-4 mb-2 z-20 sticky top-0 flex items-stretch gap-3">
                     <div className={`flex-1 relative rounded-[28px] shadow-2xl pb-6 pt-6 px-6 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
