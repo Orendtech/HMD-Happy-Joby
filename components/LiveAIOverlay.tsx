@@ -156,8 +156,19 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const activeSources = useRef(new Set<AudioBufferSourceNode>());
 
     useEffect(() => {
-        if (user) { getUserProfile(user.uid).then(setProfile); }
+        if (user) { 
+            const fetchProfile = async () => {
+                const p = await getUserProfile(user.uid);
+                setProfile(p);
+            };
+            fetchProfile();
+        }
     }, [user]);
+
+    // If AI is disabled by the user, return null so nothing is rendered
+    if (profile && profile.isAiEnabled === false) {
+        return null;
+    }
 
     const stopSession = () => {
         if (sessionRef.current) { try { sessionRef.current.close(); } catch (e) {} sessionRef.current = null; }

@@ -7,7 +7,7 @@ import {
     UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, 
     Target, MapPin, Building, MessageSquare, Edit, Send, Map as MapIcon,
     Trophy, Gift, Star, Coins, Box, Info, ChevronLeft, AlertCircle, ChevronRight,
-    PartyPopper, CheckCircle2
+    PartyPopper, CheckCircle2, BadgeCheck
 } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { GlassCard } from '../components/GlassCard';
@@ -16,8 +16,7 @@ import {
     addHospital, addCustomer, getReminders, getWorkPlans, getTodayDateId, getUserHistory,
     updateUserProfile
 } from '../services/dbService';
-import { 
-    UserProfile, AttendanceDay, DailyReport, PipelineData, 
+import { UserProfile, AttendanceDay, DailyReport, PipelineData, 
     VisitReport, Interaction, Reminder, WorkPlan 
 } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -639,8 +638,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                 </div>
 
                                 <div className="flex flex-col leading-tight ml-1">
-                                    <h1 className={`text-lg font-bold truncate max-w-[150px] ${theme.textPrimary}`}>
+                                    <h1 className={`text-lg font-bold truncate max-w-[160px] flex items-center gap-1.5 ${theme.textPrimary}`}>
                                         {profile?.name || user.email?.split('@')[0]}
+                                        <BadgeCheck size={18} className="text-emerald-500 fill-white shrink-0" />
                                     </h1>
                                     <p className={`text-[11px] font-black uppercase tracking-tight mt-0.5 opacity-80 ${theme.textSecondary}`}>
                                         {profile?.area || 'Happy Joby Workspace'}

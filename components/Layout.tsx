@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
-import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell, MessageSquare, Sparkles } from 'lucide-react';
+import { Clock, Users, Map as MapIcon, Settings, FileText, ShieldCheck, Bell, MessageSquare, Sparkles, Check, BadgeCheck } from 'lucide-react';
 import { UserProfile, AttendanceDay, ActivityLog, WorkPlan } from '../types';
 import { getReminders, markReminderAsNotified, getTodayAttendance, getTodayDateId, getWorkPlans, getTeamMembers } from '../services/dbService';
 import { db, APP_ARTIFACT_ID } from '../firebaseConfig';
@@ -143,8 +143,9 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                         </div>
 
                         <div className="flex flex-col leading-tight ml-1">
-                            <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
+                            <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1 flex items-center gap-1.5">
                                 {userProfile?.name || user.email?.split('@')[0]}
+                                <BadgeCheck size={16} className="text-emerald-500 fill-white shrink-0" />
                             </span>
                             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-tight mt-0.5">
                                 {userProfile?.area || 'Happy Joby Workspace'}
