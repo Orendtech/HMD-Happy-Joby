@@ -74,9 +74,7 @@ const Settings: React.FC<Props> = ({ user }) => {
 
     const handleUpdateApp = () => {
         setUpdateLoading(true);
-        // จำลองการเช็คเวอร์ชัน 1.5 วินาที
         setTimeout(() => {
-            // บังคับ Reload หน้าเว็บเพื่อล้าง Cache
             window.location.reload();
         }, 1500);
     };
@@ -89,10 +87,9 @@ const Settings: React.FC<Props> = ({ user }) => {
         const permission = await Notification.requestPermission();
         setNotifPermission(permission);
         if (permission === 'granted') {
-            new Notification("🚨 อย่าลืมเช็คอิน!", {
-                body: "ขณะนี้เวลา 08:50 น. แล้ว อีก 10 นาทีจะถึงเวลาเข้างาน กรุณาเช็คอินด้วยครับ",
+            new Notification("🚨 ทดสอบระบบแจ้งเตือน", {
+                body: "ระบบพร้อมแจ้งเตือนเช็คอิน (08:50) และเช็คเอาท์ (17:30) แล้วครับ",
                 icon: "https://img2.pic.in.th/pic/Orendtech-1.png",
-                badge: "https://img2.pic.in.th/pic/Orendtech-1.png",
                 vibrate: [200, 100, 200]
             } as any);
         }
@@ -174,9 +171,9 @@ const Settings: React.FC<Props> = ({ user }) => {
                             <BellRing size={24} />
                         </div>
                         <div className="flex-1">
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">ระบบแจ้งเตือนเข้างาน</h3>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">ระบบแจ้งเตือนอัจฉริยะ</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                                แจ้งเตือนเมื่อลืมเช็คอิน (จ-ศ 08:50 น.) 
+                                เตือนเช็คอิน (08:50 น.) และเตือนเช็คเอาท์ (17:30 น.) หากยังไม่ได้ทำรายการ
                                 {notifPermission === 'granted' ? 
                                     <span className="text-emerald-500 font-bold ml-1 flex items-center gap-1 mt-1"><ShieldCheck size={12}/> เปิดใช้งานแล้ว</span> : 
                                     <span className="text-slate-400 ml-1 italic font-medium"> (ยังไม่ได้เปิดใช้งาน)</span>
@@ -261,7 +258,6 @@ const Settings: React.FC<Props> = ({ user }) => {
                 {msg && <div className={`text-center text-sm p-3 rounded-xl font-medium ${msgType === 'success' ? 'text-emerald-600 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/20' : 'text-rose-600 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/20'} animate-pulse`}>{msg}</div>}
             </GlassCard>
 
-            {/* Application Version Section */}
             <GlassCard className="border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-900/5">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">

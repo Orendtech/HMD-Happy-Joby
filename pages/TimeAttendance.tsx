@@ -156,6 +156,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
         const targetDays = getWorkingDaysInMonth(); 
         const progress = Math.min(100, (completedDays / targetDays) * 100);
+        // Correctly accessing lastRewardClaimedMonth now that it's defined in UserProfile
         const isClaimed = profile?.lastRewardClaimedMonth === `${year}-${String(month+1).padStart(2,'0')}`;
         
         return { completedDays, targetDays, progress, isClaimed };
@@ -251,7 +252,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         const monthId = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
         try {
             setIsSavingReport(true);
-            await updateUserProfile(user.uid, { lastRewardClaimedMonth: monthId } as any);
+            // Fix: remove 'as any' since the property is now defined in types.ts
+            await updateUserProfile(user.uid, { lastRewardClaimedMonth: monthId });
             setShowRewardModal(true);
             await refreshData();
         } catch (e) {

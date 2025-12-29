@@ -60,6 +60,8 @@ export interface UserProfile {
     level?: number;
     currentStreak?: number;
     lastActiveDate?: string;
+    // Track the last month a reward was claimed (Format: YYYY-MM)
+    lastRewardClaimedMonth?: string;
 }
 
 export interface CheckInRecord {

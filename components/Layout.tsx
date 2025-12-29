@@ -64,6 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             const uncompletedList = list.filter(r => !r.isCompleted);
             setPendingRemindersCount(uncompletedList.length);
             
+            // 1. Handle Custom Reminders
             list.forEach(async (r) => {
                 const due = new Date(r.dueTime);
                 if (!r.isCompleted && !r.notified && due <= now) {
@@ -77,6 +78,36 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 }
             });
 
+            // 2. Automated Smart Reminders (Check-in/Check-out)
+            const todayAtt = await getTodayAttendance(user.uid);
+            const currentHour = now.getHours();
+            const currentMin = now.getMinutes();
+
+            if ("Notification" in window && Notification.permission === "granted") {
+                // Check-in Reminder (08:50)
+                const checkInNotified = localStorage.getItem(`notif_checkin_${todayStr}`);
+                if (!todayAtt && currentHour === 8 && currentMin >= 50 && !checkInNotified) {
+                    new Notification("🚨 อย่าลืมเช็คอิน!", {
+                        body: "ขณะนี้เวลา 08:50 น. แล้ว ได้เวลาเริ่มงานแล้วครับ",
+                        icon: "https://img2.pic.in.th/pic/Orendtech-1.png"
+                    });
+                    localStorage.setItem(`notif_checkin_${todayStr}`, 'true');
+                }
+
+                // Check-out Reminder (17:30)
+                const checkOutNotified = localStorage.getItem(`notif_checkout_${todayStr}`);
+                if (todayAtt && todayAtt.checkIns.length > 0 && !todayAtt.checkOut) {
+                    if (currentHour === 17 && currentMin >= 30 && !checkOutNotified) {
+                        new Notification("🔔 ลืมเช็คเอาท์หรือเปล่า?", {
+                            body: "ขณะนี้เวลา 17:30 น. แล้ว อย่าลืมสรุปรายงานและเช็คเอาท์ก่อนกลับบ้านนะครับ",
+                            icon: "https://img2.pic.in.th/pic/Orendtech-1.png"
+                        });
+                        localStorage.setItem(`notif_checkout_${todayStr}`, 'true');
+                    }
+                }
+            }
+
+            // 3. Admin/Manager Badge counts
             if (userProfile?.role === 'admin' || userProfile?.role === 'manager') {
                 const allPlans = await getWorkPlans();
                 const pendingOnly = allPlans.filter(p => p.status === 'pending');
@@ -92,7 +123,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             }
         };
 
-        const interval = setInterval(checkData, 60000);
+        const interval = setInterval(checkData, 60000); // Check every minute
         checkData(); 
         return () => clearInterval(interval);
     }, [user, userProfile]);
