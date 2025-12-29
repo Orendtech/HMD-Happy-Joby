@@ -30,6 +30,7 @@ const getRemindersCol = (userId: string) => collection(db, `artifacts/${APP_ARTI
 const getWorkPlansCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/workplans`);
 const getActivityLogsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_logs`);
 const getActivityPostsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_posts`);
+const getManagementLogsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/management_logs`);
 
 export const getTodayDateId = () => {
     const now = new Date();
@@ -160,6 +161,22 @@ export const getGlobalPipelineForAi = async () => {
     });
     
     return globalDeals;
+};
+
+/**
+ * Adds a formal management report to the global log
+ */
+export const addManagementLogByAi = async (userId: string, userName: string, title: string, reportContent: string, category: string = 'General') => {
+    await addDoc(getManagementLogsCol(), {
+        authorId: userId,
+        authorName: userName,
+        title,
+        content: reportContent,
+        category,
+        timestamp: Timestamp.now(),
+        dateId: getTodayDateId()
+    });
+    return `บันทึกรายงานการจัดการเรื่อง "${title}" เรียบร้อยแล้วครับ หัวหน้า`;
 };
 
 // Activity Feed functions
