@@ -1,9 +1,10 @@
+
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 export const firebaseConfig = {
-    apiKey: "AIzaSyBPvquIY3OgXt-KcfhHhiKKpNem-Rs_pck",
+    apiKey: "AIzaSyCRglGw5h3LJ6Ryzwv_RKssrJ0Pnoqk-_g",
     authDomain: "happy-joby.firebaseapp.com",
     projectId: "happy-joby",
     storageBucket: "happy-joby.appspot.com",
