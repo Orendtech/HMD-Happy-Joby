@@ -3,7 +3,9 @@ import { Bot, X, Loader2, Sparkles, TrendingUp, Target, AlertCircle, Mic, Cpu, Z
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { User } from 'firebase/auth';
-import { getUserProfile, getTodayAttendance, getReminders, addReminder, addInteractionByAi, finalizeCheckoutByAi, createContactByAi } from '../services/dbService';
+import { getUserProfile, getTodayAttendance, getReminders, addReminder, addInteractionByAi, finalizeCheckoutByAi, createContactByAi, getGlobalPipelineForAi } from '../services/dbService';
+// Import UserProfile type from types
+import { UserProfile } from '../types';
 
 interface Props {
     user: User;
@@ -99,6 +101,11 @@ const tools: { functionDeclarations: FunctionDeclaration[] }[] = [{
             name: 'get_today_context',
             description: 'ดึงข้อมูลว่าวันนี้เช็คอินไปที่ไหนแล้วบ้าง เพื่อใช้ประกอบการตัดสินใจ',
             parameters: { type: Type.OBJECT, properties: {} }
+        },
+        {
+            name: 'get_global_sales_intelligence',
+            description: 'ดึงข้อมูลพอร์ตการขาย (Sales Pipeline) ของพนักงานทุกคนเพื่อสรุปยอดขายภาพรวม ดีลค้าง และเป้าหมายรายเดือน (ใช้สำหรับสิทธิ์ Admin/Manager เท่านั้น)',
+            parameters: { type: Type.OBJECT, properties: {} }
         }
     ]
 }];
@@ -110,6 +117,8 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const [isListening, setIsListening] = useState(false);
     const [inputVolume, setInputVolume] = useState(0);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    // Profile state added to be accessible in the render scope
+    const [profile, setProfile] = useState<UserProfile | null>(null);
     
     const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 180 });
     const [isDragging, setIsDragging] = useState(false);
@@ -120,6 +129,13 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const micStreamRef = useRef<MediaStream | null>(null);
     const nextStartTimeRef = useRef(0);
     const activeSources = useRef(new Set<AudioBufferSourceNode>());
+
+    // Fetch profile on initialization
+    useEffect(() => {
+        if (user) {
+            getUserProfile(user.uid).then(setProfile);
+        }
+    }, [user]);
 
     const toggleAI = async () => {
         if (isOpen) {
@@ -170,6 +186,9 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                     const att = await getTodayAttendance(user.uid);
                     const list = att?.checkIns.map(ci => ci.location).join(', ') || 'ยังไม่มีการเช็คอิน';
                     return { result: `วันนี้คุณเช็คอินที่: ${list}` };
+                case 'get_global_sales_intelligence':
+                    const globalData = await getGlobalPipelineForAi();
+                    return { result: globalData };
                 default:
                     return { result: "ไม่พบคำสั่งนี้" };
             }
@@ -192,26 +211,42 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 throw new Error("ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการตั้งค่าความปลอดภัย");
             }
 
-            const profile = await getUserProfile(user.uid);
+            const profileData = await getUserProfile(user.uid);
+            const isPrivileged = profileData?.role === 'admin' || profileData?.role === 'manager';
             
-            // STRICT SYSTEM INSTRUCTIONS TO PREVENT HALLUCINATION
+            // Generate full date and time context in Thai
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('th-TH', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long', 
+                year: 'numeric' 
+            });
+            const timeStr = now.toLocaleTimeString('th-TH');
+
             const systemInstruction = `
-                คุณคือ "Happy Joby AI Coach" ระบบปฏิบัติการอัจฉริยะที่เชื่อมต่อกับฐานข้อมูลแบบ Real-time
+                คุณคือ "Happy Joby AI Coach" ระบบปฏิบัติการอัจฉริยะแบบ Real-time
+                สถานะผู้ใช้ปัจจุบัน: ${profileData?.role?.toUpperCase()}
                 
-                กฎเหล็กในการทำงาน (Strict Protocols):
-                1. **ห้ามสร้างข้อมูลเท็จ (No Hallucinations)**: คุณต้องใช้ข้อมูลจาก "รายชื่อผู้ติดต่อ" ที่ให้ไปเท่านั้น ห้ามสมมติชื่อคนหรือสถานที่ขึ้นมาเองเด็ดขาด
-                2. **การตรวจสอบความจริง**: หากผู้ใช้ถามถึงบุคคลที่ไม่มีในระบบ ให้ตอบว่า "ขออภัยครับ ผมไม่พบชื่อนี้ในฐานข้อมูลปัจจุบันของคุณ ต้องการให้ผมบันทึกเป็นผู้ติดต่อใหม่ไหมครับ?"
-                3. **การเข้าถึงข้อมูล**: รายชื่อผู้ติดต่อปัจจุบันของผู้ใช้คือ: ${JSON.stringify(profile?.customers || [])}
-                4. **หน้าที่หลัก**: 
-                   - บันทึกการเข้าพบ (add_interaction): ต้องระบุชื่อลูกค้าและสถานที่ที่มีอยู่จริงในระบบ
-                   - สร้างผู้ติดต่อใหม่ (create_new_contact): ใช้เมื่อผู้ใช้ต้องการบันทึกคนใหม่จริงๆ เท่านั้น
-                   - สรุปงาน (finalize_checkout): ใช้เมื่อผู้ใช้บอกว่าจบงานหรือกลับบ้าน
-                5. **โทนเสียง**: มีความเป็นมืออาชีพ ทรงพลัง และแม่นยำเหมือน Jarvis
+                บริบทเวลา (Current Context):
+                - วันนี้คือ: ${dateStr}
+                - เวลาปัจจุบัน: ${timeStr}
                 
-                เวลาปัจจุบัน: ${new Date().toLocaleTimeString('th-TH')}
+                กฎเหล็ก (Strict Protocols):
+                1. **ห้ามมั่วข้อมูล**: ใช้ข้อมูลจากฐานข้อมูลที่เราส่งให้เท่านั้น ห้ามเดาวันที่หรือเดือนเองเด็ดขาด
+                2. **การทำงานสำหรับ Admin/Manager**: 
+                   - คุณมีสิทธิ์ใช้เครื่องมือ "get_global_sales_intelligence" เพื่อดูข้อมูลของพนักงานทุกคน
+                   - เมื่อได้รับคำถามเกี่ยวกับ "ภาพรวม", "ยอดรวม", "ยอดขายเดือนนี้" หรือ "ใครถือดีลไหน" ให้ใช้เครื่องมือนี้ทันที
+                   - สรุปข้อมูลให้แม่นยำตามเดือนปัจจุบัน (${now.toLocaleDateString('th-TH', { month: 'long' })}) เช่น ยอดรวมทั้งหมดเท่าไหร่, ใครมีดีลใหญ่ที่สุด และมีโอกาสสำเร็จกี่เปอร์เซ็นต์
+                3. **การทำงานปกติ**: 
+                   - บันทึกการเข้าพบ (add_interaction) และจัดการรายชื่อ (create_new_contact)
+                   - รายชื่อลูกค้าของคุณ: ${JSON.stringify(profileData?.customers || [])}
+                4. **บุคลิก**: สุขุม แม่นยำ เหมือน JARVIS มีความสามารถในการวิเคราะห์ข้อมูลสูง
+                
+                ${isPrivileged ? "สิทธิ์เข้าถึง: สูงสุด (คุณสามารถรายงานข้อมูลทีมได้)" : "สิทธิ์เข้าถึง: ส่วนบุคคล"}
             `;
 
-            const effectiveApiKey = profile?.aiApiKey || process.env.API_KEY || "";
+            const effectiveApiKey = profileData?.aiApiKey || process.env.API_KEY || "";
             const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
             
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -274,6 +309,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                             });
                             source.start(nextStartTimeRef.current);
                             nextStartTimeRef.current += audioBuffer.duration;
+                            // Scheduling audio playback correctly using current property of the ref
                             activeSources.current.add(source);
                         }
                     },
@@ -363,24 +399,22 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 </div>
             </div>
 
-            {/* FULLSCREEN IMMERSIVE OVERLAY (FIXED FOR NO TOP BLACK BAR) */}
+            {/* FULLSCREEN IMMERSIVE OVERLAY */}
             {isOpen && (
                 <div className="fixed inset-0 z-[999] bg-[#020617] flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,1)]">
-                    {/* Immersive Atmospheric Background (Always full screen) */}
                     <div className="absolute inset-0 pointer-events-none overflow-hidden">
                         <div className="absolute top-[-20%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_70%)] opacity-50"></div>
                         <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[150px] animate-nebula-slow opacity-30"></div>
                         <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-nebula-reverse opacity-30"></div>
                     </div>
 
-                    {/* Header HUD (Using paddingTop for safe area instead of container padding) */}
                     <div className="relative z-10 w-full" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
                         <div className="max-w-2xl mx-auto flex justify-between items-center h-24 px-8 opacity-60">
                             <div className="flex items-center gap-3">
                                 <Radio size={16} className="text-cyan-400 animate-pulse" />
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Status</span>
-                                    <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">Protocol: Verified</span>
+                                    <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">Auth: {getUserRoleLabel(profile)}</span>
                                 </div>
                             </div>
                             <button onClick={toggleAI} className="p-4 bg-white/5 hover:bg-rose-500/20 rounded-3xl transition-all border border-white/5">
@@ -389,24 +423,19 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         </div>
                     </div>
 
-                    {/* Main Interaction Area */}
                     <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
                         <div className="w-full max-w-2xl flex flex-col items-center space-y-16">
                             
-                            {/* Neural Fluid Core */}
                             <div className="relative flex items-center justify-center w-80 h-80">
-                                {/* Reactive Aura */}
                                 <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[100px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
                                 
                                 <div className="relative w-64 h-64 flex items-center justify-center">
-                                    {/* Gemini Style Fluid Layers */}
                                     <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-600/40 to-blue-400/40 rounded-full animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`} 
                                          style={{ transform: isListening ? `scale(${1 + inputVolume * 0.4})` : 'scale(1)' }}></div>
                                     <div className={`absolute inset-4 bg-gradient-to-bl from-blue-500/40 to-indigo-400/40 rounded-full animate-neural-wave-reverse ${isListening || isSpeaking ? '' : 'paused'}`}
                                          style={{ transform: isListening ? `scale(${1 + inputVolume * 0.25})` : 'scale(1)' }}></div>
                                     <div className={`absolute inset-8 bg-gradient-to-br from-indigo-600/60 to-purple-500/60 rounded-full animate-neural-pulse ${isListening || isSpeaking ? '' : 'paused'}`}></div>
                                     
-                                    {/* Inner Entity Core */}
                                     <div className="relative z-20 w-36 h-36 bg-slate-900 border-2 border-white/10 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden">
                                         <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 to-transparent"></div>
                                         {isConnecting ? (
@@ -416,13 +445,11 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                                                 <Bot size={64} className={`${isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-500'} transition-colors duration-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]`} />
                                             </div>
                                         )}
-                                        {/* Activity Scanning Ring */}
                                         {(isListening || isSpeaking) && (
                                             <div className="absolute inset-1 border-2 border-cyan-400/20 rounded-full animate-spin-slow"></div>
                                         )}
                                     </div>
 
-                                    {/* Sonic Expansion Rings */}
                                     {(isListening || isSpeaking) && (
                                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                             <div className="w-full h-full border border-cyan-500/10 rounded-full animate-ring-expand-1"></div>
@@ -432,7 +459,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                                 </div>
                             </div>
 
-                            {/* Status Typography */}
                             <div className="text-center space-y-8">
                                 <div className="space-y-3">
                                     <h2 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20 drop-shadow-[0_4px_20px_rgba(255,255,255,0.1)]">Coach Pro</h2>
@@ -454,7 +480,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                                 )}
                             </div>
 
-                            {/* Frequency Analyzer Bar */}
                             <div className="w-full max-w-md h-16 flex items-end justify-center gap-1.5 px-4 overflow-hidden">
                                 {Array.from({ length: 48 }).map((_, i) => {
                                     const delay = i * 0.03;
@@ -480,12 +505,11 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         </div>
                     </div>
 
-                    {/* Footer HUD Grid */}
                     <div className="relative z-10 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-8 flex flex-col items-center space-y-10">
                         <div className="grid grid-cols-3 gap-16 opacity-30 hover:opacity-100 transition-opacity duration-500">
                              <div className="flex flex-col items-center gap-2 group cursor-help"><Target size={24} className="group-hover:text-cyan-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Decision</span></div>
                              <div className="flex flex-col items-center gap-2 group cursor-help"><Cpu size={24} className="group-hover:text-indigo-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Process</span></div>
-                             <div className="flex flex-col items-center gap-2 group cursor-help"><Zap size={24} className="group-hover:text-amber-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Response</span></div>
+                             <div className="flex flex-col items-center gap-2 group cursor-help"><Zap size={24} className="group-hover:text-amber-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Intelligence</span></div>
                         </div>
                         
                         <button 
@@ -493,7 +517,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                             className="group relative px-24 py-6 rounded-[32px] border border-white/10 font-black text-[12px] uppercase tracking-[0.6em] transition-all overflow-hidden active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
                         >
                             <div className="absolute inset-0 bg-white/5 group-hover:bg-rose-500/10 transition-colors"></div>
-                            <span className="relative z-10 text-white/40 group-hover:text-white transition-colors">Abort Session</span>
+                            <span className="relative z-10 text-white/40 group-hover:text-white transition-colors">Terminate Link</span>
                             <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></div>
                         </button>
                     </div>
@@ -544,3 +568,10 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         </>
     );
 };
+
+// Helper function to get readable user role label
+function getUserRoleLabel(profile: UserProfile | null) {
+    if (!profile) return 'Guest';
+    const role = profile.role?.toUpperCase() || 'USER';
+    return role === 'ADMIN' ? 'Verified Admin' : role === 'MANAGER' ? 'Team Manager' : 'Field Agent';
+}

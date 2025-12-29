@@ -135,6 +135,33 @@ export const finalizeCheckoutByAi = async (userId: string) => {
     return "เช็คเอาท์และส่งรายงานสรุปผลปฏิบัติงานเรียบร้อยแล้วครับ พักผ่อนได้เลย!";
 };
 
+/**
+ * AI Global Intelligence: Aggregates sales pipeline from all users for manager/admin overview
+ */
+export const getGlobalPipelineForAi = async () => {
+    const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`));
+    const globalDeals: any[] = [];
+    
+    usersSnap.forEach(uDoc => {
+        const userData = uDoc.data() as UserProfile;
+        if (userData.activePipeline && userData.activePipeline.length > 0) {
+            userData.activePipeline.forEach(deal => {
+                globalDeals.push({
+                    ownerName: userData.name || userData.email.split('@')[0],
+                    product: deal.product,
+                    value: deal.value,
+                    stage: deal.stage,
+                    probability: deal.probability,
+                    expectedClose: deal.expectedCloseDate || 'Not Specified',
+                    customer: deal.customerName || 'Unknown'
+                });
+            });
+        }
+    });
+    
+    return globalDeals;
+};
+
 // Activity Feed functions
 export const createActivityPost = async (post: Omit<ActivityPost, 'id' | 'likes' | 'comments' | 'timestamp'>) => {
     const ref = doc(getActivityPostsCol());
