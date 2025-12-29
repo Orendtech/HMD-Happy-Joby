@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import { divIcon } from 'leaflet';
@@ -36,15 +35,15 @@ const createAvatarIcon = (photoUrl?: string, label?: string) => {
     return divIcon({
         className: 'custom-avatar-marker',
         html: `
-            <div style="position: relative; width: 56px; height: 56px;">
-                 <!-- White Border Ring -->
+            <div style="position: relative; width: 64px; height: 72px; animation: marker-float 3s ease-in-out infinite;">
+                 <!-- White Border Ring (Avatar Holder) -->
                 <div style="
                     position: absolute;
-                    top: 0; left: 0;
+                    top: 4px; left: 4px;
                     width: 56px; height: 56px; 
                     border-radius: 50%; 
                     background: white;
-                    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.5), 0 0 10px rgba(6, 182, 212, 0.3);
                     z-index: 50;
                     display: flex;
                     align-items: center;
@@ -66,8 +65,8 @@ const createAvatarIcon = (photoUrl?: string, label?: string) => {
                 <!-- Pointer Triangle (Clean White) -->
                 <div style="
                     position: absolute;
-                    bottom: -8px;
-                    left: 50%;
+                    bottom: 4px;
+                    left: 32px;
                     transform: translateX(-50%);
                     width: 0; 
                     height: 0; 
@@ -75,25 +74,48 @@ const createAvatarIcon = (photoUrl?: string, label?: string) => {
                     border-right: 8px solid transparent;
                     border-top: 12px solid white;
                     z-index: 49;
-                    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+                    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
                 "></div>
 
-                <!-- Pulse Animation Ring (Blue Aura) -->
+                <!-- Primary Pulse Animation Ring (Blue Aura) -->
                  <div style="
                     position: absolute;
-                    top: -4px; left: -4px;
+                    top: 0; left: 0;
                     width: 64px; height: 64px;
                     border-radius: 50%;
-                    border: 2px solid rgba(6, 182, 212, 0.6);
-                    animation: pulse-ring 2s infinite;
+                    border: 3px solid rgba(6, 182, 212, 0.8);
+                    animation: pulse-ring 2.5s infinite;
                     z-index: 10;
                     pointer-events: none;
                 "></div>
+
+                <!-- Secondary Delayed Pulse Ring -->
+                <div style="
+                    position: absolute;
+                    top: 0; left: 0;
+                    width: 64px; height: 64px;
+                    border-radius: 50%;
+                    border: 2px solid rgba(59, 130, 246, 0.6);
+                    animation: pulse-ring 2.5s infinite 1.25s;
+                    z-index: 9;
+                    pointer-events: none;
+                "></div>
+
+                <!-- Subtle Center Shadow (On Ground) -->
+                <div style="
+                    position: absolute;
+                    bottom: -2px; left: 16px;
+                    width: 32px; height: 8px;
+                    background: rgba(0,0,0,0.2);
+                    border-radius: 50%;
+                    filter: blur(4px);
+                    z-index: 1;
+                "></div>
             </div>
         `,
-        iconSize: [56, 64],
-        iconAnchor: [28, 64],
-        popupAnchor: [0, -68]
+        iconSize: [64, 72],
+        iconAnchor: [32, 72],
+        popupAnchor: [0, -76]
     });
 };
 
@@ -107,6 +129,12 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ lat, lng, popupText, mar
     if (!isMounted) return <div className={`${className} bg-slate-800 animate-pulse border border-white/10`}></div>;
 
     const allMarkers = markers.length > 0 ? markers : [{lat, lng, text: popupText || "Current Location"}];
+    const isDarkMode = document.documentElement.classList.contains('dark');
+
+    // CartoDB tiles are much sharper and have high-res @2x versions
+    const tileUrl = isDarkMode 
+        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
     return (
         <div className={`${className} overflow-hidden shadow-2xl border border-white/20 relative z-0`}>
@@ -115,20 +143,21 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ lat, lng, popupText, mar
                 zoom={zoom} 
                 scrollWheelZoom={true} 
                 zoomControl={false}
-                style={{ height: "100%", width: "100%", background: '#0f172a' }}
+                style={{ height: "100%", width: "100%", background: isDarkMode ? '#111827' : '#f3f4f6' }}
             >
                 <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url={tileUrl}
+                    detectRetina={true}
+                    maxZoom={20}
                 />
                 <RecenterMap lat={lat} lng={lng} zoom={zoom} />
                 
                 {allMarkers.map((m, idx) => (
                     <React.Fragment key={idx}>
-                        {/* Zone Radius Circle (The blue circle) */}
                         <Circle 
                             center={[m.lat, m.lng]}
-                            radius={500} // 500 meters radius zone
+                            radius={500}
                             pathOptions={{ 
                                 fillColor: '#06b6d4', 
                                 fillOpacity: 0.1, 
@@ -137,8 +166,6 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ lat, lng, popupText, mar
                                 opacity: 0.3 
                             }}
                         />
-                        
-                        {/* Custom Avatar Marker (ALWAYS used, never DefaultIcon) */}
                         <Marker position={[m.lat, m.lng]} icon={createAvatarIcon(m.photo, m.text)}>
                             <Popup className="font-sans text-slate-900 font-bold">
                                 {m.text}

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { User } from 'firebase/auth';
 import { 
@@ -627,7 +626,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                         text: profile?.name || user.email || 'My Location',
                                         photo: profile?.photoBase64
                                     }]}
-                                    className="h-full w-full opacity-90" zoom={15} 
+                                    className="h-full w-full" zoom={15} 
                                 />
                             ) : (
                                 <div className="h-full w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center text-slate-500 text-xs gap-2"><Navigation size={14} className="animate-spin" /> Acquiring GPS...</div>

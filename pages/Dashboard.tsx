@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { MapDisplay } from '../components/MapDisplay';
 import { GlassCard } from '../components/GlassCard';
@@ -145,7 +144,7 @@ const Dashboard: React.FC = () => {
                         lng={thailandCenter.lng} 
                         markers={markers}
                         zoom={10}
-                        className="h-full w-full grayscale-[0.2] dark:grayscale-[0.5] contrast-[1.1] transition-all duration-700" 
+                        className="h-full w-full" 
                     />
                     
                     {/* Floating Map Controls / HUD */}
