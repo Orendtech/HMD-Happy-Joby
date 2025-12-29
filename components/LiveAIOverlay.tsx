@@ -165,8 +165,8 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         }
     }, [user]);
 
-    // If AI is disabled by the user, return null so nothing is rendered
-    if (profile && profile.isAiEnabled === false) {
+    // Only show if profile is loaded AND isAiEnabled is explicitly true
+    if (!profile || profile.isAiEnabled !== true) {
         return null;
     }
 

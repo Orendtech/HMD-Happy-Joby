@@ -24,7 +24,7 @@ const Settings: React.FC<Props> = ({ user }) => {
     const [startDate, setStartDate] = useState('');
     const [photoBase64, setPhotoBase64] = useState('');
     const [aiApiKey, setAiApiKey] = useState('');
-    const [isAiEnabled, setIsAiEnabled] = useState(true);
+    const [isAiEnabled, setIsAiEnabled] = useState(false); // Default to false (closed)
     const [showApiKey, setShowApiKey] = useState(false);
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState('');
@@ -46,7 +46,7 @@ const Settings: React.FC<Props> = ({ user }) => {
                 setStartDate(p.startDate || '');
                 setPhotoBase64(p.photoBase64 || '');
                 setAiApiKey(p.aiApiKey || '');
-                setIsAiEnabled(p.isAiEnabled !== false); // Default to true
+                setIsAiEnabled(p.isAiEnabled === true); // Only enable if explicitly true
             }
         };
         load();
