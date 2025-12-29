@@ -1,16 +1,18 @@
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { ActivityPost, UserProfile, PostComment } from '../types';
 import { 
     getActivityPosts, createActivityPost, toggleLikePost, 
-    deleteActivityPost, addCommentToPost, updateActivityPost 
+    deleteActivityPost, addCommentToPost, updateActivityPost,
+    addHospital, getUserProfile
 } from '../services/dbService';
 import { GlassCard } from '../components/GlassCard';
 import { 
     Heart, MessageCircle, Share2, Plus, Camera, X, 
     Loader2, Trash2, Send, Image as ImageIcon,
-    ChevronLeft, ChevronRight, Edit3, MoreHorizontal
+    ChevronLeft, ChevronRight, Edit3, MoreHorizontal, AlertCircle,
+    MapPin, Search, Building, Check
 } from 'lucide-react';
 
 interface Props {
@@ -46,7 +48,6 @@ const ImageCarousel: React.FC<{ images: string[] }> = ({ images }) => {
                 ))}
             </div>
             
-            {/* Pagination Dots */}
             <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10">
                 {images.map((_, idx) => (
                     <div 
@@ -78,18 +79,24 @@ const ImageCarousel: React.FC<{ images: string[] }> = ({ images }) => {
     );
 };
 
-const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
+const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) => {
     const [posts, setPosts] = useState<ActivityPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [editingPostId, setEditingPostId] = useState<string | null>(null);
+    const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
     
     // Form State
     const [caption, setCaption] = useState('');
     const [postImages, setPostImages] = useState<string[]>([]);
+    const [location, setLocation] = useState('');
+    const [locationSearch, setLocationSearch] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Comments State
     const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
@@ -103,8 +110,21 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
         setLoading(false);
     };
 
+    const refreshProfile = async () => {
+        const p = await getUserProfile(user.uid);
+        setProfile(p);
+    };
+
     useEffect(() => {
         loadPosts();
+        
+        const handleClickOutside = (event: MouseEvent) => { 
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false); 
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const processFile = (file: File): Promise<string> => {
@@ -115,7 +135,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                 img.src = event.target?.result as string;
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1080;
+                    const MAX_WIDTH = 800;
                     let width = img.width;
                     let height = img.height;
                     if (width > MAX_WIDTH) {
@@ -126,7 +146,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx?.drawImage(img, 0, 0, width, height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.8));
+                    resolve(canvas.toDataURL('image/jpeg', 0.6));
                 };
             };
             reader.readAsDataURL(file);
@@ -154,6 +174,8 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
         setModalMode('create');
         setCaption('');
         setPostImages([]);
+        setLocation('');
+        setLocationSearch('');
         setShowModal(true);
     };
 
@@ -162,31 +184,68 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
         setEditingPostId(post.id);
         setCaption(post.caption);
         setPostImages(post.imageUrls || []);
+        setLocation(post.location || '');
+        setLocationSearch(post.location || '');
         setShowModal(true);
         setOpenMenuId(null);
     };
 
+    const filteredLocations = useMemo(() => {
+        const list = profile?.hospitals || [];
+        if (!locationSearch) return list;
+        return list.filter(h => h.toLowerCase().includes(locationSearch.toLowerCase()));
+    }, [profile?.hospitals, locationSearch]);
+
+    const handleSelectLocation = (loc: string) => {
+        setLocation(loc);
+        setLocationSearch(loc);
+        setIsDropdownOpen(false);
+    };
+
+    const handleAddNewLocation = async () => {
+        if (!locationSearch.trim()) return;
+        try {
+            await addHospital(user.uid, locationSearch.trim());
+            await refreshProfile();
+            handleSelectLocation(locationSearch.trim());
+        } catch (e) {
+            alert("เพิ่มสถานที่ล้มเหลว");
+        }
+    };
+
     const handleSubmit = async () => {
         if (postImages.length === 0 || !caption) return;
+        
+        const totalSize = postImages.reduce((sum, img) => sum + img.length, 0);
+        if (totalSize > 900000) { 
+            alert("ขนาดรูปภาพรวมกันใหญ่เกินไป กรุณาลดจำนวนรูปหรือเลือกรูปที่เล็กลง");
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             if (modalMode === 'create') {
                 await createActivityPost({
                     userId: user.uid,
-                    userName: userProfile?.name || user.email?.split('@')[0] || 'Unknown',
-                    userPhoto: userProfile?.photoBase64,
+                    userName: profile?.name || user.email?.split('@')[0] || 'Unknown',
+                    userPhoto: profile?.photoBase64,
                     imageUrls: postImages,
-                    caption
+                    caption,
+                    location: location || undefined
                 });
             } else if (editingPostId) {
                 await updateActivityPost(editingPostId, {
                     caption,
-                    imageUrls: postImages
+                    imageUrls: postImages,
+                    location: location || undefined
                 });
             }
             setShowModal(false);
             await loadPosts();
-        } catch (e) { alert("ไม่สามารถดำเนินการได้"); } 
+        } catch (e: any) { 
+            console.error("Post Submission Error:", e);
+            alert("ไม่สามารถดำเนินการได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง");
+        } 
         finally { setIsSubmitting(false); }
     };
 
@@ -206,8 +265,8 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
         const newComment: any = {
             id: crypto.randomUUID(),
             userId: user.uid,
-            userName: userProfile?.name || user.email?.split('@')[0] || 'Unknown',
-            userPhoto: userProfile?.photoBase64,
+            userName: profile?.name || user.email?.split('@')[0] || 'Unknown',
+            userPhoto: profile?.photoBase64,
             text
         };
 
@@ -285,9 +344,8 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                     return (
                         <div key={post.id} className="animate-enter">
                             <GlassCard className="p-0 overflow-hidden border-white/50 dark:border-white/5 shadow-2xl">
-                                {/* Post Header */}
                                 <div className="p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm overflow-hidden shrink-0">
                                             {post.userPhoto ? (
                                                 <img src={post.userPhoto} className="w-full h-full object-cover" />
@@ -297,12 +355,19 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                                                 </div>
                                             )}
                                         </div>
-                                        <div>
-                                            <div className="font-black text-slate-900 dark:text-white text-sm">{post.userName}</div>
-                                            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">
-                                                {post.timestamp.toDate().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} • 
-                                                {post.timestamp.toDate().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <div className="font-black text-slate-900 dark:text-white text-sm truncate">{post.userName}</div>
+                                                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-tight shrink-0">
+                                                    {post.timestamp.toDate().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
+                                                </div>
                                             </div>
+                                            {post.location && (
+                                                <div className="flex items-center gap-1 text-[10px] font-bold text-cyan-600 dark:text-cyan-400 truncate">
+                                                    <MapPin size={10} className="shrink-0" />
+                                                    <span className="truncate">{post.location}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     
@@ -336,12 +401,10 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                                     </div>
                                 </div>
 
-                                {/* Carousel Content */}
                                 <div className="aspect-square w-full relative bg-slate-100 dark:bg-slate-950 overflow-hidden">
                                     <ImageCarousel images={post.imageUrls || []} />
                                 </div>
 
-                                {/* Post Interactions */}
                                 <div className="p-4 space-y-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-5">
@@ -409,7 +472,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
 
                                     <div className="pt-2 flex items-center gap-3">
                                         <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-slate-100 dark:border-slate-800">
-                                            {userProfile?.photoBase64 ? <img src={userProfile.photoBase64} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs">{user.email?.charAt(0)}</div>}
+                                            {profile?.photoBase64 ? <img src={profile.photoBase64} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs">{user.email?.charAt(0)}</div>}
                                         </div>
                                         <div className="flex-1 relative">
                                             <input 
@@ -436,28 +499,33 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                 })}
             </div>
 
-            {/* Post Modal (Create / Edit) */}
             {showModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-enter">
-                    <GlassCard className="w-full max-w-md relative border-cyan-500/30 shadow-2xl p-0 overflow-hidden bg-white dark:bg-slate-900">
-                        <div className="p-4 border-b dark:border-white/5 flex items-center justify-between">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                {modalMode === 'create' ? <Camera className="text-cyan-500" size={20} /> : <Edit3 className="text-cyan-500" size={20} />}
-                                {modalMode === 'create' ? 'โพสต์กิจกรรมใหม่' : 'แก้ไขโพสต์'}
-                            </h3>
-                            <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors">
-                                <X size={24} />
+                    <GlassCard className="w-full max-w-md relative border-cyan-500/30 shadow-2xl p-0 overflow-hidden bg-white dark:bg-slate-900 ring-1 ring-black/5 dark:ring-white/10">
+                        <div className="p-4 border-b dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+                            <div className="flex flex-col">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                                    <div className="p-1.5 bg-cyan-500 text-white rounded-lg">
+                                        {modalMode === 'create' ? <Camera size={18} /> : <Edit3 size={18} />}
+                                    </div>
+                                    {modalMode === 'create' ? 'โพสต์กิจกรรมใหม่' : 'แก้ไขโพสต์'}
+                                </h3>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase ml-10">แชร์ช่วงเวลาดีๆ กับทีม</p>
+                            </div>
+                            <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors bg-white dark:bg-slate-700 rounded-full shadow-sm">
+                                <X size={20} />
                             </button>
                         </div>
 
                         <div className="p-6 space-y-6">
+                            {/* Image Section */}
                             <div className="space-y-2">
                                 <div className="flex justify-between items-center ml-1">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">รูปภาพกิจกรรม ({postImages.length}/3)</label>
+                                    <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">รูปภาพกิจกรรม ({postImages.length}/3)</label>
                                     {postImages.length < 3 && (
                                         <button 
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="text-[10px] font-black text-cyan-500 uppercase tracking-widest flex items-center gap-1 hover:text-cyan-400 transition-colors"
+                                            className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-widest flex items-center gap-1 hover:text-cyan-500 transition-colors"
                                         >
                                             <Plus size={12} /> เพิ่มรูปภาพ
                                         </button>
@@ -466,7 +534,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
 
                                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                                     {postImages.map((img, idx) => (
-                                        <div key={idx} className="relative flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 group animate-enter">
+                                        <div key={idx} className="relative flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 group animate-enter shadow-sm">
                                             <img src={img} className="w-full h-full object-cover" />
                                             <button 
                                                 onClick={() => removeImage(idx)}
@@ -480,7 +548,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                                     {postImages.length < 3 && (
                                         <div 
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="flex-shrink-0 w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-all text-slate-400"
+                                            className="flex-shrink-0 w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-slate-400"
                                         >
                                             <Plus size={20} />
                                             <span className="text-[8px] font-bold">เพิ่มรูป</span>
@@ -490,23 +558,82 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile }) => {
                                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" multiple className="hidden" />
                             </div>
 
+                            {/* Location Section */}
+                            <div className="space-y-1.5 relative" ref={dropdownRef}>
+                                <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest ml-1">สถานที่ (LOCATION)</label>
+                                <div className="relative group">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                                        <Search size={16} />
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        value={locationSearch}
+                                        onChange={(e) => {
+                                            setLocationSearch(e.target.value);
+                                            setIsDropdownOpen(true);
+                                            if (!e.target.value) setLocation('');
+                                        }}
+                                        onFocus={() => setIsDropdownOpen(true)}
+                                        placeholder="ค้นหาสถานที่หรือโรงพยาบาล..."
+                                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 placeholder:font-medium outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all font-bold shadow-inner"
+                                    />
+                                    {isDropdownOpen && (
+                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[150] max-h-52 overflow-y-auto ring-1 ring-black/5 animate-enter">
+                                            {filteredLocations.length > 0 ? (
+                                                filteredLocations.map((loc, idx) => (
+                                                    <button 
+                                                        key={idx} 
+                                                        onClick={() => handleSelectLocation(loc)} 
+                                                        className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-xs flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <Building size={14} className="text-slate-400" />
+                                                            <span className="font-bold">{loc}</span>
+                                                        </div>
+                                                        {location === loc && <Check size={14} className="text-cyan-500" />}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="px-5 py-6 text-center text-slate-400 text-xs italic">ไม่พบสถานที่ที่ตรงกับคำค้นหา</div>
+                                            )}
+                                            {locationSearch && !profile?.hospitals.some(h => h.toLowerCase() === locationSearch.toLowerCase()) && (
+                                                <button 
+                                                    onClick={handleAddNewLocation} 
+                                                    className="w-full text-left px-5 py-4 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 text-xs flex items-center gap-3 border-t-2 border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-slate-800 font-black"
+                                                >
+                                                    <div className="bg-cyan-500 text-white p-1 rounded-full">
+                                                        <Plus size={12} />
+                                                    </div>
+                                                    เพิ่มสถานที่ใหม่: "{locationSearch}"
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Caption Section */}
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">คำอธิบาย (Caption)</label>
+                                <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest ml-1">คำอธิบาย (CAPTION)</label>
                                 <textarea 
                                     value={caption}
                                     onChange={(e) => setCaption(e.target.value)}
                                     placeholder="เล่าเรื่องราวสักนิด..."
-                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all resize-none text-sm h-32"
+                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white placeholder:text-slate-500 placeholder:font-medium outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all resize-none text-sm h-32 shadow-inner"
                                 />
                             </div>
 
-                            <div className="flex gap-3">
+                            <div className="flex gap-3 pt-2">
                                 <button 
                                     onClick={handleSubmit}
                                     disabled={isSubmitting || postImages.length === 0 || !caption}
-                                    className="flex-1 py-4 bg-gradient-to-r from-cyan-600 to-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 py-4 bg-gradient-to-r from-cyan-600 to-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-500/30 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
                                 >
-                                    {isSubmitting ? <Loader2 className="animate-spin" /> : <><Send size={20} /> {modalMode === 'create' ? 'แชร์สู่ฟีด' : 'อัปเดตโพสต์'}</>}
+                                    {isSubmitting ? (
+                                        <Loader2 className="animate-spin" size={20} />
+                                    ) : (
+                                        <><Send size={18} /> {modalMode === 'create' ? 'แชร์สู่ฟีด' : 'อัปเดตโพสต์'}</>
+                                    )}
                                 </button>
                             </div>
                         </div>

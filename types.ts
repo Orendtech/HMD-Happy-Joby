@@ -132,6 +132,7 @@ export interface ActivityPost {
     userPhoto?: string;
     imageUrls: string[];
     caption: string;
+    location?: string;
     likes: string[]; // User IDs
     comments: PostComment[];
     timestamp: Timestamp;

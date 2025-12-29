@@ -92,7 +92,7 @@ export const addCommentToPost = async (postId: string, comment: Omit<PostComment
     });
 };
 
-export const updateActivityPost = async (postId: string, data: Partial<Pick<ActivityPost, 'caption' | 'imageUrls'>>) => {
+export const updateActivityPost = async (postId: string, data: Partial<Pick<ActivityPost, 'caption' | 'imageUrls' | 'location'>>) => {
     const ref = doc(getActivityPostsCol(), postId);
     await updateDoc(ref, data);
 };
