@@ -18,6 +18,7 @@ import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
 import Reminders from './pages/Reminders';
 import WorkPlanner from './pages/WorkPlanner';
+import ActivityFeed from './pages/ActivityFeed';
 
 const FullPageLoader = () => {
   return (
@@ -68,11 +69,8 @@ function App() {
 
   useEffect(() => {
     let isMounted = true;
-
-    // Safe Boot Timeout: ถ้าโหลดนานเกิน 10 วินาที ให้เลิกโหลด
     const safeBootTimer = setTimeout(() => {
       if (loading && isMounted) {
-        console.warn("Initialization taking too long, forcing load complete.");
         setLoading(false);
       }
     }, 10000);
@@ -81,28 +79,22 @@ function App() {
       try {
         if (currentUser && isMounted) {
            setUser(currentUser);
-           // ห่อหุ้ม async การโหลดโปรไฟล์ด้วย try-catch
            try {
              await initializeUser(currentUser.uid, currentUser.email || 'unknown');
              const profile = await getUserProfile(currentUser.uid);
              if (isMounted) setUserProfile(profile);
            } catch (profileErr) {
              console.error("Profile Load Error:", profileErr);
-             // ถึงโหลดโปรไฟล์ไม่ได้ ก็ให้เข้าหน้าแอป (เผื่อทำงานออฟไลน์หรือ Network ชั่วคราว)
            }
         } else if (isMounted) {
            setUser(null);
            setUserProfile(null);
         }
-
-        // หน่วงเวลาขั้นต่ำเพื่อให้ Animation แสดงผลสวยงาม
         setTimeout(() => {
           if (isMounted) setLoading(false);
           clearTimeout(safeBootTimer);
         }, 2000);
-
       } catch (authErr: any) {
-        console.error("Auth Listener Error:", authErr);
         if (isMounted) {
           setInitError(authErr.message || "การเชื่อมต่อล้มเหลว");
           setLoading(false);
@@ -117,24 +109,7 @@ function App() {
     };
   }, []);
 
-  if (loading) {
-    return <FullPageLoader />;
-  }
-
-  if (initError) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-6 text-center space-y-6">
-        <div className="p-4 bg-rose-500/10 rounded-full border border-rose-500/20">
-            <AlertTriangle className="w-12 h-12 text-rose-500" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold mb-2">ไม่สามารถเริ่มต้นระบบได้</h1>
-          <p className="text-slate-400 text-sm">{initError}</p>
-        </div>
-        <button onClick={() => window.location.reload()} className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500 rounded-xl font-bold transition-all shadow-lg shadow-cyan-600/20">ลองใหม่อีกครั้ง</button>
-      </div>
-    );
-  }
+  if (loading) return <FullPageLoader />;
 
   if (user && userProfile && userProfile.isApproved === false) {
       return (
@@ -144,12 +119,7 @@ function App() {
             </div>
             <h1 className="text-2xl font-bold">รอการอนุมัติบัญชี</h1>
             <p className="text-gray-400">บัญชีของคุณ ({user.email}) กำลังรอการตรวจสอบจากผู้ดูแลระบบ<br/>กรุณาติดต่อ Admin เพื่อเปิดใช้งาน</p>
-            <button 
-                onClick={() => auth.signOut()}
-                className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
-            >
-                กลับสู่หน้าล็อกอิน
-            </button>
+            <button onClick={() => auth.signOut()} className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors">กลับสู่หน้าล็อกอิน</button>
         </div>
       );
   }
@@ -158,16 +128,15 @@ function App() {
     <HashRouter>
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-        
         <Route path="/" element={user ? <Layout user={user} userProfile={userProfile} /> : <Navigate to="/login" />}>
            <Route index element={<TimeAttendance user={user!} userProfile={userProfile} />} />
+           <Route path="activity" element={<ActivityFeed user={user!} userProfile={userProfile} />} />
            <Route path="reminders" element={<Reminders user={user!} />} />
            <Route path="planner" element={<WorkPlanner user={user!} userProfile={userProfile} />} />
            <Route path="reports" element={<Reports user={user!} />} />
            <Route path="management" element={<Management user={user!} />} />
            <Route path="dashboard" element={<Dashboard />} />
            <Route path="settings" element={<Settings user={user!} />} />
-           
            {['admin', 'manager'].includes(userProfile?.role || '') && (
                <Route path="admin" element={<AdminPanel viewerProfile={userProfile} />} />
            )}

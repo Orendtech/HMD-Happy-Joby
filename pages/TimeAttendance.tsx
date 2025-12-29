@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
+
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { 
     Navigation, Plus, LogOut, Calendar, Sparkles, X, Search, Check, 
     Flame, Zap, TrendingUp, Loader2, ArrowLeft, ChevronDown, ChevronUp, 
     UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, 
-    Target, MapPin, Building, MessageSquare, Edit, Send
+    Target, MapPin, Building, MessageSquare, Edit, Send, Map as MapIcon
 } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { 
@@ -594,7 +595,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                     </p>
                                 </div>
                             </div>
-                            <button onClick={() => navigate('/settings')} className={`p-2.5 rounded-full ${theme.settingsBtn}`}><Settings size={22} /></button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => navigate('/settings')} className={`p-2.5 rounded-full ${theme.settingsBtn} shadow-sm border border-white/10`}><Settings size={20} /></button>
+                            </div>
                         </div>
                         <div className="flex items-center gap-4 relative z-10">
                             <div className="flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center relative overflow-hidden backdrop-blur-md bg-black/5 border border-white/10 shadow-inner">

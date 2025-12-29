@@ -8,6 +8,7 @@ import {
     getDoc, 
     updateDoc, 
     arrayUnion, 
+    arrayRemove,
     collection, 
     query, 
     where, 
@@ -21,13 +22,14 @@ import {
     deleteField,
     writeBatch
 } from 'firebase/firestore';
-import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport, Interaction, Reminder, WorkPlan, ActivityLog } from '../types';
+import { UserProfile, AttendanceDay, CheckInRecord, Customer, DailyReport, AdminUser, PipelineData, UserLocationData, VisitReport, Interaction, Reminder, WorkPlan, ActivityLog, ActivityPost, PostComment } from '../types';
 
 const getUserRef = (userId: string) => doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}`);
 const getAttendanceRef = (userId: string, dateId: string) => doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance/${dateId}`);
 const getRemindersCol = (userId: string) => collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/reminders`);
 const getWorkPlansCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/workplans`);
 const getActivityLogsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_logs`);
+const getActivityPostsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_posts`);
 
 export const getTodayDateId = () => {
     const now = new Date();
@@ -52,6 +54,52 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
 export const updateUserProfile = async (userId: string, data: Partial<UserProfile>) => { await updateDoc(getUserRef(userId), data); };
 export const addHospital = async (userId: string, hospital: string) => { await updateDoc(getUserRef(userId), { hospitals: arrayUnion(hospital) }); };
 export const addCustomer = async (userId: string, customer: Customer) => { await updateDoc(getUserRef(userId), { customers: arrayUnion(customer) }); };
+
+// Activity Feed functions
+export const createActivityPost = async (post: Omit<ActivityPost, 'id' | 'likes' | 'comments' | 'timestamp'>) => {
+    const ref = doc(getActivityPostsCol());
+    const newPost = {
+        ...post,
+        likes: [],
+        comments: [],
+        timestamp: Timestamp.now()
+    };
+    await setDoc(ref, newPost);
+    return ref.id;
+};
+
+export const getActivityPosts = async (): Promise<ActivityPost[]> => {
+    const q = query(getActivityPostsCol(), orderBy('timestamp', 'desc'), limit(50));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as ActivityPost));
+};
+
+export const toggleLikePost = async (postId: string, userId: string, isLiked: boolean) => {
+    const ref = doc(getActivityPostsCol(), postId);
+    await updateDoc(ref, {
+        likes: isLiked ? arrayRemove(userId) : arrayUnion(userId)
+    });
+};
+
+export const addCommentToPost = async (postId: string, comment: Omit<PostComment, 'timestamp'>) => {
+    const ref = doc(getActivityPostsCol(), postId);
+    const fullComment = {
+        ...comment,
+        timestamp: Timestamp.now()
+    };
+    await updateDoc(ref, {
+        comments: arrayUnion(fullComment)
+    });
+};
+
+export const updateActivityPost = async (postId: string, data: Partial<Pick<ActivityPost, 'caption' | 'imageUrls'>>) => {
+    const ref = doc(getActivityPostsCol(), postId);
+    await updateDoc(ref, data);
+};
+
+export const deleteActivityPost = async (postId: string) => {
+    await deleteDoc(doc(getActivityPostsCol(), postId));
+};
 
 // Work Plans
 export const getWorkPlans = async (userId?: string): Promise<WorkPlan[]> => {
@@ -103,14 +151,12 @@ export const saveWorkPlan = async (plan: Partial<WorkPlan> & { userId: string })
 
 export const submitPlansForApproval = async (planIds: string[]) => {
     const batch = writeBatch(db);
-    let userName = 'Unknown';
     let userId = '';
     
     if (planIds.length > 0) {
         const firstDoc = await getDoc(doc(getWorkPlansCol(), planIds[0]));
         if (firstDoc.exists()) {
             const d = firstDoc.data();
-            userName = d.userName || 'พนักงาน';
             userId = d.userId;
         }
     }
@@ -121,35 +167,11 @@ export const submitPlansForApproval = async (planIds: string[]) => {
     });
     
     await batch.commit();
-
-    if (userId) {
-        await addDoc(getActivityLogsCol(), {
-            userId,
-            userName,
-            type: 'work-plan-submitted',
-            location: `ส่งแผนงาน ${planIds.length} รายการ`,
-            timestamp: Timestamp.now()
-        });
-    }
 };
 
 export const updateWorkPlanStatus = async (planId: string, status: 'approved' | 'rejected' | 'pending' | 'draft') => {
     const ref = doc(getWorkPlansCol(), planId);
     await updateDoc(ref, { status });
-
-    if (status === 'pending') {
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-            const d = snap.data();
-            await addDoc(getActivityLogsCol(), {
-                userId: d.userId,
-                userName: d.userName || 'พนักงาน',
-                type: 'work-plan-submitted',
-                location: d.title || 'แผนงานใหม่',
-                timestamp: Timestamp.now()
-            });
-        }
-    }
 };
 
 export const deleteWorkPlan = async (planId: string) => {
@@ -311,6 +333,7 @@ export const getAllUsers = async (): Promise<AdminUser[]> => { try { const users
 export const getTeamMembers = async (managerId: string): Promise<AdminUser[]> => { try { const allUsers = await getAllUsers(); return allUsers.filter(u => u.reportsTo === managerId || u.id === managerId); } catch (e) { return []; } };
 export const getAllGlobalCustomers = async (): Promise<Array<Customer & { addedBy: string, userId: string }>> => { try { const users = await getAllUsers(); const allCustomers: Array<Customer & { addedBy: string, userId: string }> = []; users.forEach(user => { if (user.customers && Array.isArray(user.customers)) { user.customers.forEach(c => { allCustomers.push({ ...c, addedBy: user.name || user.email, userId: user.id }); }); } }); return allCustomers.sort((a, b) => a.hospital.localeCompare(b.hospital)); } catch (e) { return []; } };
 export const toggleUserStatus = async (userId: string, currentStatus: boolean) => { await updateDoc(getUserRef(userId), { isApproved: !currentStatus }); };
+export const toggleUserStatusUpdate = async (userId: string, currentStatus: boolean) => { await updateDoc(getUserRef(userId), { isApproved: !currentStatus }); };
 export const updateUserRole = async (userId: string, newRole: 'admin' | 'manager' | 'user') => { await updateDoc(getUserRef(userId), { role: newRole }); };
 export const adminCreateUser = async (email: string, pass: string, reportsTo?: string) => { const secondaryApp = initializeApp(firebaseConfig, "Secondary"); const secondaryAuth = getAuth(secondaryApp); try { const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass); await initializeUser(cred.user.uid, email); await updateDoc(getUserRef(cred.user.uid), { isApproved: true, reportsTo: reportsTo || '' }); await signOut(secondaryAuth); await deleteApp(secondaryApp); } catch (e) { await deleteApp(secondaryApp); throw e; } };
 export const getAllUsersTodayLocations = async (): Promise<UserLocationData[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const results: UserLocationData[] = []; const today = getTodayDateId(); for (const userDoc of usersSnap.docs) { const userId = userDoc.id; const userData = userDoc.data() as UserProfile; const attSnap = await getDoc(getAttendanceRef(userId, today)); if (attSnap.exists()) { const attData = attSnap.data() as AttendanceDay; if (attData.checkIns && attData.checkIns.length > 0) { const latest = attData.checkIns[attData.checkIns.length - 1]; results.push({ userId, email: userData.email, name: userData.name, photoBase64: userData.photoBase64, lastCheckIn: latest, isCheckedOut: !!attData.checkOut }); } } } return results; } catch (e) { return []; } };

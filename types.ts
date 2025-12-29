@@ -115,3 +115,24 @@ export interface ActivityLog {
     location: string;
     timestamp: Timestamp;
 }
+
+export interface PostComment {
+    id: string;
+    userId: string;
+    userName: string;
+    userPhoto?: string;
+    text: string;
+    timestamp: Timestamp;
+}
+
+export interface ActivityPost {
+    id: string;
+    userId: string;
+    userName: string;
+    userPhoto?: string;
+    imageUrls: string[];
+    caption: string;
+    likes: string[]; // User IDs
+    comments: PostComment[];
+    timestamp: Timestamp;
+}
