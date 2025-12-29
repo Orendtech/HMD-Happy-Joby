@@ -121,8 +121,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
              <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
 
             {!isHomePage && (
-                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-2 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
-                    <div className="flex items-center gap-4">
+                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
+                    <div className="flex flex-col items-start gap-2">
                         <div className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden shrink-0">
                                 {userProfile?.photoBase64 ? (
                                     <img src={userProfile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
@@ -134,8 +134,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                     </div>
                                 )}
                         </div>
-                        <div className="flex flex-col">
-                            <div className="flex items-center gap-2 leading-none">
+                        <div className="flex flex-col leading-tight">
+                            <div className="flex items-center gap-2">
                                     <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
                                         {userProfile?.name || user.email?.split('@')[0]}
                                     </span>
@@ -143,12 +143,12 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                         {badgeStyle.label}
                                     </span>
                             </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-tight mt-0.5">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-tight mt-1">
                                 {userProfile?.area || 'Happy Joby Workspace'}
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 self-start mt-1">
                         <button onClick={() => navigate('/dashboard')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm"><MapIcon size={20} className="text-slate-400" /></button>
                         <button onClick={() => navigate('/reminders')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm relative">
                             <Bell size={20} className="text-slate-400" />
