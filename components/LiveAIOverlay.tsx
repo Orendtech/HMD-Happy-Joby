@@ -1,5 +1,5 @@
 
-import { Bot, X, Loader2, Sparkles, TrendingUp, Target, AlertCircle, Mic, Cpu, Zap, Radio, Activity, ShieldAlert, FileText, ClipboardCheck } from 'lucide-react';
+import { Bot, X, Loader2, Sparkles, TrendingUp, Target, AlertCircle, Mic, Cpu, Zap, Radio, Activity, ShieldAlert, FileText, ClipboardCheck, BellPlus } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { User } from 'firebase/auth';
@@ -78,6 +78,44 @@ const tools: { functionDeclarations: FunctionDeclaration[] }[] = [{
             }
         },
         {
+            name: 'add_reminder',
+            description: 'สร้างการแจ้งเตือนหรือรายการที่ต้องทำ (Reminder) ให้กับผู้ใช้',
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING, description: 'หัวข้อการแจ้งเตือน' },
+                    description: { type: Type.STRING, description: 'รายละเอียดเพิ่มเติม' },
+                    dueTime: { type: Type.STRING, description: 'เวลาที่ต้องการให้แจ้งเตือน (รูปแบบ ISO 8601 เช่น 2023-10-27T10:00:00Z)' },
+                    type: { type: Type.STRING, enum: ['check-in', 'follow-up', 'task'], description: 'ประเภทของการแจ้งเตือน' }
+                },
+                required: ['title', 'dueTime']
+            }
+        },
+        {
+            name: 'create_new_contact',
+            description: 'สร้างรายชื่อผู้ติดต่อใหม่ลงในฐานข้อมูลถาวรของผู้ใช้งาน',
+            parameters: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING, description: 'ชื่อ-นามสกุล' },
+                    hospital: { type: Type.STRING, description: 'โรงพยาบาลหรือสถานที่ต้นสังกัด' },
+                    department: { type: Type.STRING, description: 'แผนกหรือตำแหน่ง' },
+                    phone: { type: Type.STRING, description: 'เบอร์โทรศัพท์' }
+                },
+                required: ['name', 'hospital', 'department']
+            }
+        },
+        {
+            name: 'finalize_checkout',
+            description: 'ทำการเช็คเอาท์ (Check-out) เพื่อสรุปงานและเลิกงานสำหรับวันนี้',
+            parameters: { type: Type.OBJECT, properties: {} }
+        },
+        {
+            name: 'get_today_context',
+            description: 'ดึงข้อมูลว่าวันนี้เช็คอินไปที่ไหนแล้วบ้าง เพื่อใช้ประกอบการตัดสินใจ',
+            parameters: { type: Type.OBJECT, properties: {} }
+        },
+        {
             name: 'get_global_sales_intelligence',
             description: 'ดึงข้อมูลพอร์ตการขายภาพรวมของพนักงานทุกคน (ใช้เฉพาะเมื่อ Manager/Admin ถามหาข้อมูลสรุปเท่านั้น)',
             parameters: { type: Type.OBJECT, properties: {} }
@@ -137,6 +175,24 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         try {
             const isExecutive = profile?.role === 'admin' || profile?.role === 'manager';
             switch (fc.name) {
+                case 'add_reminder':
+                    await addReminder(user.uid, {
+                        title: fc.args.title,
+                        description: fc.args.description || '',
+                        dueTime: fc.args.dueTime,
+                        type: fc.args.type || 'task',
+                        isCompleted: false,
+                        createdAt: new Date().toISOString()
+                    });
+                    return { result: `บันทึกการแจ้งเตือน "${fc.args.title}" สำเร็จแล้วครับ` };
+                case 'create_new_contact':
+                    return { result: await createContactByAi(user.uid, fc.args.name, fc.args.hospital, fc.args.department, fc.args.phone || '') };
+                case 'finalize_checkout':
+                    return { result: await finalizeCheckoutByAi(user.uid) };
+                case 'get_today_context':
+                    const att = await getTodayAttendance(user.uid);
+                    const list = att?.checkIns.map(ci => ci.location).join(', ') || 'ยังไม่มีการเช็คอิน';
+                    return { result: `วันนี้คุณเช็คอินที่: ${list}` };
                 case 'get_global_sales_intelligence':
                     if (!isExecutive) return { error: "ขออภัยครับ สิทธิ์ของคุณไม่สามารถเข้าถึงรายงานภาพรวมได้" };
                     return { result: await getGlobalPipelineForAi() };
@@ -174,7 +230,11 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                    - ห้ามพูดถึงยอดขายรวม รายงานภาพรวม หรือเสนอตัวเลขสรุปใดๆ "หากไม่ถูกถาม"
                    - หาก Manager สั่งให้ "สรุปเป้ายอดขาย" ให้ใช้เครื่องมือ "get_global_sales_intelligence"
                    - หาก Manager สั่งให้ "บันทึกสิ่งที่คุยกันเป็นรายงานบริหาร" หรือ "จดบันทึกคำสั่ง" ให้ใช้เครื่องมือ "save_management_report"
-                2. **การโต้ตอบปกติ**: เน้นบันทึกการเข้าพบ (add_interaction) และตอบคำถามทั่วไป
+                2. **การโต้ตอบปกติ**: 
+                   - บันทึกการเข้าพบ (add_interaction)
+                   - สร้างการแจ้งเตือน (add_reminder) **สำคัญมาก: หากผู้ใช้สั่งให้แจ้งเตือน ให้ใช้เครื่องมือนี้ทันที**
+                   - สร้างรายชื่อลูกค้าใหม่ (create_new_contact)
+                   - สรุปงานและเลิกงาน (finalize_checkout)
                 3. **บุคลิก**: สุขุม เรียบง่าย เป็นมืออาชีพ (ไม่ต้องเล่นใหญ่เหมือนหนังไซไฟ เน้นการทำงานจริง)
                 
                 ${isPrivileged ? "ฟีเจอร์ลับ: ปลดล็อกการใช้ 'Executive Command' (ใช้บันทึกรายงานบริหารได้เมื่อถูกสั่ง)" : "สถานะ: พนักงานภาคสนาม (ไม่มีสิทธิ์ดูรายงานรวม)"}
