@@ -127,7 +127,7 @@ function App() {
 
   return (
     <HashRouter>
-      {user && <LiveAIOverlay user={user} />}
+      {user && <LiveAIOverlay user={user} userProfile={userProfile} />}
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <Layout user={user} userProfile={userProfile} /> : <Navigate to="/login" />}>
