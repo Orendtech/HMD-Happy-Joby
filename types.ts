@@ -60,8 +60,6 @@ export interface UserProfile {
     level?: number;
     currentStreak?: number;
     lastActiveDate?: string;
-    // Fix: Added lastRewardClaimedMonth to resolve property existence error in TimeAttendance.tsx
-    lastRewardClaimedMonth?: string;
 }
 
 export interface CheckInRecord {

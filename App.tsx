@@ -19,7 +19,6 @@ import Settings from './pages/Settings';
 import Reminders from './pages/Reminders';
 import WorkPlanner from './pages/WorkPlanner';
 import ActivityFeed from './pages/ActivityFeed';
-import { LiveAIOverlay } from './components/LiveAIOverlay';
 
 const FullPageLoader = () => {
   return (
@@ -127,7 +126,6 @@ function App() {
 
   return (
     <HashRouter>
-      {user && <LiveAIOverlay user={user} />}
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <Layout user={user} userProfile={userProfile} /> : <Navigate to="/login" />}>
