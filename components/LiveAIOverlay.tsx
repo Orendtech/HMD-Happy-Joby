@@ -1,6 +1,6 @@
 
+import { Bot, X, Loader2, Sparkles, TrendingUp, Target, AlertCircle, Mic, Cpu, Zap, Radio, Activity, ShieldAlert } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, X, Loader2, Sparkles, TrendingUp, Target, AlertCircle, Mic, Cpu, Zap, Radio } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { User } from 'firebase/auth';
 import { getUserProfile, getTodayAttendance, getReminders, addReminder, addInteractionByAi, finalizeCheckoutByAi, createContactByAi } from '../services/dbService';
@@ -60,7 +60,6 @@ function createBlob(data: Float32Array): { data: string, mimeType: string } {
     };
 }
 
-// Tool Definitions for AI
 const tools: { functionDeclarations: FunctionDeclaration[] }[] = [{
     functionDeclarations: [
         {
@@ -194,24 +193,25 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             }
 
             const profile = await getUserProfile(user.uid);
+            
+            // STRICT SYSTEM INSTRUCTIONS TO PREVENT HALLUCINATION
             const systemInstruction = `
-                คุณคือ "Happy Joby AI Coach" เลขาส่วนตัวอัจฉริยะที่เข้าถึงฐานข้อมูลของผู้ใช้ได้จริง
-                รายชื่อผู้ติดต่อปัจจุบันของผู้ใช้: ${JSON.stringify(profile?.customers || [])}
+                คุณคือ "Happy Joby AI Coach" ระบบปฏิบัติการอัจฉริยะที่เชื่อมต่อกับฐานข้อมูลแบบ Real-time
                 
-                หน้าที่: 
-                1. หากผู้ใช้ระบุชื่อบุคคลที่ไม่มีใน "รายชื่อผู้ติดต่อปัจจุบัน" ให้คุณถามแผนกของเขา แล้วใช้เครื่องมือ "create_new_contact" เพื่อบันทึกเขาเข้าสู่ระบบถาวรก่อน
-                2. บันทึกรายงาน (add_interaction) โดยระบุสถานที่, ชื่อลูกค้า, แผนก และสรุปกิจกรรมให้ครบถ้วน
-                3. สรุปงานและเช็คเอาท์ (finalize_checkout) เมื่อได้รับคำสั่ง
-                4. ตรวจสอบบริบท (get_today_context) เสมอหากผู้ใช้พูดว่า "ที่นี่" เพื่อดูว่าล่าสุดเขาอยู่ที่ไหน
-                
-                แนวทางการตอบ: 
-                - กระตือรือร้น, เป็นกันเองแต่เป็นมืออาชีพ
-                - หากสร้างผู้ติดต่อใหม่ ให้บอกผู้ใช้ด้วยว่า "บันทึกชื่อคุณ... ลงในฐานข้อมูลผู้ติดต่อเรียบร้อยแล้วครับ"
+                กฎเหล็กในการทำงาน (Strict Protocols):
+                1. **ห้ามสร้างข้อมูลเท็จ (No Hallucinations)**: คุณต้องใช้ข้อมูลจาก "รายชื่อผู้ติดต่อ" ที่ให้ไปเท่านั้น ห้ามสมมติชื่อคนหรือสถานที่ขึ้นมาเองเด็ดขาด
+                2. **การตรวจสอบความจริง**: หากผู้ใช้ถามถึงบุคคลที่ไม่มีในระบบ ให้ตอบว่า "ขออภัยครับ ผมไม่พบชื่อนี้ในฐานข้อมูลปัจจุบันของคุณ ต้องการให้ผมบันทึกเป็นผู้ติดต่อใหม่ไหมครับ?"
+                3. **การเข้าถึงข้อมูล**: รายชื่อผู้ติดต่อปัจจุบันของผู้ใช้คือ: ${JSON.stringify(profile?.customers || [])}
+                4. **หน้าที่หลัก**: 
+                   - บันทึกการเข้าพบ (add_interaction): ต้องระบุชื่อลูกค้าและสถานที่ที่มีอยู่จริงในระบบ
+                   - สร้างผู้ติดต่อใหม่ (create_new_contact): ใช้เมื่อผู้ใช้ต้องการบันทึกคนใหม่จริงๆ เท่านั้น
+                   - สรุปงาน (finalize_checkout): ใช้เมื่อผู้ใช้บอกว่าจบงานหรือกลับบ้าน
+                5. **โทนเสียง**: มีความเป็นมืออาชีพ ทรงพลัง และแม่นยำเหมือน Jarvis
                 
                 เวลาปัจจุบัน: ${new Date().toLocaleTimeString('th-TH')}
             `;
 
-            const effectiveApiKey = profile?.aiApiKey || process.env.API_KEY || "AIzaSyCVhjhj0Qv8NFA34U6IF49OayDRFr_Zd70";
+            const effectiveApiKey = profile?.aiApiKey || process.env.API_KEY || "";
             const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
             
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -238,7 +238,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                             let sum = 0;
                             for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
                             const rms = Math.sqrt(sum / inputData.length);
-                            setInputVolume(Math.min(1, rms * 8));
+                            setInputVolume(Math.min(1, rms * 10));
                             const pcmBlob = createBlob(inputData);
                             sessionPromise.then(s => s?.sendRealtimeInput({ media: pcmBlob }));
                         };
@@ -295,7 +295,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         }
     };
 
-    // Drag Logic
+    // Drag Logic for the floating button
     const onMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
         setIsDragging(true);
         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -341,10 +341,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         <>
                             <div className="absolute inset-0 border-2 border-dashed border-cyan-500/40 rounded-full animate-rotate-slow"></div>
                             <div className="absolute inset-2 border border-cyan-400/20 rounded-full animate-rotate-reverse"></div>
-                            <div className="absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-500 scale-75 group-hover:scale-100 pointer-events-none">
-                                <div className="bg-slate-900/90 backdrop-blur-md text-cyan-400 text-[10px] font-black px-3 py-1 rounded-full border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.3)] uppercase tracking-widest">Ask Coach</div>
-                                <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-cyan-500/30 mx-auto mt-[-1px]"></div>
-                            </div>
                         </>
                     )}
 
@@ -355,7 +351,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         `}
                     >
                         <div className={`absolute inset-0 bg-gradient-to-br ${isOpen ? 'from-rose-400 to-rose-600' : 'from-cyan-400/20 to-blue-600/30'} animate-pulse`}></div>
-                        {!isOpen && <Sparkles className="absolute top-2 right-2 text-cyan-300 opacity-50 animate-pulse" size={12} />}
                         {isOpen ? (
                             <X className="text-white relative z-10" size={24} />
                         ) : (
@@ -368,157 +363,183 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 </div>
             </div>
 
-            {/* FULLSCREEN IMMERSIVE OVERLAY */}
+            {/* FULLSCREEN IMMERSIVE OVERLAY (FIXED FOR NO TOP BLACK BAR) */}
             {isOpen && (
-                <div className="fixed inset-0 z-[999] bg-[#020617] flex flex-col animate-enter text-white h-[100dvh] w-full overflow-hidden">
-                    {/* Atmospheric Background Animations */}
-                    <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
-                        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-600/20 rounded-full blur-[120px] animate-nebula-slow"></div>
-                        <div className="absolute bottom-[0%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 rounded-full blur-[100px] animate-nebula-reverse"></div>
-                        <div className="absolute top-[30%] right-[10%] w-[30%] h-[30%] bg-cyan-500/10 rounded-full blur-[80px] animate-nebula-float"></div>
+                <div className="fixed inset-0 z-[999] bg-[#020617] flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,1)]">
+                    {/* Immersive Atmospheric Background (Always full screen) */}
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                        <div className="absolute top-[-20%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_70%)] opacity-50"></div>
+                        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[150px] animate-nebula-slow opacity-30"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-nebula-reverse opacity-30"></div>
                     </div>
 
-                    <div className="relative z-10 pt-[max(2rem,env(safe-area-inset-top))] px-8 flex-1 flex flex-col items-center">
-                        {/* Top Context Bar */}
-                        <div className="w-full max-w-lg flex justify-between items-center opacity-60 mb-12">
-                            <div className="flex items-center gap-2">
-                                <Radio size={14} className="text-cyan-400 animate-pulse" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Neural Link Active</span>
+                    {/* Header HUD (Using paddingTop for safe area instead of container padding) */}
+                    <div className="relative z-10 w-full" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+                        <div className="max-w-2xl mx-auto flex justify-between items-center h-24 px-8 opacity-60">
+                            <div className="flex items-center gap-3">
+                                <Radio size={16} className="text-cyan-400 animate-pulse" />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Status</span>
+                                    <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">Protocol: Verified</span>
+                                </div>
                             </div>
-                            <div className="text-[10px] font-black uppercase tracking-widest">{new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</div>
+                            <button onClick={toggleAI} className="p-4 bg-white/5 hover:bg-rose-500/20 rounded-3xl transition-all border border-white/5">
+                                <X size={24} className="hover:text-rose-400 transition-colors" />
+                            </button>
                         </div>
+                    </div>
 
-                        {/* Central AI Entity */}
-                        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-2xl space-y-16">
-                            <div className="relative flex flex-col items-center">
-                                {/* Waveform Container */}
-                                <div className="relative w-72 h-72 flex items-center justify-center">
-                                    {/* Multi-layered Reactive Blob */}
-                                    <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[60px] transition-all duration-300 ${isSpeaking ? 'scale-150 opacity-40' : isListening ? 'scale-125 opacity-20' : 'scale-100 opacity-10'}`}></div>
+                    {/* Main Interaction Area */}
+                    <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
+                        <div className="w-full max-w-2xl flex flex-col items-center space-y-16">
+                            
+                            {/* Neural Fluid Core */}
+                            <div className="relative flex items-center justify-center w-80 h-80">
+                                {/* Reactive Aura */}
+                                <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[100px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
+                                
+                                <div className="relative w-64 h-64 flex items-center justify-center">
+                                    {/* Gemini Style Fluid Layers */}
+                                    <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-600/40 to-blue-400/40 rounded-full animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`} 
+                                         style={{ transform: isListening ? `scale(${1 + inputVolume * 0.4})` : 'scale(1)' }}></div>
+                                    <div className={`absolute inset-4 bg-gradient-to-bl from-blue-500/40 to-indigo-400/40 rounded-full animate-neural-wave-reverse ${isListening || isSpeaking ? '' : 'paused'}`}
+                                         style={{ transform: isListening ? `scale(${1 + inputVolume * 0.25})` : 'scale(1)' }}></div>
+                                    <div className={`absolute inset-8 bg-gradient-to-br from-indigo-600/60 to-purple-500/60 rounded-full animate-neural-pulse ${isListening || isSpeaking ? '' : 'paused'}`}></div>
                                     
-                                    {/* The Neural Core */}
-                                    <div className={`relative w-48 h-48 flex items-center justify-center transition-transform duration-200 ${isSpeaking ? 'scale-105' : ''}`}>
-                                        {/* Waveform Layers */}
-                                        <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-600 to-blue-400 rounded-full opacity-30 animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`}></div>
-                                        <div className={`absolute inset-4 bg-gradient-to-bl from-blue-500 to-indigo-400 rounded-full opacity-40 animate-neural-wave-reverse ${isListening || isSpeaking ? '' : 'paused'}`}></div>
-                                        <div className={`absolute inset-8 bg-gradient-to-br from-indigo-600 to-purple-500 rounded-full opacity-50 animate-neural-pulse ${isListening || isSpeaking ? '' : 'paused'}`}></div>
-                                        
-                                        <div className="relative z-20 w-24 h-24 bg-slate-900 border-2 border-white/20 rounded-full flex items-center justify-center shadow-2xl overflow-hidden">
-                                            <div className="absolute inset-0 bg-gradient-to-t from-white/10 to-transparent"></div>
-                                            {isConnecting ? (
-                                                <Loader2 size={40} className="text-white animate-spin" />
-                                            ) : (
-                                                <Bot size={48} className={`transition-all duration-500 ${isSpeaking ? 'text-cyan-400 scale-110 drop-shadow-[0_0_15px_rgba(34,211,238,0.6)]' : isListening ? 'text-emerald-400' : 'text-slate-500'}`} />
-                                            )}
-                                        </div>
-
-                                        {/* Audio Visualizer Rings */}
-                                        {(isListening || isSpeaking) && (
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                                <div className="w-full h-full border border-white/5 rounded-full animate-ring-expand-1"></div>
-                                                <div className="w-full h-full border border-white/5 rounded-full animate-ring-expand-2"></div>
+                                    {/* Inner Entity Core */}
+                                    <div className="relative z-20 w-36 h-36 bg-slate-900 border-2 border-white/10 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 to-transparent"></div>
+                                        {isConnecting ? (
+                                            <Loader2 size={56} className="text-white animate-spin opacity-40" />
+                                        ) : (
+                                            <div className={`transition-all duration-500 ${isSpeaking ? 'scale-110' : isListening ? 'scale-100' : 'scale-90 opacity-30'}`}>
+                                                <Bot size={64} className={`${isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-500'} transition-colors duration-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]`} />
                                             </div>
                                         )}
+                                        {/* Activity Scanning Ring */}
+                                        {(isListening || isSpeaking) && (
+                                            <div className="absolute inset-1 border-2 border-cyan-400/20 rounded-full animate-spin-slow"></div>
+                                        )}
                                     </div>
-                                </div>
 
-                                <div className="mt-12 text-center space-y-3">
-                                    <h2 className="text-4xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 drop-shadow-xl">Happy Joby AI</h2>
-                                    <div className="flex flex-col items-center gap-1">
-                                        <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border backdrop-blur-md transition-all duration-500 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30' : isSpeaking ? 'bg-cyan-500/10 border-cyan-500/20' : isListening ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/5 border-white/10'}`}>
-                                            {isListening && !isSpeaking && !isConnecting && <Mic size={14} className="text-emerald-400 animate-pulse" />}
-                                            {isSpeaking && <Radio size={14} className="text-cyan-400 animate-bounce" />}
-                                            <span className={`text-[11px] font-black uppercase tracking-[0.3em] ${errorMsg ? 'text-rose-400' : isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-400'}`}>
-                                                {errorMsg ? 'Neural Disruption' : isConnecting ? 'Initializing Link...' : isSpeaking ? 'AI Speaking' : isListening ? 'Listening' : 'Standby'}
-                                            </span>
+                                    {/* Sonic Expansion Rings */}
+                                    {(isListening || isSpeaking) && (
+                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                            <div className="w-full h-full border border-cyan-500/10 rounded-full animate-ring-expand-1"></div>
+                                            <div className="w-full h-full border border-white/5 rounded-full animate-ring-expand-2"></div>
                                         </div>
-                                        {errorMsg && <p className="text-rose-400/80 text-[10px] font-bold max-w-xs">{errorMsg}</p>}
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Gemini Style Animated Spectrum Bar */}
-                            <div className="w-full max-w-sm h-[2px] relative flex items-center justify-center overflow-hidden rounded-full">
-                                <div className="absolute inset-0 bg-white/5"></div>
-                                <div 
-                                    className={`absolute inset-0 bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-500 transition-all duration-300 ${isListening || isSpeaking ? 'opacity-100 scale-x-100' : 'opacity-20 scale-x-0'}`}
-                                    style={{ transform: `scaleX(${isListening ? Math.max(0.1, inputVolume * 2) : 1})` }}
-                                ></div>
-                                {(isListening || isSpeaking) && (
-                                    <div className="absolute inset-0 animate-spectrum-sweep bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.4)_50%,transparent_100%)] w-[50%]"></div>
+                            {/* Status Typography */}
+                            <div className="text-center space-y-8">
+                                <div className="space-y-3">
+                                    <h2 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20 drop-shadow-[0_4px_20px_rgba(255,255,255,0.1)]">Coach Pro</h2>
+                                    <div className="flex justify-center">
+                                        <div className={`flex items-center gap-4 px-8 py-2.5 rounded-full border backdrop-blur-3xl transition-all duration-700 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.2)]' : isSpeaking ? 'bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]' : isListening ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
+                                            {isListening && !isSpeaking && !isConnecting && <Mic size={18} className="text-emerald-400 animate-pulse" />}
+                                            {isSpeaking && <Activity size={18} className="text-cyan-400 animate-bounce" />}
+                                            <span className={`text-sm font-black uppercase tracking-[0.5em] ${errorMsg ? 'text-rose-400' : isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-600'}`}>
+                                                {errorMsg ? 'Link Compromised' : isConnecting ? 'Syncing...' : isSpeaking ? 'Transmitting' : isListening ? 'Listening' : 'Ready'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {errorMsg && (
+                                    <div className="flex flex-col items-center gap-2 animate-bounce">
+                                        <ShieldAlert size={20} className="text-rose-500" />
+                                        <p className="text-rose-400/80 text-xs font-bold uppercase tracking-widest">{errorMsg}</p>
+                                    </div>
                                 )}
                             </div>
 
-                            {/* HUD Intelligence Grid */}
-                            <div className="grid grid-cols-3 gap-6 w-full px-4 pt-4">
-                                <div className="flex flex-col items-center space-y-2 group">
-                                    <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-cyan-500/10 group-hover:border-cyan-500/30 transition-all duration-500">
-                                        <Target className="text-cyan-500 group-hover:animate-pulse" size={20} />
-                                    </div>
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Strategy</span>
-                                </div>
-                                <div className="flex flex-col items-center space-y-2 group">
-                                    <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-amber-500/10 group-hover:border-amber-500/30 transition-all duration-500">
-                                        <Cpu className="text-amber-500 group-hover:rotate-90 transition-transform duration-700" size={20} />
-                                    </div>
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Processor</span>
-                                </div>
-                                <div className="flex flex-col items-center space-y-2 group">
-                                    <div className="w-12 h-12 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center group-hover:bg-emerald-500/10 group-hover:border-emerald-500/30 transition-all duration-500">
-                                        <Zap className="text-emerald-500 group-hover:scale-125 transition-transform" size={20} />
-                                    </div>
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Agility</span>
-                                </div>
+                            {/* Frequency Analyzer Bar */}
+                            <div className="w-full max-w-md h-16 flex items-end justify-center gap-1.5 px-4 overflow-hidden">
+                                {Array.from({ length: 48 }).map((_, i) => {
+                                    const delay = i * 0.03;
+                                    let h = "6px";
+                                    let opacity = "opacity-10";
+                                    if (isSpeaking) {
+                                        h = `${30 + Math.random() * 70}%`;
+                                        opacity = "opacity-100";
+                                    } else if (isListening) {
+                                        const v = inputVolume * (0.4 + Math.random() * 0.8);
+                                        h = `${12 + v * 88}%`;
+                                        opacity = v > 0.05 ? "opacity-80" : "opacity-20";
+                                    }
+                                    return (
+                                        <div 
+                                            key={i} 
+                                            className={`w-[3px] rounded-full transition-all duration-150 bg-gradient-to-t ${isSpeaking ? 'from-blue-600 to-cyan-400' : 'from-emerald-600 to-cyan-400'} ${opacity}`} 
+                                            style={{ height: h, transitionDelay: `${delay}s` }}
+                                        ></div>
+                                    );
+                                })}
                             </div>
                         </div>
-                        
-                        {/* Footer Control */}
-                        <div className="w-full max-w-lg mt-auto flex justify-center pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-8">
-                            <button 
-                                onClick={toggleAI} 
-                                className="group relative px-16 py-5 rounded-[24px] border border-white/10 font-black text-[10px] uppercase tracking-[0.4em] transition-all overflow-hidden"
-                            >
-                                <div className="absolute inset-0 bg-white/5 group-hover:bg-white/10 transition-colors"></div>
-                                <span className="relative z-10 text-white/60 group-hover:text-white transition-colors">Disconnect Link</span>
-                                <div className="absolute bottom-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>
-                            </button>
+                    </div>
+
+                    {/* Footer HUD Grid */}
+                    <div className="relative z-10 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-8 flex flex-col items-center space-y-10">
+                        <div className="grid grid-cols-3 gap-16 opacity-30 hover:opacity-100 transition-opacity duration-500">
+                             <div className="flex flex-col items-center gap-2 group cursor-help"><Target size={24} className="group-hover:text-cyan-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Decision</span></div>
+                             <div className="flex flex-col items-center gap-2 group cursor-help"><Cpu size={24} className="group-hover:text-indigo-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Process</span></div>
+                             <div className="flex flex-col items-center gap-2 group cursor-help"><Zap size={24} className="group-hover:text-amber-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Response</span></div>
                         </div>
+                        
+                        <button 
+                            onClick={toggleAI} 
+                            className="group relative px-24 py-6 rounded-[32px] border border-white/10 font-black text-[12px] uppercase tracking-[0.6em] transition-all overflow-hidden active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+                        >
+                            <div className="absolute inset-0 bg-white/5 group-hover:bg-rose-500/10 transition-colors"></div>
+                            <span className="relative z-10 text-white/40 group-hover:text-white transition-colors">Abort Session</span>
+                            <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></div>
+                        </button>
                     </div>
                 </div>
             )}
 
             <style dangerouslySetInnerHTML={{ __html: `
-                @keyframes nebula-slow { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(10%, 5%) scale(1.1); } }
-                @keyframes nebula-reverse { 0%, 100% { transform: translate(0, 0) scale(1.1); } 50% { transform: translate(-10%, -10%) scale(1); } }
-                @keyframes nebula-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20%); } }
+                @keyframes nebula-slow { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(3%, 2%) scale(1.05); } }
+                @keyframes nebula-reverse { 0%, 100% { transform: translate(0, 0) scale(1.05); } 50% { transform: translate(-3%, -3%) scale(1); } }
                 
-                @keyframes neural-wave { 0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(0deg); } 50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: rotate(180deg); } }
-                @keyframes neural-wave-reverse { 0%, 100% { border-radius: 40% 60% 70% 30% / 50% 60% 30% 60%; transform: rotate(360deg); } 50% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(180deg); } }
-                @keyframes neural-pulse { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 0.7; } }
+                @keyframes neural-wave { 
+                    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(0deg); } 
+                    50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: rotate(180deg); } 
+                }
+                @keyframes neural-wave-reverse { 
+                    0%, 100% { border-radius: 40% 60% 70% 30% / 50% 60% 30% 60%; transform: rotate(360deg); } 
+                    50% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(180deg); } 
+                }
+                @keyframes neural-pulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.03); opacity: 0.8; } }
                 
-                @keyframes ring-expand { 0% { transform: scale(1); opacity: 0.5; border-width: 2px; } 100% { transform: scale(1.8); opacity: 0; border-width: 0.5px; } }
-                @keyframes spectrum-sweep { 0% { transform: translateX(-200%); } 100% { transform: translateX(200%); } }
+                @keyframes ring-expand { 
+                    0% { transform: scale(1); opacity: 0.4; border-width: 3px; } 
+                    100% { transform: scale(2.2); opacity: 0; border-width: 0.5px; } 
+                }
                 
-                .animate-nebula-slow { animation: nebula-slow 15s ease-in-out infinite; }
-                .animate-nebula-reverse { animation: nebula-reverse 18s ease-in-out infinite; }
-                .animate-nebula-float { animation: nebula-float 12s ease-in-out infinite; }
+                .animate-nebula-slow { animation: nebula-slow 25s ease-in-out infinite; }
+                .animate-nebula-reverse { animation: nebula-reverse 30s ease-in-out infinite; }
+                .animate-neural-wave { animation: neural-wave 12s linear infinite; }
+                .animate-neural-wave-reverse { animation: neural-wave-reverse 15s linear infinite; }
+                .animate-neural-pulse { animation: neural-pulse 6s ease-in-out infinite; }
                 
-                .animate-neural-wave { animation: neural-wave 8s linear infinite; }
-                .animate-neural-wave-reverse { animation: neural-wave-reverse 10s linear infinite; }
-                .animate-neural-pulse { animation: neural-pulse 4s ease-in-out infinite; }
+                .animate-ring-expand-1 { animation: ring-expand 5s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
+                .animate-ring-expand-2 { animation: ring-expand 5s cubic-bezier(0.16, 1, 0.3, 1) infinite 2.5s; }
+                .animate-spin-slow { animation: spin 10s linear infinite; }
+                .animate-fade-in { animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
                 
-                .animate-ring-expand-1 { animation: ring-expand 3s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
-                .animate-ring-expand-2 { animation: ring-expand 3s cubic-bezier(0.16, 1, 0.3, 1) infinite 1.5s; }
-                .animate-spectrum-sweep { animation: spectrum-sweep 2s linear infinite; }
+                @keyframes fadeIn { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: blur(0px); } }
                 
                 .paused { animation-play-state: paused; }
                 
+                @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+                .animate-float { animation: float 4s ease-in-out infinite; }
                 @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
                 @keyframes rotate-reverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
-                @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-                .animate-rotate-slow { animation: rotate-slow 8s linear infinite; }
-                .animate-rotate-reverse { animation: rotate-reverse 5s linear infinite; }
-                .animate-float { animation: float 4s ease-in-out infinite; }
+                .animate-rotate-slow { animation: rotate-slow 12s linear infinite; }
+                .animate-rotate-reverse { animation: rotate-reverse 8s linear infinite; }
             ` }} />
         </>
     );
