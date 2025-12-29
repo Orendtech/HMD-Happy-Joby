@@ -135,7 +135,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                 )}
                         </div>
                         <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 leading-none">
                                     <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
                                         {userProfile?.name || user.email?.split('@')[0]}
                                     </span>
@@ -143,7 +143,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                         {badgeStyle.label}
                                     </span>
                             </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-tight mt-0.5">
                                 {userProfile?.area || 'Happy Joby Workspace'}
                             </p>
                         </div>

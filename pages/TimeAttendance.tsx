@@ -540,7 +540,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                             <span className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase">อีก {monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วันเพื่อรับรางวัล</span>
                                         </div>
                                     </div>
-                                    <Info className="text-slate-400 dark:text-slate-600" size={20} />
+                                    <div className="p-1.5 bg-white/50 dark:bg-black/20 rounded-xl">
+                                        <Info className="text-slate-400 dark:text-slate-600" size={20} />
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -626,11 +628,18 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                         <div className="flex justify-between items-start mb-4 relative z-10">
                             <div className="flex items-center gap-4">
                                 <div className={`w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm overflow-hidden border-2 ${theme.avatarBorder}`}>{profile?.photoBase64 ? (<img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />) : (<div className="w-full h-full flex items-center justify-center text-white text-lg font-bold">{profile?.name?.[0] || user.email?.[0]?.toUpperCase()}</div>)}</div>
-                                <div>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-2"><h1 className={`text-lg font-bold leading-tight truncate max-w-[120px] ${theme.textPrimary}`}>{profile?.name || user.email?.split('@')[0]}</h1><span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border uppercase ${badge.bg}`}>{badge.label}</span></div>
-                                        <p className={`text-[11px] font-medium opacity-80 ${theme.textSecondary}`}>{profile?.area || 'Happy Joby Workspace'}</p>
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2 leading-none">
+                                        <h1 className={`text-lg font-bold leading-tight truncate max-w-[120px] ${theme.textPrimary}`}>
+                                            {profile?.name || user.email?.split('@')[0]}
+                                        </h1>
+                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full border uppercase shrink-0 ${badge.bg}`}>
+                                            {badge.label}
+                                        </span>
                                     </div>
+                                    <p className={`text-[11px] font-black uppercase tracking-tight mt-0.5 opacity-80 ${theme.textSecondary}`}>
+                                        {profile?.area || 'Happy Joby Workspace'}
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-1"><button onClick={() => navigate('/settings')} className={`p-2 rounded-full ${theme.settingsBtn} shadow-sm border border-white/10 active:scale-90 transition-all`}><Settings size={18} /></button></div>
