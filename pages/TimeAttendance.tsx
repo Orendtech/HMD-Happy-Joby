@@ -6,7 +6,7 @@ import {
     Flame, Zap, TrendingUp, Loader2, ArrowLeft, ChevronDown, ChevronUp, 
     UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, 
     Target, MapPin, Building, MessageSquare, Edit, Send, Map as MapIcon,
-    Trophy, Gift, Star, Coins, Box, Info
+    Trophy, Gift, Star, Coins, Box, Info, ChevronLeft, AlertCircle, ChevronRight
 } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { GlassCard } from '../components/GlassCard';
@@ -92,7 +92,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const [time, setTime] = useState(new Date());
     
     const [showReportModal, setShowReportModal] = useState(false);
-    const [showQuestModal, setShowQuestModal] = useState(false);
+    const [showQuestPage, setShowQuestPage] = useState(false);
     const [isFinalCheckout, setIsFinalCheckout] = useState(false);
     const [visitDrafts, setVisitDrafts] = useState<Record<number, VisitDraft>>({});
     const [expandedVisitIdx, setExpandedVisitIdx] = useState<number>(0); 
@@ -362,6 +362,156 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const handleOpenVisitReport = (idx: number) => { setExpandedVisitIdx(idx); setIsFinalCheckout(false); setShowReportModal(true); };
     const handleCheckOutStart = () => { if ("vibrate" in navigator) navigator.vibrate(100); setIsFinalCheckout(true); setExpandedVisitIdx(0); setShowReportModal(true); };
 
+    if (showQuestPage) {
+        return (
+            <div className="h-[100dvh] flex flex-col bg-slate-950 text-white animate-enter overflow-hidden">
+                {/* Header Page */}
+                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4 flex items-center gap-4 z-20 bg-slate-900/50 backdrop-blur-xl border-b border-white/5 shrink-0">
+                    <button 
+                        onClick={() => setShowQuestPage(false)}
+                        className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl text-white transition-all active:scale-95"
+                    >
+                        <ChevronLeft size={24} />
+                    </button>
+                    <div>
+                        <h2 className="text-2xl font-black text-white tracking-tighter">Monthly Quest</h2>
+                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">สะสมรางวัลภารกิจรายเดือน</p>
+                    </div>
+                </header>
+
+                <main className="flex-1 overflow-y-auto pb-10 px-4 pt-6 space-y-6 relative">
+                    <div className="absolute top-20 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+                    <div className="absolute bottom-20 left-0 w-80 h-80 bg-orange-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+                    {/* Main Quest Card */}
+                    <div className="relative z-10 space-y-6">
+                        <div className="flex justify-between items-center bg-white/5 border border-white/10 rounded-[32px] p-6 shadow-2xl relative overflow-hidden group">
+                            <Coins className="absolute -right-6 -bottom-6 text-amber-500/10 w-40 h-40 rotate-12 group-hover:scale-110 transition-transform duration-1000" />
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-2xl animate-pulse">
+                                    <Trophy size={36} className="text-slate-900 fill-slate-900" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-black text-3xl tracking-tight leading-none">฿500</h3>
+                                    <p className="text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cash Rewards</p>
+                                </div>
+                            </div>
+                            <div className="text-right relative z-10">
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</div>
+                                <div className="px-3 py-1 bg-amber-500 text-slate-900 rounded-full text-[10px] font-black">ACTIVE</div>
+                            </div>
+                        </div>
+
+                        {/* Progress Section */}
+                        <div className="bg-white/5 p-6 rounded-[36px] border border-white/5 shadow-inner space-y-4">
+                            <div className="flex justify-between items-end">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Tracker</span>
+                                    <span className="text-lg font-black text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} <span className="text-slate-500 font-bold text-sm">DAYS</span></span>
+                                </div>
+                                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/20 rounded-full border border-amber-500/30">
+                                    <Star size={12} className="text-amber-500 fill-amber-500" />
+                                    <span className="text-xs font-black text-amber-500">{Math.round(monthlyQuestStats.progress)}%</span>
+                                </div>
+                            </div>
+                            
+                            <div className="h-6 w-full bg-black/40 rounded-full overflow-hidden border border-white/10 p-1">
+                                <div 
+                                    style={{ width: `${monthlyQuestStats.progress}%` }} 
+                                    className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative"
+                                >
+                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%)] bg-[length:20px_20px] animate-[progress-shine_2s_linear_infinite]"></div>
+                                </div>
+                            </div>
+
+                            {/* Calendar Grid */}
+                            <div className="grid grid-cols-7 gap-2.5 pt-4">
+                                {Array.from({ length: monthlyQuestStats.targetDays }).map((_, i) => {
+                                    const isDone = i < monthlyQuestStats.completedDays;
+                                    const isCurrent = i === monthlyQuestStats.completedDays;
+                                    return (
+                                        <div 
+                                            key={i} 
+                                            className={`aspect-square rounded-xl flex items-center justify-center transition-all duration-500 ${
+                                                isDone 
+                                                ? 'bg-amber-500 text-slate-900 shadow-[0_0_12px_rgba(245,158,11,0.6)] scale-100' 
+                                                : isCurrent 
+                                                    ? 'bg-slate-800 border-2 border-dashed border-amber-500/50 animate-pulse' 
+                                                    : 'bg-slate-800/50 text-slate-600 border border-white/5'
+                                            }`}
+                                        >
+                                            {isDone ? <Star size={16} fill="currentColor" className="animate-enter" /> : <div className="text-[10px] font-black opacity-50">{i + 1}</div>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Rules Section */}
+                        <div className="bg-white/5 border border-white/5 rounded-[40px] p-8 space-y-6">
+                            <div className="flex items-center gap-3 mb-2">
+                                <div className="p-2 bg-amber-500/10 rounded-xl text-amber-500">
+                                    <Info size={20} />
+                                </div>
+                                <h4 className="text-white font-black text-sm uppercase tracking-widest">กติกาการรับรางวัล (RULES)</h4>
+                            </div>
+                            
+                            <div className="space-y-6">
+                                <div className="flex gap-4">
+                                    <div className="w-8 h-8 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/20">1</div>
+                                    <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                                        <span className="text-white font-bold block mb-1">เช็คอิน (Check-in)</span> 
+                                        ในสถานที่ปฏิบัติงานจริงทุกวันทำงาน (จันทร์-ศุกร์) ตลอดเดือน
+                                    </p>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="w-8 h-8 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/20">2</div>
+                                    <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                                        <span className="text-white font-bold block mb-1">บันทึกรายงานกิจกรรม (Visit Report)</span> 
+                                        ให้ครบถ้วนทุกสถานที่ที่ท่านได้เข้าพบในวันนั้นๆ อย่างละเอียด
+                                    </p>
+                                </div>
+                                <div className="flex gap-4">
+                                    <div className="w-8 h-8 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/20">3</div>
+                                    <p className="text-sm text-slate-300 font-medium leading-relaxed">
+                                        <span className="text-white font-bold block mb-1">เช็คเอาท์ (Check-out)</span> 
+                                        เพื่อสรุปยอดและส่งรายงานการปฏิบัติงานเมื่อจบวันทุกครั้ง
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-white/5 flex gap-3">
+                                <AlertCircle size={16} className="text-amber-400 shrink-0" />
+                                <p className="text-[11px] text-amber-400/80 italic leading-relaxed">
+                                    * หากทำครบเงื่อนไข ระบบจะปลดล็อกเงินรางวัล 500 บาท และโอนเข้าพอร์ตสะสมของคุณโดยอัตโนมัติในวันสุดท้ายของเดือน
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Reward Footer */}
+                        <div className="bg-amber-500 rounded-[32px] p-6 flex items-center justify-between shadow-2xl shadow-amber-500/20 group">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-slate-950 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform">
+                                    <Gift className="text-amber-500" size={24} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Current Target</span>
+                                    <span className="text-sm font-black text-slate-950 uppercase">
+                                        {monthlyQuestStats.completedDays >= monthlyQuestStats.targetDays 
+                                            ? "MISSION COMPLETED!"
+                                            : `อีก ${monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วันเพื่อรับ 500 บาท`
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                            <ChevronRight className="text-slate-950 group-hover:translate-x-1 transition-transform" size={24} />
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     if (showReportModal) {
         if (showAddContactView) {
              return (
@@ -497,9 +647,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                         </div>
                     </div>
 
-                    {/* New Quest Entry Button (Hanging on the right) */}
+                    {/* Quest Entry Button (Hanging on the right) */}
                     <button 
-                        onClick={() => setShowQuestModal(true)}
+                        onClick={() => setShowQuestPage(true)}
                         className="w-16 flex flex-col items-center justify-center bg-slate-200 dark:bg-slate-800 rounded-[28px] shadow-xl active:scale-95 transition-all group relative border-2 border-white/30 overflow-hidden"
                     >
                         {/* ระดับน้ำ (Liquid Fill) */}
@@ -551,127 +701,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                 </div>
             </div>
 
-            {/* Monthly Quest Overlay (Hanging Board Design) */}
-            {showQuestModal && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-enter">
-                    <div className="w-full max-w-lg relative animate-bounce-in max-h-[90vh] flex flex-col">
-                        <GlassCard className="p-0 border-amber-500/40 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 overflow-hidden shadow-[0_0_50px_rgba(245,158,11,0.3)] relative flex flex-col h-full">
-                            <button 
-                                onClick={() => setShowQuestModal(false)}
-                                className="absolute top-4 right-4 z-50 p-2 bg-white/10 hover:bg-rose-500 text-white rounded-full transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-
-                            <Coins className="absolute -right-6 -bottom-6 text-amber-500/10 w-40 h-40 rotate-12" />
-                            
-                            <div className="p-6 relative z-10 overflow-y-auto no-scrollbar flex-1">
-                                <div className="flex justify-between items-center mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 rounded-[20px] bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-2xl animate-pulse">
-                                            <Trophy size={32} className="text-slate-900 fill-slate-900" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-white font-black text-2xl tracking-tight">Monthly Quest</h3>
-                                            <p className="text-amber-400/80 text-[10px] font-black uppercase tracking-[0.2em]">สะสมวันทำงานครบรับ ฿500</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-white font-black text-3xl">฿500</div>
-                                        <div className="text-amber-500 text-[10px] font-black uppercase tracking-widest">Rewards</div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3 bg-white/5 p-5 rounded-[32px] border border-white/5 shadow-inner mb-6">
-                                    <div className="flex justify-between items-end">
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Bar</span>
-                                        <span className="text-sm font-black text-amber-500">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} DAYS</span>
-                                    </div>
-                                    <div className="h-5 w-full bg-black/40 rounded-full overflow-hidden border border-white/10 p-1">
-                                        <div 
-                                            style={{ width: `${monthlyQuestStats.progress}%` }} 
-                                            className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative"
-                                        >
-                                            <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%)] bg-[length:20px_20px] animate-[progress-shine_2s_linear_infinite]"></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-7 gap-2.5 mb-6">
-                                    {Array.from({ length: monthlyQuestStats.targetDays }).map((_, i) => {
-                                        const isDone = i < monthlyQuestStats.completedDays;
-                                        const isCurrent = i === monthlyQuestStats.completedDays;
-                                        return (
-                                            <div 
-                                                key={i} 
-                                                className={`aspect-square rounded-xl flex items-center justify-center transition-all duration-500 ${
-                                                    isDone 
-                                                    ? 'bg-amber-500 text-slate-900 shadow-[0_0_12px_rgba(245,158,11,0.6)] scale-100' 
-                                                    : isCurrent 
-                                                        ? 'bg-slate-800 border-2 border-dashed border-amber-500/50 animate-pulse' 
-                                                        : 'bg-slate-800/50 text-slate-600'
-                                                }`}
-                                            >
-                                                {isDone ? <Star size={16} fill="currentColor" className="animate-enter" /> : <div className="text-[10px] font-black opacity-50">{i + 1}</div>}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Detailed Rules in Thai */}
-                                <div className="bg-white/5 border border-white/5 rounded-3xl p-5 space-y-4">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <Info size={16} className="text-amber-500" />
-                                        <h4 className="text-white font-black text-xs uppercase tracking-widest">กติกาการรับรางวัล (Rules)</h4>
-                                    </div>
-                                    <ul className="space-y-3">
-                                        <li className="flex gap-3">
-                                            <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-[10px] font-black shrink-0">1</div>
-                                            <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                                                <span className="text-white font-bold">เช็คอิน (Check-in)</span> ในสถานที่ปฏิบัติงานจริงทุกวันทำงาน (จันทร์-ศุกร์)
-                                            </p>
-                                        </li>
-                                        <li className="flex gap-3">
-                                            <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-[10px] font-black shrink-0">2</div>
-                                            <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                                                <span className="text-white font-bold">บันทึกรายงานกิจกรรม (Visit Report)</span> ให้ครบถ้วนทุกสถานที่ที่ท่านได้เข้าพบในวันนั้นๆ
-                                            </p>
-                                        </li>
-                                        <li className="flex gap-3">
-                                            <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-[10px] font-black shrink-0">3</div>
-                                            <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                                                <span className="text-white font-bold">เช็คเอาท์ (Check-out)</span> เพื่อสรุปยอดและส่งรายงานการปฏิบัติงานเมื่อจบวัน
-                                            </p>
-                                        </li>
-                                        <li className="flex gap-3">
-                                            <div className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-[10px] font-black shrink-0">4</div>
-                                            <p className="text-[11px] text-slate-300 font-medium leading-relaxed">
-                                                ต้องปฏิบัติภารกิจ <span className="text-white font-bold">ให้ครบทุกวันทำการตลอดทั้งเดือน</span> (ไม่มีวันขาดบันทึก)
-                                            </p>
-                                        </li>
-                                    </ul>
-                                    <div className="pt-3 border-t border-white/5">
-                                        <p className="text-[10px] text-amber-400 italic">
-                                            * หากทำครบเงื่อนไข ระบบจะปลดล็อกเงินรางวัล 500 บาท และโอนเข้าพอร์ตสะสมของคุณโดยอัตโนมัติในวันสุดท้ายของเดือน
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-amber-500 p-5 flex items-center justify-center gap-3 shrink-0">
-                                <Gift className="text-slate-900 animate-bounce" size={24} />
-                                <p className="text-xs text-slate-900 font-black uppercase tracking-tight">
-                                    {monthlyQuestStats.completedDays >= monthlyQuestStats.targetDays 
-                                        ? "Mission Complete! Reward Unlocked."
-                                        : `Finish ${monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} more days to get 500 THB`
-                                    }
-                                </p>
-                            </div>
-                        </GlassCard>
-                    </div>
-                </div>
-            )}
-
             <style dangerouslySetInnerHTML={{ __html: `
                 @keyframes fly-xp { 
                     0% { opacity: 0; transform: translateY(0) scale(0.5); } 
@@ -695,6 +724,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     50% { transform: translateX(-50%) skewY(2deg) scale(1.1); }
                     100% { transform: translateX(-50%) skewY(-2deg) scale(1); }
                 }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             `}} />
         </div>
     )
