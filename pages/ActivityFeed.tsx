@@ -249,151 +249,291 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
         finally { setIsSubmitting(false); }
     };
 
+    // Corrected handleLike function and completion of component
     const handleLike = async (post: ActivityPost) => {
         const isLiked = (post.likes || []).includes(user.uid);
+        // Optimistically update the UI
         setPosts(posts.map(p => p.id === post.id ? {
             ...p,
-            likes: isLiked ? p.likes.filter(id => id !== user.uid) : [...(p.likes || []), user.uid]
+            likes: isLiked ? p.likes.filter(id => id !== user.uid) : [...p.likes, user.uid]
         } : p));
-        await toggleLikePost(post.id, user.uid, isLiked);
+
+        try {
+            await toggleLikePost(post.id, user.uid, isLiked);
+        } catch (error) {
+            console.error("Like update failed:", error);
+            // Re-sync with server if error
+            loadPosts();
+        }
     };
 
     const handleAddComment = async (postId: string) => {
         const text = commentTexts[postId];
         if (!text?.trim()) return;
-        
-        const newComment: any = {
-            id: crypto.randomUUID(),
-            userId: user.uid,
-            userName: profile?.name || user.email?.split('@')[0] || 'Unknown',
-            userPhoto: profile?.photoBase64,
-            text
-        };
 
-        setPosts(posts.map(p => p.id === postId ? {
-            ...p,
-            comments: [...(p.comments || []), { ...newComment, timestamp: { toDate: () => new Date() } } as any]
-        } : p));
-        
-        setCommentTexts(prev => ({ ...prev, [postId]: '' }));
-        await addCommentToPost(postId, newComment);
-    };
-
-    const handleShare = async (post: ActivityPost) => {
-        const shareData = {
-            title: `กิจกรรมของ ${post.userName}`,
-            text: post.caption,
-            url: window.location.href
-        };
-        if (navigator.share) {
-            try { await navigator.share(shareData); } catch (err) { console.debug("Share cancelled"); }
-        } else {
-            try {
-                await navigator.clipboard.writeText(window.location.href);
-                alert("คัดลอกลิงก์เรียบร้อยแล้ว");
-            } catch (err) { alert("ไม่สามารถแชร์ได้"); }
+        try {
+            await addCommentToPost(postId, {
+                userId: user.uid,
+                userName: profile?.name || user.email?.split('@')[0] || 'Unknown',
+                userPhoto: profile?.photoBase64,
+                text: text.trim(),
+            } as any);
+            setCommentTexts({ ...commentTexts, [postId]: '' });
+            await loadPosts();
+        } catch (e) {
+            console.error("Comment error", e);
         }
     };
 
-    const handleDelete = async (postId: string) => {
-        if (!window.confirm("ต้องการลบโพสต์นี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้")) return;
-        setOpenMenuId(null);
+    const handleDeletePost = async (postId: string) => {
+        if (!window.confirm("ยืนยันการลบโพสต์นี้?")) return;
         try {
             await deleteActivityPost(postId);
             await loadPosts();
-        } catch (e) { alert("ไม่สามารถลบโพสต์ได้"); }
+        } catch (e) {
+            console.error("Delete error", e);
+        }
     };
 
+    if (loading && posts.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="animate-spin text-cyan-500 mb-4" size={40} />
+                <p className="text-slate-500 text-sm font-medium">กำลังโหลดฟีดกิจกรรม...</p>
+            </div>
+        );
+    }
+
     return (
-        <div className="max-w-xl mx-auto pb-28 pt-4 px-4 space-y-6">
-            <div className="flex justify-between items-center mb-6">
+        <div className="max-w-2xl mx-auto space-y-6 pb-32">
+            <div className="flex justify-between items-center px-2 pt-6">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">กิจกรรม</h2>
-                    <p className="text-slate-500 text-sm font-medium">แชร์ช่วงเวลาดีๆ กับทีม</p>
+                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">Activity Feed</h1>
+                    <p className="text-slate-500 text-sm font-medium">แชร์เรื่องราวการทำงานของคุณ</p>
                 </div>
                 <button 
                     onClick={handleOpenCreate}
-                    className="p-3.5 bg-gradient-to-br from-cyan-500 to-blue-600 text-white rounded-2xl shadow-lg shadow-cyan-500/20 active:scale-95 transition-all"
+                    className="p-3.5 bg-cyan-600 text-white rounded-2xl shadow-lg shadow-cyan-600/30 active:scale-95 transition-all"
                 >
                     <Plus size={24} />
                 </button>
             </div>
 
-            {loading && (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <Loader2 className="animate-spin text-cyan-500" size={40} />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Feed...</span>
-                </div>
-            )}
-
-            {!loading && posts.length === 0 && (
-                <div className="py-20 text-center space-y-4 opacity-50">
-                    <ImageIcon className="mx-auto text-slate-300" size={60} />
-                    <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">ยังไม่มีความเคลื่อนไหวในขณะนี้</p>
-                </div>
-            )}
-
             <div className="space-y-8">
-                {posts.map((post) => {
-                    const isLiked = (post.likes || []).includes(user.uid);
-                    const isOwnPost = post.userId === user.uid;
-                    const commentCount = (post.comments || []).length;
-                    const isCommentsExpanded = expandedComments[post.id];
-                    const isMenuOpen = openMenuId === post.id;
-
-                    return (
-                        <div key={post.id} className="animate-enter">
-                            <GlassCard className="p-0 overflow-hidden border-white/50 dark:border-white/5 shadow-2xl">
-                                <div className="p-4 flex items-center justify-between">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 shadow-sm overflow-hidden shrink-0">
-                                            {post.userPhoto ? (
-                                                <img src={post.userPhoto} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center bg-cyan-500 text-white font-bold text-lg uppercase">
-                                                    {post.userName.charAt(0)}
-                                                </div>
-                                            )}
+                {posts.map((post) => (
+                    <GlassCard key={post.id} className="p-0 overflow-hidden border-slate-200 dark:border-white/5 shadow-xl">
+                        {/* Post Header */}
+                        <div className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 overflow-hidden border border-white dark:border-slate-800 shadow-sm">
+                                    {post.userPhoto ? (
+                                        <img src={post.userPhoto} className="w-full h-full object-cover" alt={post.userName} />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-white font-bold">
+                                            {post.userName.charAt(0)}
                                         </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <div className="font-black text-slate-900 dark:text-white text-sm truncate">{post.userName}</div>
-                                                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-tight shrink-0">
-                                                    {post.timestamp.toDate().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
-                                                </div>
-                                            </div>
-                                            {post.location && (
-                                                <div className="flex items-center gap-1 text-[10px] font-bold text-cyan-600 dark:text-cyan-400 truncate">
-                                                    <MapPin size={10} className="shrink-0" />
-                                                    <span className="truncate">{post.location}</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="font-bold text-slate-900 dark:text-white text-sm leading-tight">
+                                        {post.userName}
                                     </div>
+                                    {post.location && (
+                                        <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium mt-0.5">
+                                            <MapPin size={10} className="text-cyan-500" />
+                                            {post.location}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            {post.userId === user.uid && (
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
+                                        className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all"
+                                    >
+                                        <MoreHorizontal size={20} />
+                                    </button>
                                     
-                                    <div className="relative">
+                                    {openMenuId === post.id && (
+                                        <div className="absolute top-full right-0 mt-2 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 py-2 animate-enter">
+                                            <button 
+                                                onClick={() => handleOpenEdit(post)}
+                                                className="w-full flex items-center gap-3 px-4 py-2 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5"
+                                            >
+                                                <Edit3 size={16} className="text-cyan-500" /> แก้ไข
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeletePost(post.id)}
+                                                className="w-full flex items-center gap-3 px-4 py-2 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 border-t dark:border-white/5"
+                                            >
+                                                <Trash2 size={16} /> ลบ
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Images */}
+                        <div className="aspect-square bg-slate-100 dark:bg-slate-950">
+                            <ImageCarousel images={post.imageUrls} />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="p-4">
+                            <div className="flex items-center gap-4 mb-3">
+                                <button 
+                                    onClick={() => handleLike(post)}
+                                    className={`flex items-center gap-1.5 transition-all active:scale-90 ${
+                                        post.likes.includes(user.uid) ? 'text-rose-500' : 'text-slate-400 hover:text-rose-500'
+                                    }`}
+                                >
+                                    <Heart size={24} className={post.likes.includes(user.uid) ? 'fill-current' : ''} />
+                                    <span className="text-xs font-black">{post.likes.length}</span>
+                                </button>
+                                <button 
+                                    onClick={() => setExpandedComments({ ...expandedComments, [post.id]: !expandedComments[post.id] })}
+                                    className="flex items-center gap-1.5 text-slate-400 hover:text-cyan-500"
+                                >
+                                    <MessageCircle size={24} />
+                                    <span className="text-xs font-black">{post.comments.length}</span>
+                                </button>
+                            </div>
+
+                            <p className="text-sm text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
+                                <span className="font-bold mr-2">{post.userName}</span>
+                                {post.caption}
+                            </p>
+
+                            <div className="mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                {new Date(post.timestamp.seconds * 1000).toLocaleDateString('th-TH', { 
+                                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+                                })}
+                            </div>
+
+                            {/* Comments Section */}
+                            {(expandedComments[post.id] || post.comments.length > 0) && (
+                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5 space-y-3">
+                                    {post.comments.slice(expandedComments[post.id] ? 0 : -2).map((comment, cIdx) => (
+                                        <div key={cIdx} className="flex gap-2">
+                                            <span className="font-bold text-xs text-slate-900 dark:text-white shrink-0">{comment.userName}</span>
+                                            <p className="text-xs text-slate-600 dark:text-slate-400">{comment.text}</p>
+                                        </div>
+                                    ))}
+                                    
+                                    {!expandedComments[post.id] && post.comments.length > 2 && (
                                         <button 
-                                            onClick={() => setOpenMenuId(isMenuOpen ? null : post.id)}
-                                            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"
+                                            onClick={() => setExpandedComments({ ...expandedComments, [post.id]: true })}
+                                            className="text-[10px] font-bold text-slate-400 hover:text-cyan-500 uppercase tracking-widest"
                                         >
-                                            <MoreHorizontal size={20} />
+                                            ดูความคิดเห็นทั้งหมด {post.comments.length} รายการ
                                         </button>
-                                        
-                                        {isMenuOpen && (
-                                            <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 py-2 overflow-hidden animate-enter">
-                                                {isOwnPost && (
-                                                    <>
-                                                        <button onClick={() => handleOpenEdit(post)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                                            <Edit3 size={16} className="text-cyan-500" /> แก้ไข
-                                                        </button>
-                                                        <button onClick={() => handleDelete(post.id)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors border-t dark:border-white/5">
-                                                            <Trash2 size={16} /> ลบโพสต์
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {!isOwnPost && (
-                                                    <button onClick={() => handleShare(post)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                                        <Share2 size={16} className="text-indigo-500" /> แชร์
+                                    )}
+
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <input 
+                                            type="text"
+                                            value={commentTexts[post.id] || ''}
+                                            onChange={(e) => setCommentTexts({ ...commentTexts, [post.id]: e.target.value })}
+                                            placeholder="เพิ่มความคิดเห็น..."
+                                            className="flex-1 bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 rounded-xl px-3 py-2 text-xs outline-none focus:border-cyan-500/50"
+                                        />
+                                        <button 
+                                            onClick={() => handleAddComment(post.id)}
+                                            disabled={!commentTexts[post.id]?.trim()}
+                                            className="p-2 text-cyan-600 dark:text-cyan-400 disabled:opacity-30"
+                                        >
+                                            <Send size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </GlassCard>
+                ))}
+                
+                {posts.length === 0 && !loading && (
+                    <div className="text-center py-20 bg-white/30 dark:bg-slate-900/30 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-white/10">
+                        <ImageIcon size={48} className="mx-auto text-slate-300 mb-4 opacity-30" />
+                        <p className="text-slate-400 italic">ยังไม่มีกิจกรรมแชร์ในขณะนี้</p>
+                    </div>
+                )}
+            </div>
+
+            {/* Modal for Create/Edit */}
+            {showModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
+                    <div className="w-full max-w-lg my-auto">
+                        <GlassCard className="p-8 border-cyan-500/30 bg-white dark:bg-slate-900 shadow-2xl relative overflow-visible">
+                            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-rose-500"><X size={24}/></button>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">
+                                {modalMode === 'create' ? 'แชร์กิจกรรมใหม่' : 'แก้ไขโพสต์'}
+                            </h2>
+                            
+                            <div className="space-y-6">
+                                {/* Image Preview / Upload */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">รูปภาพ (สูงสุด 3 รูป)</label>
+                                    <div className="flex gap-2">
+                                        {postImages.map((img, idx) => (
+                                            <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group">
+                                                <img src={img} className="w-full h-full object-cover" alt="Preview" />
+                                                <button onClick={() => removeImage(idx)} className="absolute top-1 right-1 p-1 bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
+                                            </div>
+                                        ))}
+                                        {postImages.length < 3 && (
+                                            <button 
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center text-slate-400 hover:text-cyan-500 hover:border-cyan-500/50 transition-all bg-slate-50 dark:bg-black/20"
+                                            >
+                                                <Camera size={24} />
+                                                <span className="text-[8px] font-bold mt-1 uppercase">เพิ่มรูป</span>
+                                            </button>
+                                        )}
+                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" multiple className="hidden" />
+                                    </div>
+                                </div>
+
+                                {/* Caption */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">คำบรรยาย</label>
+                                    <textarea 
+                                        value={caption} 
+                                        onChange={e => setCaption(e.target.value)}
+                                        rows={3}
+                                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-medium outline-none focus:border-cyan-500 transition-all"
+                                        placeholder="วันนี้คุณทำอะไรมาบ้าง?"
+                                    />
+                                </div>
+
+                                {/* Location */}
+                                <div className="space-y-2 relative" ref={dropdownRef}>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">สถานที่ (Optional)</label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-3 text-slate-400" size={16} />
+                                        <input 
+                                            value={locationSearch} 
+                                            onChange={e => { setLocationSearch(e.target.value); setIsDropdownOpen(true); }}
+                                            onFocus={() => setIsDropdownOpen(true)}
+                                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl py-3 pl-10 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                                            placeholder="เลือกสถานพยาบาล..."
+                                        />
+                                        {isDropdownOpen && (
+                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 max-h-48 overflow-y-auto ring-1 ring-black/5">
+                                                {filteredLocations.map((loc, idx) => (
+                                                    <button key={idx} onClick={() => handleSelectLocation(loc)} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-sm flex items-center justify-between border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors">
+                                                        <div className="flex items-center gap-2">
+                                                            <Building size={14} className="text-cyan-500" />
+                                                            <span className="text-slate-900 dark:text-white">{loc}</span>
+                                                        </div>
+                                                        {location === loc && <Check size={14} className="text-cyan-500" />}
+                                                    </button>
+                                                ))}
+                                                {locationSearch && !profile?.hospitals.includes(locationSearch) && (
+                                                    <button onClick={handleAddNewLocation} className="w-full text-left px-4 py-3 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold border-t border-slate-100 dark:border-white/5">
+                                                        + เพิ่มสถานพยาบาลใหม่: "{locationSearch}"
                                                     </button>
                                                 )}
                                             </div>
@@ -401,243 +541,16 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
                                     </div>
                                 </div>
 
-                                <div className="aspect-square w-full relative bg-slate-100 dark:bg-slate-950 overflow-hidden">
-                                    <ImageCarousel images={post.imageUrls || []} />
-                                </div>
-
-                                <div className="p-4 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-5">
-                                            <button 
-                                                onClick={() => handleLike(post)}
-                                                className={`transition-all active:scale-150 ${isLiked ? 'text-rose-500 scale-110' : 'text-slate-400 hover:text-rose-400'}`}
-                                            >
-                                                <Heart size={26} fill={isLiked ? "currentColor" : "none"} />
-                                            </button>
-                                            <button 
-                                                onClick={() => setExpandedComments(prev => ({ ...prev, [post.id]: !prev[post.id] }))}
-                                                className={`transition-colors ${isCommentsExpanded ? 'text-cyan-500' : 'text-slate-400 hover:text-cyan-500'}`}
-                                            >
-                                                <MessageCircle size={26} />
-                                            </button>
-                                            <button onClick={() => handleShare(post)} className="text-slate-400 hover:text-indigo-500 transition-colors"><Share2 size={24} /></button>
-                                        </div>
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            {(post.likes || []).length} Likes
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-1">
-                                        <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                                            <span className="font-black mr-2 text-slate-900 dark:text-white">{post.userName}</span>
-                                            {post.caption}
-                                        </p>
-                                    </div>
-
-                                    {commentCount > 0 && !isCommentsExpanded && (
-                                        <button 
-                                            onClick={() => setExpandedComments(prev => ({ ...prev, [post.id]: true }))}
-                                            className="text-xs font-bold text-slate-400 hover:text-cyan-500 transition-colors"
-                                        >
-                                            ดูคอมเม้นต์ทั้งหมด {commentCount} รายการ
-                                        </button>
-                                    )}
-
-                                    {isCommentsExpanded && (
-                                        <div className="space-y-3 pt-2 border-t dark:border-white/5 animate-enter">
-                                            {(post.comments || []).map((comment, cIdx) => (
-                                                <div key={comment.id || cIdx} className="flex gap-2">
-                                                    <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800">
-                                                        {comment.userPhoto ? <img src={comment.userPhoto} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center bg-slate-400 text-white text-[8px] font-bold">{comment.userName.charAt(0)}</div>}
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-xs text-slate-700 dark:text-slate-300">
-                                                            <span className="font-black text-slate-900 dark:text-white mr-1.5">{comment.userName}</span>
-                                                            {comment.text}
-                                                        </p>
-                                                        <span className="text-[8px] font-bold text-slate-400 uppercase">
-                                                            {comment.timestamp?.toDate ? comment.timestamp.toDate().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : 'เมื่อสักครู่'}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            <button 
-                                                onClick={() => setExpandedComments(prev => ({ ...prev, [post.id]: false }))}
-                                                className="text-[10px] font-black text-slate-400 uppercase tracking-widest pt-1"
-                                            >
-                                                ซ่อนคอมเม้นต์
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    <div className="pt-2 flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-slate-100 dark:border-slate-800">
-                                            {profile?.photoBase64 ? <img src={profile.photoBase64} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 font-bold text-xs">{user.email?.charAt(0)}</div>}
-                                        </div>
-                                        <div className="flex-1 relative">
-                                            <input 
-                                                type="text" 
-                                                value={commentTexts[post.id] || ''}
-                                                onChange={(e) => setCommentTexts(prev => ({ ...prev, [post.id]: e.target.value }))}
-                                                onKeyPress={(e) => e.key === 'Enter' && handleAddComment(post.id)}
-                                                placeholder="เขียนคอมเม้นต์..."
-                                                className="w-full bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5 rounded-full py-1.5 px-4 text-xs text-slate-900 dark:text-white outline-none focus:border-cyan-500/50 transition-all pr-10"
-                                            />
-                                            <button 
-                                                onClick={() => handleAddComment(post.id)}
-                                                disabled={!commentTexts[post.id]?.trim()}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-500 hover:text-cyan-400 transition-colors disabled:opacity-0"
-                                            >
-                                                <Send size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </GlassCard>
-                        </div>
-                    );
-                })}
-            </div>
-
-            {showModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-enter">
-                    <GlassCard className="w-full max-w-md relative border-cyan-500/30 shadow-2xl p-0 overflow-hidden bg-white dark:bg-slate-900 ring-1 ring-black/5 dark:ring-white/10">
-                        <div className="p-4 border-b dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
-                            <div className="flex flex-col">
-                                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                                    <div className="p-1.5 bg-cyan-500 text-white rounded-lg">
-                                        {modalMode === 'create' ? <Camera size={18} /> : <Edit3 size={18} />}
-                                    </div>
-                                    {modalMode === 'create' ? 'โพสต์กิจกรรมใหม่' : 'แก้ไขโพสต์'}
-                                </h3>
-                                <p className="text-[10px] text-slate-500 font-bold uppercase ml-10">แชร์ช่วงเวลาดีๆ กับทีม</p>
-                            </div>
-                            <button onClick={() => setShowModal(false)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors bg-white dark:bg-slate-700 rounded-full shadow-sm">
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            {/* Image Section */}
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center ml-1">
-                                    <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">รูปภาพกิจกรรม ({postImages.length}/3)</label>
-                                    {postImages.length < 3 && (
-                                        <button 
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="text-[10px] font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-widest flex items-center gap-1 hover:text-cyan-500 transition-colors"
-                                        >
-                                            <Plus size={12} /> เพิ่มรูปภาพ
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                    {postImages.map((img, idx) => (
-                                        <div key={idx} className="relative flex-shrink-0 w-24 h-24 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 group animate-enter shadow-sm">
-                                            <img src={img} className="w-full h-full object-cover" />
-                                            <button 
-                                                onClick={() => removeImage(idx)}
-                                                className="absolute top-1 right-1 p-1 bg-black/40 text-white rounded-full backdrop-blur-md hover:bg-rose-500 transition-colors"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-                                    ))}
-                                    
-                                    {postImages.length < 3 && (
-                                        <div 
-                                            onClick={() => fileInputRef.current?.click()}
-                                            className="flex-shrink-0 w-24 h-24 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-black/20 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-all text-slate-400"
-                                        >
-                                            <Plus size={20} />
-                                            <span className="text-[8px] font-bold">เพิ่มรูป</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" multiple className="hidden" />
-                            </div>
-
-                            {/* Location Section */}
-                            <div className="space-y-1.5 relative" ref={dropdownRef}>
-                                <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest ml-1">สถานที่ (LOCATION)</label>
-                                <div className="relative group">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
-                                        <Search size={16} />
-                                    </div>
-                                    <input 
-                                        type="text" 
-                                        value={locationSearch}
-                                        onChange={(e) => {
-                                            setLocationSearch(e.target.value);
-                                            setIsDropdownOpen(true);
-                                            if (!e.target.value) setLocation('');
-                                        }}
-                                        onFocus={() => setIsDropdownOpen(true)}
-                                        placeholder="ค้นหาสถานที่หรือโรงพยาบาล..."
-                                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl py-3.5 pl-12 pr-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-500 placeholder:font-medium outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all font-bold shadow-inner"
-                                    />
-                                    {isDropdownOpen && (
-                                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[150] max-h-52 overflow-y-auto ring-1 ring-black/5 animate-enter">
-                                            {filteredLocations.length > 0 ? (
-                                                filteredLocations.map((loc, idx) => (
-                                                    <button 
-                                                        key={idx} 
-                                                        onClick={() => handleSelectLocation(loc)} 
-                                                        className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-xs flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <Building size={14} className="text-slate-400" />
-                                                            <span className="font-bold">{loc}</span>
-                                                        </div>
-                                                        {location === loc && <Check size={14} className="text-cyan-500" />}
-                                                    </button>
-                                                ))
-                                            ) : (
-                                                <div className="px-5 py-6 text-center text-slate-400 text-xs italic">ไม่พบสถานที่ที่ตรงกับคำค้นหา</div>
-                                            )}
-                                            {locationSearch && !profile?.hospitals.some(h => h.toLowerCase() === locationSearch.toLowerCase()) && (
-                                                <button 
-                                                    onClick={handleAddNewLocation} 
-                                                    className="w-full text-left px-5 py-4 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 text-xs flex items-center gap-3 border-t-2 border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-slate-800 font-black"
-                                                >
-                                                    <div className="bg-cyan-500 text-white p-1 rounded-full">
-                                                        <Plus size={12} />
-                                                    </div>
-                                                    เพิ่มสถานที่ใหม่: "{locationSearch}"
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Caption Section */}
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest ml-1">คำอธิบาย (CAPTION)</label>
-                                <textarea 
-                                    value={caption}
-                                    onChange={(e) => setCaption(e.target.value)}
-                                    placeholder="เล่าเรื่องราวสักนิด..."
-                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white placeholder:text-slate-500 placeholder:font-medium outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all resize-none text-sm h-32 shadow-inner"
-                                />
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
                                 <button 
                                     onClick={handleSubmit}
                                     disabled={isSubmitting || postImages.length === 0 || !caption}
-                                    className="flex-1 py-4 bg-gradient-to-r from-cyan-600 to-blue-700 text-white font-black rounded-2xl shadow-xl shadow-blue-500/30 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2 uppercase tracking-widest text-sm"
+                                    className="w-full bg-cyan-600 py-4 rounded-2xl font-black text-white shadow-xl shadow-cyan-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
                                 >
-                                    {isSubmitting ? (
-                                        <Loader2 className="animate-spin" size={20} />
-                                    ) : (
-                                        <><Send size={18} /> {modalMode === 'create' ? 'แชร์สู่ฟีด' : 'อัปเดตโพสต์'}</>
-                                    )}
+                                    {isSubmitting ? <Loader2 className="animate-spin" /> : <><Send size={20} /> {modalMode === 'create' ? 'โพสต์เลย' : 'บันทึกการแก้ไข'}</>}
                                 </button>
                             </div>
-                        </div>
-                    </GlassCard>
+                        </GlassCard>
+                    </div>
                 </div>
             )}
         </div>
