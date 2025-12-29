@@ -1,24 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, X, Loader2, Sparkles, TrendingUp, Target, AlertCircle, Key, Link as LinkIcon } from 'lucide-react';
+import { Bot, X, Loader2, Sparkles, TrendingUp, Target, AlertCircle } from 'lucide-react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { User } from 'firebase/auth';
-import { getUserProfile, getTodayAttendance, getReminders, getTodayDateId, addReminder, addInteractionByAi, finalizeCheckoutByAi } from '../services/dbService';
+import { getUserProfile, getTodayAttendance, getReminders, addReminder, addInteractionByAi, finalizeCheckoutByAi } from '../services/dbService';
 
 interface Props {
     user: User;
-}
-
-// Global declaration for AI Studio environment methods
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-  interface Window {
-    // Fix: Removed readonly to ensure compatibility with identical modifier requirements in interface merging
-    aistudio: AIStudio;
-  }
 }
 
 // Audio Utilities
@@ -78,7 +66,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [needKeySelection, setNeedKeySelection] = useState(false);
     
     const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 180 });
     const [isDragging, setIsDragging] = useState(false);
@@ -97,40 +84,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         } else {
             setIsOpen(true);
             setErrorMsg(null);
-            checkKeyAndStart();
-        }
-    };
-
-    const checkKeyAndStart = async () => {
-        setIsConnecting(true);
-        try {
-            // Step 1: Check if environment already has a selected key (PWA/Browser memory)
-            if (window.aistudio) {
-                const hasKey = await window.aistudio.hasSelectedApiKey();
-                if (!hasKey) {
-                    setNeedKeySelection(true);
-                    setIsConnecting(false);
-                    return;
-                }
-            }
-            setNeedKeySelection(false);
             startSession();
-        } catch (e) {
-            // Fallback to normal start if aistudio helper is missing
-            startSession();
-        }
-    };
-
-    const handleSelectKey = async () => {
-        try {
-            if (window.aistudio) {
-                await window.aistudio.openSelectKey();
-                // Rule: Proceed immediately after trigger
-                setNeedKeySelection(false);
-                startSession();
-            }
-        } catch (e) {
-            setErrorMsg("Could not open Key Selector");
         }
     };
 
@@ -159,22 +113,20 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             } catch (micError: any) {
-                throw new Error("กรุณาอนุญาตสิทธิ์การใช้ไมโครโฟน เพื่อเริ่มการสนทนา");
+                throw new Error("ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการตั้งค่าเบราว์เซอร์");
             }
 
             const profile = await getUserProfile(user.uid);
-            const todayAttendance = await getTodayAttendance(user.uid);
-            const reminders = await getReminders(user.uid);
-
             const systemInstruction = `
-                คุณคือ "Happy Joby Elite Coach" เลขาส่วนตัวอัจฉริยะ
-                หน้าที่: วิเคราะห์ดีลการขาย, บันทึกรายงาน, ทำนัดหมาย
-                บริบท: ${profile?.name || user.email}, เขต: ${profile?.area || 'N/A'}
-                เวลา: ${new Date().toLocaleTimeString('th-TH')}
+                คุณคือ "Happy Joby AI Coach" เลขาส่วนตัวอัจฉริยะ
+                หน้าที่: วิเคราะห์ดีล, บันทึกรายงาน, และเป็นที่ปรึกษาการขาย
+                บริบทผู้ใช้: ${profile?.name || user.email}, พื้นที่: ${profile?.area || 'ทั่วไป'}
+                เวลาปัจจุบัน: ${new Date().toLocaleTimeString('th-TH')}
             `;
 
-            // Create fresh instance per rules
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            // --- แก้ไขตรงนี้: วาง API Key ของคุณแทน process.env.API_KEY หากต้องการ Hardcode ---
+            const ai = new GoogleGenAI({ apiKey:AIzaSyCVhjhj0Qv8NFA34U6IF49OayDRFr_Zd70});
+            
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
             const inputCtx = new AudioContextClass({ sampleRate: 16000 });
             const outputCtx = new AudioContextClass({ sampleRate: 24000 });
@@ -221,12 +173,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         }
                     },
                     onerror: (e: any) => { 
-                        const msg = e?.message || "";
-                        if (msg.includes("API Key must be set") || msg.includes("Requested entity was not found")) {
-                            setNeedKeySelection(true);
-                        } else {
-                            setErrorMsg("เชื่อมต่อไม่สำเร็จ: " + msg); 
-                        }
+                        setErrorMsg("เกิดข้อผิดพลาดในการเชื่อมต่อ: " + (e?.message || "โปรดลองใหม่อีกครั้ง"));
                         stopSession(); 
                     },
                     onclose: () => { if (!errorMsg) stopSession(); }
@@ -234,11 +181,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             });
             sessionRef.current = await sessionPromise;
         } catch (error: any) {
-            if (error.message.includes("API Key must be set")) {
-                setNeedKeySelection(true);
-            } else {
-                setErrorMsg(error.message);
-            }
+            setErrorMsg(error.message);
             setIsConnecting(false);
         }
     };
@@ -297,41 +240,26 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
 
             {isOpen && (
                 <div className="fixed inset-0 z-[999] bg-[#020617]/98 backdrop-blur-3xl flex flex-col animate-enter p-8 text-white">
-                    <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col items-center justify-center space-y-12">
-                        <div className="flex flex-col items-center space-y-4 text-center">
+                    <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col items-center justify-center space-y-12 text-center">
+                        <div className="flex flex-col items-center space-y-4">
                             <div className="relative mb-4">
                                 <div className={`absolute -inset-12 bg-cyan-500/20 rounded-full blur-[60px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : 'scale-100 opacity-20'}`}></div>
                                 <div className={`w-32 h-32 rounded-[40px] bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-white/10 flex items-center justify-center relative shadow-2xl ${isSpeaking ? 'animate-pulse' : ''}`}>
                                     <Bot size={64} className={`${isSpeaking ? 'text-cyan-400' : 'text-slate-400'} transition-colors duration-500`} />
                                     {isConnecting && <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 rounded-[40px]"><Loader2 className="animate-spin text-white" size={40} /></div>}
-                                    {(errorMsg || needKeySelection) && <div className="absolute -bottom-2 -right-2 bg-rose-500 p-2 rounded-full border-4 border-slate-900"><AlertCircle size={20} className="text-white" /></div>}
+                                    {errorMsg && <div className="absolute -bottom-2 -right-2 bg-rose-500 p-2 rounded-full border-4 border-slate-900"><AlertCircle size={20} className="text-white" /></div>}
                                 </div>
                             </div>
                             <h2 className="text-3xl font-black tracking-tighter">Happy Joby AI</h2>
-                            <p className={`font-bold text-xs uppercase tracking-[0.3em] ${errorMsg || needKeySelection ? 'text-rose-400' : 'text-slate-400'}`}>
-                                {needKeySelection ? 'Identity Link Required' : errorMsg ? 'Connection Blocked' : isConnecting ? 'Initializing Intelligence...' : isSpeaking ? 'Coach is Speaking' : 'Waiting for voice command'}
+                            <p className={`font-bold text-xs uppercase tracking-[0.3em] ${errorMsg ? 'text-rose-400' : 'text-slate-400'}`}>
+                                {errorMsg ? 'Connection Error' : isConnecting ? 'Initializing Intelligence...' : isSpeaking ? 'AI is Speaking' : 'Listening...'}
                             </p>
                         </div>
 
-                        {needKeySelection ? (
-                            <div className="bg-white/5 border border-white/10 p-8 rounded-[40px] text-center max-w-sm space-y-8 animate-enter">
-                                <div className="flex justify-center"><div className="p-5 bg-indigo-500/10 rounded-3xl"><LinkIcon className="text-indigo-400" size={32} /></div></div>
-                                <div className="space-y-2">
-                                    <p className="text-slate-200 font-bold text-lg">เชื่อมต่อบริการ AI</p>
-                                    <p className="text-slate-500 text-sm leading-relaxed">ตรวจไม่พบ API Key ในโหมด PWA กรุณากดปุ่มด้านล่างเพื่อเลือก Key ของคุณและเริ่มใช้งาน</p>
-                                </div>
-                                <button 
-                                    onClick={handleSelectKey}
-                                    className="w-full py-5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-xl shadow-indigo-500/20 active:scale-95 flex items-center justify-center gap-3"
-                                >
-                                    <Key size={18} /> Connect API Key
-                                </button>
-                                <p className="text-[10px] text-slate-600 italic">* ระบบจะจดจำสิทธิ์นี้ไว้ในเครื่องของคุณอย่างปลอดภัย</p>
-                            </div>
-                        ) : errorMsg ? (
+                        {errorMsg ? (
                             <div className="bg-rose-500/10 border border-rose-500/30 p-8 rounded-[40px] text-center max-w-sm space-y-6">
                                 <p className="text-rose-400 text-sm font-medium leading-relaxed font-bold">{errorMsg}</p>
-                                <button onClick={checkKeyAndStart} className="w-full py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg active:scale-95">Retry Link</button>
+                                <button onClick={startSession} className="w-full py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg active:scale-95">Retry Connection</button>
                             </div>
                         ) : (
                             <div className="h-32 flex items-center justify-center gap-2 w-full">
@@ -341,34 +269,32 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                             </div>
                         )}
 
-                        {!needKeySelection && !errorMsg && (
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-                                <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
-                                    <Target className="text-cyan-500" size={24} />
-                                    <div className="min-w-0">
-                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Portfolio</div>
-                                        <div className="text-xs font-bold truncate">วิเคราะห์ดีลการขาย</div>
-                                    </div>
-                                </div>
-                                <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
-                                    <TrendingUp className="text-amber-500" size={24} />
-                                    <div className="min-w-0">
-                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Reports</div>
-                                        <div className="text-xs font-bold truncate">สรุปรายงานประจำวัน</div>
-                                    </div>
-                                </div>
-                                <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
-                                    <Sparkles className="text-emerald-500" size={24} />
-                                    <div className="min-w-0">
-                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Elite Coach</div>
-                                        <div className="text-xs font-bold truncate">ปรึกษาแผนงาน</div>
-                                    </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                            <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
+                                <Target className="text-cyan-500" size={24} />
+                                <div className="min-w-0 text-left">
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Coach</div>
+                                    <div className="text-xs font-bold truncate">ที่ปรึกษาส่วนตัว</div>
                                 </div>
                             </div>
-                        )}
+                            <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
+                                <TrendingUp className="text-amber-500" size={24} />
+                                <div className="min-w-0 text-left">
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Reports</div>
+                                    <div className="text-xs font-bold truncate">สรุปรายงาน</div>
+                                </div>
+                            </div>
+                            <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
+                                <Sparkles className="text-emerald-500" size={24} />
+                                <div className="min-w-0 text-left">
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tasks</div>
+                                    <div className="text-xs font-bold truncate">จัดการนัดหมาย</div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div className="mt-auto flex justify-center py-10">
-                        <button onClick={toggleAI} className="bg-white/10 hover:bg-white/20 px-10 py-5 rounded-[24px] border border-white/10 font-black text-xs uppercase tracking-[0.2em] transition-all">End Session</button>
+                        <button onClick={toggleAI} className="bg-white/10 hover:bg-white/20 px-10 py-5 rounded-[24px] border border-white/10 font-black text-xs uppercase tracking-[0.2em] transition-all">Close Session</button>
                     </div>
                 </div>
             )}
