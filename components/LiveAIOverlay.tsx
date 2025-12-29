@@ -73,6 +73,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
 
     const sessionRef = useRef<any>(null);
     const audioContexts = useRef<{ input?: AudioContext, output?: AudioContext }>({});
+    const micStreamRef = useRef<MediaStream | null>(null);
     const nextStartTimeRef = useRef(0);
     const activeSources = useRef(new Set<AudioBufferSourceNode>());
 
@@ -93,11 +94,23 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             try { sessionRef.current.close(); } catch (e) {}
             sessionRef.current = null;
         }
+        
+        // Stop all audio tracks to kill the mic indicator and reset permission lock
+        if (micStreamRef.current) {
+            micStreamRef.current.getTracks().forEach(track => track.stop());
+            micStreamRef.current = null;
+        }
+
         activeSources.current.forEach(s => { try { s.stop(); } catch (e) {} });
         activeSources.current.clear();
+        
         if (audioContexts.current.input) try { audioContexts.current.input.close(); } catch(e){}
         if (audioContexts.current.output) try { audioContexts.current.output.close(); } catch(e){}
         audioContexts.current = {};
+        
+        // CRITICAL: Reset timing cursor so next session doesn't play audio in the "far future"
+        nextStartTimeRef.current = 0;
+        
         setIsListening(false);
         setIsSpeaking(false);
         setIsConnecting(false);
@@ -106,14 +119,16 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const startSession = async () => {
         setIsConnecting(true);
         setErrorMsg(null);
+        nextStartTimeRef.current = 0;
         
         try {
-            // Check microphone permission
             let stream: MediaStream;
             try {
+                // Request mic only when needed
                 stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                micStreamRef.current = stream;
             } catch (micError: any) {
-                throw new Error("ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการตั้งค่าเบราว์เซอร์");
+                throw new Error("ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการตั้งค่าความปลอดภัย");
             }
 
             const profile = await getUserProfile(user.uid);
@@ -124,11 +139,10 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 เวลาปัจจุบัน: ${new Date().toLocaleTimeString('th-TH')}
             `;
 
-            // Use dynamic API Key from profile if available, otherwise fallback to standard keys
             const effectiveApiKey = profile?.aiApiKey || process.env.API_KEY || "AIzaSyCVhjhj0Qv8NFA34U6IF49OayDRFr_Zd70";
             
             if (!effectiveApiKey) {
-                throw new Error("ไม่พบ API Key ในระบบ กรุณาตรวจสอบการตั้งค่า Admin");
+                throw new Error("ไม่พบ API Key ในระบบ กรุณาติดต่อแอดมิน");
             }
 
             const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
@@ -175,11 +189,11 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                             });
                             source.start(nextStartTimeRef.current);
                             nextStartTimeRef.current += audioBuffer.duration;
-                            activeSources.current.add(source); // Fix: Access Set via .current
+                            activeSources.current.add(source);
                         }
                     },
                     onerror: (e: any) => { 
-                        setErrorMsg("เกิดข้อผิดพลาดในการเชื่อมต่อ: " + (e?.message || "โปรดลองใหม่อีกครั้ง"));
+                        setErrorMsg("การเชื่อมต่อขัดข้อง: " + (e?.message || "โปรดลองใหม่อีกครั้ง"));
                         stopSession(); 
                     },
                     onclose: () => { if (!errorMsg) stopSession(); }
@@ -189,6 +203,10 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         } catch (error: any) {
             setErrorMsg(error.message);
             setIsConnecting(false);
+            if (micStreamRef.current) {
+                micStreamRef.current.getTracks().forEach(t => t.stop());
+                micStreamRef.current = null;
+            }
         }
     };
 
@@ -245,62 +263,66 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             </div>
 
             {isOpen && (
-                <div className="fixed inset-0 z-[999] bg-[#020617]/98 backdrop-blur-3xl flex flex-col animate-enter p-8 text-white">
-                    <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col items-center justify-center space-y-12 text-center">
-                        <div className="flex flex-col items-center space-y-4">
-                            <div className="relative mb-4">
-                                <div className={`absolute -inset-12 bg-cyan-500/20 rounded-full blur-[60px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : 'scale-100 opacity-20'}`}></div>
-                                <div className={`w-32 h-32 rounded-[40px] bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-white/10 flex items-center justify-center relative shadow-2xl ${isSpeaking ? 'animate-pulse' : ''}`}>
-                                    <Bot size={64} className={`${isSpeaking ? 'text-cyan-400' : 'text-slate-400'} transition-colors duration-500`} />
-                                    {isConnecting && <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 rounded-[40px]"><Loader2 className="animate-spin text-white" size={40} /></div>}
-                                    {errorMsg && <div className="absolute -bottom-2 -right-2 bg-rose-500 p-2 rounded-full border-4 border-slate-900"><AlertCircle size={20} className="text-white" /></div>}
+                <div className="fixed inset-0 z-[999] bg-[#020617] backdrop-blur-3xl flex flex-col animate-enter text-white h-[100dvh] w-full overflow-hidden">
+                    {/* Safe Area Padding for Top */}
+                    <div className="pt-[max(2rem,env(safe-area-inset-top))] px-8 flex-1 flex flex-col">
+                        <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col items-center justify-center space-y-10 text-center">
+                            <div className="flex flex-col items-center space-y-4">
+                                <div className="relative mb-4">
+                                    <div className={`absolute -inset-12 bg-cyan-500/20 rounded-full blur-[60px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : 'scale-100 opacity-20'}`}></div>
+                                    <div className={`w-32 h-32 rounded-[40px] bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-white/10 flex items-center justify-center relative shadow-2xl ${isSpeaking ? 'animate-pulse' : ''}`}>
+                                        <Bot size={64} className={`${isSpeaking ? 'text-cyan-400' : 'text-slate-400'} transition-colors duration-500`} />
+                                        {isConnecting && <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 rounded-[40px]"><Loader2 className="animate-spin text-white" size={40} /></div>}
+                                        {errorMsg && <div className="absolute -bottom-2 -right-2 bg-rose-500 p-2 rounded-full border-4 border-slate-900"><AlertCircle size={20} className="text-white" /></div>}
+                                    </div>
                                 </div>
+                                <h2 className="text-3xl font-black tracking-tighter">Happy Joby AI</h2>
+                                <p className={`font-bold text-xs uppercase tracking-[0.3em] ${errorMsg ? 'text-rose-400' : 'text-slate-400'}`}>
+                                    {errorMsg ? 'Connection Error' : isConnecting ? 'Initializing Intelligence...' : isSpeaking ? 'AI is Speaking' : 'Listening...'}
+                                </p>
                             </div>
-                            <h2 className="text-3xl font-black tracking-tighter">Happy Joby AI</h2>
-                            <p className={`font-bold text-xs uppercase tracking-[0.3em] ${errorMsg ? 'text-rose-400' : 'text-slate-400'}`}>
-                                {errorMsg ? 'Connection Error' : isConnecting ? 'Initializing Intelligence...' : isSpeaking ? 'AI is Speaking' : 'Listening...'}
-                            </p>
-                        </div>
 
-                        {errorMsg ? (
-                            <div className="bg-rose-500/10 border border-rose-500/30 p-8 rounded-[40px] text-center max-w-sm space-y-6">
-                                <p className="text-rose-400 text-sm font-medium leading-relaxed font-bold">{errorMsg}</p>
-                                <button onClick={startSession} className="w-full py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg active:scale-95">Retry Connection</button>
-                            </div>
-                        ) : (
-                            <div className="h-32 flex items-center justify-center gap-2 w-full">
-                                {Array.from({ length: 15 }).map((_, i) => (
-                                    <div key={i} className={`w-2 bg-gradient-to-t from-cyan-600 to-blue-400 rounded-full transition-all duration-300 ${isSpeaking ? 'animate-bounce' : isListening ? 'opacity-40' : 'opacity-10'}`} style={{ height: isSpeaking ? `${30 + Math.random() * 70}%` : '12px', animationDelay: `${i * 0.08}s` }}></div>
-                                ))}
-                            </div>
-                        )}
+                            {errorMsg ? (
+                                <div className="bg-rose-500/10 border border-rose-500/30 p-8 rounded-[40px] text-center max-w-sm space-y-6">
+                                    <p className="text-rose-400 text-sm font-medium leading-relaxed font-bold">{errorMsg}</p>
+                                    <button onClick={startSession} className="w-full py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg active:scale-95">Retry Connection</button>
+                                </div>
+                            ) : (
+                                <div className="h-24 flex items-center justify-center gap-2 w-full">
+                                    {Array.from({ length: 15 }).map((_, i) => (
+                                        <div key={i} className={`w-2 bg-gradient-to-t from-cyan-600 to-blue-400 rounded-full transition-all duration-300 ${isSpeaking ? 'animate-bounce' : isListening ? 'opacity-40' : 'opacity-10'}`} style={{ height: isSpeaking ? `${30 + Math.random() * 70}%` : '12px', animationDelay: `${i * 0.08}s` }}></div>
+                                    ))}
+                                </div>
+                            )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-                            <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
-                                <Target className="text-cyan-500" size={24} />
-                                <div className="min-w-0 text-left">
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Coach</div>
-                                    <div className="text-xs font-bold truncate">ที่ปรึกษาส่วนตัว</div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full px-4">
+                                <div className="bg-white/5 border border-white/10 p-4 rounded-[24px] flex items-center gap-4">
+                                    <Target className="text-cyan-500" size={24} />
+                                    <div className="min-w-0 text-left">
+                                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Coach</div>
+                                        <div className="text-xs font-bold truncate">ที่ปรึกษาส่วนตัว</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
-                                <TrendingUp className="text-amber-500" size={24} />
-                                <div className="min-w-0 text-left">
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Reports</div>
-                                    <div className="text-xs font-bold truncate">สรุปรายงาน</div>
+                                <div className="bg-white/5 border border-white/10 p-4 rounded-[24px] flex items-center gap-4">
+                                    <TrendingUp className="text-amber-500" size={24} />
+                                    <div className="min-w-0 text-left">
+                                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Reports</div>
+                                        <div className="text-xs font-bold truncate">สรุปรายงาน</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="bg-white/5 border border-white/10 p-5 rounded-[28px] flex items-center gap-4">
-                                <Sparkles className="text-emerald-500" size={24} />
-                                <div className="min-w-0 text-left">
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Tasks</div>
-                                    <div className="text-xs font-bold truncate">จัดการนัดหมาย</div>
+                                <div className="bg-white/5 border border-white/10 p-4 rounded-[24px] flex items-center gap-4">
+                                    <Sparkles className="text-emerald-500" size={24} />
+                                    <div className="min-w-0 text-left">
+                                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Tasks</div>
+                                        <div className="text-xs font-bold truncate">จัดการนัดหมาย</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="mt-auto flex justify-center py-10">
-                        <button onClick={toggleAI} className="bg-white/10 hover:bg-white/20 px-10 py-5 rounded-[24px] border border-white/10 font-black text-xs uppercase tracking-[0.2em] transition-all">Close Session</button>
+                        
+                        <div className="mt-auto flex justify-center pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-8">
+                            <button onClick={toggleAI} className="bg-white/10 hover:bg-white/20 px-12 py-5 rounded-[24px] border border-white/10 font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-95 shadow-2xl">Close Session</button>
+                        </div>
                     </div>
                 </div>
             )}
