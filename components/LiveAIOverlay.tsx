@@ -125,7 +125,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             `;
 
             // --- แก้ไขตรงนี้: วาง API Key ของคุณแทน process.env.API_KEY หากต้องการ Hardcode ---
-            const ai = new GoogleGenAI({ apiKey:AIzaSyCVhjhj0Qv8NFA34U6IF49OayDRFr_Zd70});
+            const ai = new GoogleGenAI({ apiKey:"AIzaSyCVhjhj0Qv8NFA34U6IF49OayDRFr_Zd70"});
             
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
             const inputCtx = new AudioContextClass({ sampleRate: 16000 });
