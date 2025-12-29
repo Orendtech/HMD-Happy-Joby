@@ -121,33 +121,39 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
              <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
 
             {!isHomePage && (
-                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-3 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
-                    <div className="flex flex-col items-start gap-2">
-                        <div className="w-11 h-11 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden shrink-0">
-                                {userProfile?.photoBase64 ? (
-                                    <img src={userProfile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
-                                        <span className="text-lg font-bold text-white uppercase tracking-wider">
-                                            {userProfile?.name ? userProfile.name.charAt(0) : user.email?.charAt(0)}
-                                        </span>
-                                    </div>
-                                )}
-                        </div>
-                        <div className="flex flex-col leading-tight">
-                            <div className="flex items-center gap-2">
-                                    <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
-                                        {userProfile?.name || user.email?.split('@')[0]}
-                                    </span>
-                                    <span className={`px-2 py-[2px] rounded-full border text-[9px] font-bold tracking-wider ${badgeStyle.bg}`}>
-                                        {badgeStyle.label}
-                                    </span>
+                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
+                    <div className="flex items-center gap-4">
+                        {/* Avatar with Role Badge Overlap */}
+                        <div className="relative">
+                            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden shrink-0">
+                                    {userProfile?.photoBase64 ? (
+                                        <img src={userProfile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+                                            <span className="text-lg font-bold text-white uppercase tracking-wider">
+                                                {userProfile?.name ? userProfile.name.charAt(0) : user.email?.charAt(0)}
+                                            </span>
+                                        </div>
+                                    )}
                             </div>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-tight mt-1">
+                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
+                                <span className={`px-2 py-[1px] rounded-full border text-[8px] font-bold tracking-widest shadow-md backdrop-blur-md whitespace-nowrap ${badgeStyle.bg}`}>
+                                    {badgeStyle.label}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Name and Area returned to stacked position next to avatar */}
+                        <div className="flex flex-col leading-tight ml-1">
+                            <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight line-clamp-1">
+                                {userProfile?.name || user.email?.split('@')[0]}
+                            </span>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-tight mt-0.5">
                                 {userProfile?.area || 'Happy Joby Workspace'}
                             </p>
                         </div>
                     </div>
+                    
                     <div className="flex items-center gap-2 self-start mt-1">
                         <button onClick={() => navigate('/dashboard')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm"><MapIcon size={20} className="text-slate-400" /></button>
                         <button onClick={() => navigate('/reminders')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm relative">
