@@ -115,7 +115,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const startSession = async () => {
         setIsConnecting(true);
         try {
-            // 1. Check for Microphone Permission early
+            // 1. Check for Microphone Permission
             let stream: MediaStream;
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -124,7 +124,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 throw new Error("ไมโครโฟนถูกปฏิเสธสิทธิ์การเข้าถึง หรือไม่พบอุปกรณ์ กรุณาตรวจสอบการตั้งค่าเบราว์เซอร์");
             }
 
-            // 2. Fetch current app data for context
+            // 2. Fetch context
             const profile = await getUserProfile(user.uid);
             const todayAttendance = await getTodayAttendance(user.uid);
             const reminders = await getReminders(user.uid);
@@ -149,18 +149,16 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 ${contextData}
 
                 When the user asks "What should I do today?", look at their plan and pipeline.
-                If they have a deal in "Proposal", suggest follow-up tactics.
-                If they haven't checked in yet, remind them to start their day.
                 Talk naturally as a friend and a high-level manager. 
                 Keep responses concise since this is a voice conversation.
             `;
 
             const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
             
-            // 3. Setup Audio Contexts (Using local variables to avoid closure issues)
+            // 3. Setup Audio Contexts
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
             if (!AudioContextClass) {
-                throw new Error("เบราว์เซอร์ของคุณไม่รองรับการประมวลผลเสียง (Web Audio API)");
+                throw new Error("เบราว์เซอร์ของคุณไม่รองรับการประมวลผลเสียง");
             }
 
             const inputCtx = new AudioContextClass({ sampleRate: 16000 });
@@ -184,43 +182,52 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         setIsConnecting(false);
                         setIsListening(true);
                         
+                        const currentInputCtx = audioContexts.current.input;
+                        if (!currentInputCtx) return;
+
                         try {
-                            const source = inputCtx.createMediaStreamSource(stream);
-                            const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
+                            const source = currentInputCtx.createMediaStreamSource(stream);
+                            const scriptProcessor = currentInputCtx.createScriptProcessor(4096, 1, 1);
                             
                             scriptProcessor.onaudioprocess = (e) => {
                                 const inputData = e.inputBuffer.getChannelData(0);
                                 const pcmBlob = createBlob(inputData);
                                 sessionPromise.then((session) => {
-                                    if (session) {
-                                        session.sendRealtimeInput({ media: pcmBlob });
-                                    }
+                                    if (session) session.sendRealtimeInput({ media: pcmBlob });
                                 }).catch(err => console.debug("Failed to send audio input", err));
                             };
                             
                             source.connect(scriptProcessor);
-                            scriptProcessor.connect(inputCtx.destination);
+                            scriptProcessor.connect(currentInputCtx.destination);
+                            
+                            if (currentInputCtx.state === 'suspended') {
+                                currentInputCtx.resume();
+                            }
                         } catch (err) {
-                            console.error("Failed to setup audio input stream:", err);
+                            console.error("Failed to setup audio stream:", err);
                             setErrorMsg("ไม่สามารถตั้งค่าระบบบันทึกเสียงได้");
                             stopSession();
                         }
                     },
                     onmessage: async (message: LiveServerMessage) => {
                         const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
-                        if (base64Audio && outputCtx) {
+                        const currentOutputCtx = audioContexts.current.output;
+                        
+                        if (base64Audio && currentOutputCtx) {
                             setIsSpeaking(true);
-                            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputCtx.currentTime);
+                            if (currentOutputCtx.state === 'suspended') await currentOutputCtx.resume();
+
+                            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, currentOutputCtx.currentTime);
                             
                             try {
                                 const audioBuffer = await decodeAudioData(
                                     decode(base64Audio),
-                                    outputCtx,
+                                    currentOutputCtx,
                                     24000,
                                     1
                                 );
                                 
-                                const source = outputCtx.createBufferSource();
+                                const source = currentOutputCtx.createBufferSource();
                                 source.buffer = audioBuffer;
                                 source.connect(outputNode);
                                 source.addEventListener('ended', () => {
@@ -279,15 +286,11 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             if (!isDragging) return;
             const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
             const clientY = 'touches' in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-            
             const newX = Math.max(20, Math.min(window.innerWidth - 80, clientX - dragOffset.current.x));
             const newY = Math.max(20, Math.min(window.innerHeight - 80, clientY - dragOffset.current.y));
-            
             setPosition({ x: newX, y: newY });
         };
-
         const onMouseUp = () => setIsDragging(false);
-
         if (isDragging) {
             window.addEventListener('mousemove', onMouseMove);
             window.addEventListener('mouseup', onMouseUp);
@@ -327,7 +330,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             {isOpen && (
                 <div className="fixed inset-0 z-[999] bg-[#020617]/95 backdrop-blur-2xl flex flex-col animate-enter p-8 text-white">
                     <div className="max-w-2xl mx-auto w-full flex-1 flex flex-col items-center justify-center space-y-12">
-                        
                         <div className="flex flex-col items-center space-y-4">
                             <div className="relative">
                                 <div className={`absolute -inset-12 bg-cyan-500/20 rounded-full blur-[60px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : 'scale-100 opacity-20'}`}></div>
@@ -345,7 +347,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                                     )}
                                 </div>
                             </div>
-                            
                             <h2 className="text-3xl font-black tracking-tighter">Happy Joby Coach</h2>
                             <p className={`font-bold text-xs uppercase tracking-[0.3em] ${errorMsg ? 'text-rose-400' : 'text-slate-400'}`}>
                                 {errorMsg ? 'Session Blocked' : isConnecting ? 'Linking Intelligence...' : isSpeaking ? 'Coaching Active' : 'Listening for your questions'}
