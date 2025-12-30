@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { User } from 'firebase/auth';
@@ -24,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             const metaThemeColor = document.getElementById('meta-theme-color');
             if (!metaThemeColor) return;
             const isDark = document.documentElement.classList.contains('dark');
-            const color = isDark ? '#000000' : '#F5F5F7';
+            const color = isDark ? '#020617' : '#F5F5F7';
             if (metaThemeColor.getAttribute('content') !== color) {
                 metaThemeColor.setAttribute('content', color);
                 document.documentElement.style.backgroundColor = color;
@@ -111,19 +112,19 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const badgeStyle = (() => {
         if (userProfile?.role === 'admin') return { label: 'ADMIN', bg: 'bg-indigo-100 dark:bg-indigo-500/30 border-indigo-200 dark:border-indigo-500/50 text-indigo-600 dark:text-indigo-300' };
         if (userProfile?.role === 'manager') return { label: 'MANAGER', bg: 'bg-emerald-100 dark:bg-emerald-500/30 border-emerald-200 dark:border-emerald-500/50 text-emerald-600 dark:text-emerald-300' };
-        return { label: 'USER', bg: 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400' };
+        return { label: 'USER', bg: 'bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400' };
     })();
 
     return (
-        <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-black text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">
+        <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-[#020617] text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">
              <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-cyan-400/10 dark:bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen animate-pulse duration-[10000ms]"></div>
              <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
 
             {!isHomePage && (
-                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-black/80 backdrop-blur-xl border-b border-transparent transition-all">
+                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
                     <div className="flex items-center gap-4">
                         <div className="relative shrink-0">
-                            <div className="w-12 h-12 rounded-full bg-white dark:bg-zinc-900 flex items-center justify-center shadow-md border border-white dark:border-white/10 relative overflow-hidden">
+                            <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden">
                                     {userProfile?.photoBase64 ? (
                                         <img src={userProfile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
@@ -153,12 +154,12 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                     </div>
                     
                     <div className="flex items-center gap-2 self-start mt-1">
-                        <button onClick={() => navigate('/dashboard')} className="p-2.5 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10 rounded-full shadow-sm"><MapIcon size={20} className="text-slate-400" /></button>
-                        <button onClick={() => navigate('/reminders')} className="p-2.5 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10 rounded-full shadow-sm relative">
+                        <button onClick={() => navigate('/dashboard')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm"><MapIcon size={20} className="text-slate-400" /></button>
+                        <button onClick={() => navigate('/reminders')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm relative">
                             <Bell size={20} className="text-slate-400" />
-                            {pendingRemindersCount > 0 && <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-black shadow-md">{pendingRemindersCount}</span>}
+                            {pendingRemindersCount > 0 && <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-md">{pendingRemindersCount}</span>}
                         </button>
-                        <button onClick={() => navigate('/settings')} className="p-2.5 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/10 rounded-full shadow-sm"><Settings size={20} className="text-slate-400" /></button>
+                        <button onClick={() => navigate('/settings')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm"><Settings size={20} className="text-slate-400" /></button>
                     </div>
                 </header>
             )}
@@ -167,7 +168,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 <Outlet />
             </main>
 
-            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/5 pb-[env(safe-area-inset-bottom)] pt-2">
+            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/5 pb-[env(safe-area-inset-bottom)] pt-2">
                 <div className="flex justify-around items-center h-16 max-w-xl mx-auto w-full px-2">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
@@ -180,7 +181,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                 <div className={`relative transform transition-all duration-300 ${isActive ? '-translate-y-1' : ''}`}>
                                     {item.icon}
                                     {item.badge !== undefined && item.badge > 0 && (
-                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-black shadow-md px-1 animate-pulse">
+                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-md px-1 animate-pulse">
                                             {item.badge}
                                         </span>
                                     )}

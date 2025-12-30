@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
@@ -55,7 +56,7 @@ const Login: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F5F7] dark:bg-black p-6 font-sans relative overflow-hidden transition-colors duration-500">
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F5F7] dark:bg-slate-950 p-6 font-sans relative overflow-hidden transition-colors duration-500">
              {/* Cinematic Background */}
              <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-400/10 dark:bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[5000ms]"></div>
              <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-400/10 dark:bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
@@ -76,7 +77,7 @@ const Login: React.FC = () => {
                     <p className="text-slate-500 dark:text-slate-400 text-sm">The intelligent workspace for modern teams.</p>
                 </div>
 
-                <GlassCard className="p-8 border-white/50 dark:border-white/5 bg-white/70 dark:bg-zinc-950 shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
+                <GlassCard className="p-8 border-white/50 dark:border-white/5 bg-white/70 dark:bg-slate-900/50 shadow-2xl ring-1 ring-black/5 dark:ring-white/10">
                     <form onSubmit={handleAuth} className="space-y-5">
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Email</label>
@@ -87,7 +88,7 @@ const Login: React.FC = () => {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
+                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
                                     placeholder="name@company.com"
                                 />
                             </div>
@@ -102,7 +103,7 @@ const Login: React.FC = () => {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-12 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
+                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-12 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
                                     placeholder="••••••••"
                                 />
                                 <button
