@@ -23,10 +23,10 @@ import { LiveAIOverlay } from './components/LiveAIOverlay';
 
 const FullPageLoader = () => {
   return (
-    <div className="min-h-screen bg-[#d1fae5] dark:bg-[#020617] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-700">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-30 dark:opacity-30 pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-400 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-teal-600 rounded-full blur-[120px] animate-pulse delay-1000"></div>
+    <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#020617] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-700">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-20 dark:opacity-30 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600 rounded-full blur-[120px] animate-pulse delay-1000"></div>
       </div>
 
       <div className="relative z-10 flex flex-col items-center">
@@ -38,24 +38,24 @@ const FullPageLoader = () => {
           </div>
           <div className="flex">
             {"Joby".split("").map((char, i) => (
-              <span key={i} className="text-5xl sm:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-emerald-600 to-teal-700 letter-anim glow-text" style={{ animationDelay: `${(i + 5) * 0.1}s` }}>{char}</span>
+              <span key={i} className="text-5xl sm:text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-cyan-500 to-blue-600 letter-anim glow-text" style={{ animationDelay: `${(i + 5) * 0.1}s` }}>{char}</span>
             ))}
           </div>
         </div>
         
-        <div className="mt-8 flex items-center gap-3 px-5 py-2.5 bg-white/50 dark:bg-white/5 backdrop-blur-xl rounded-full border border-emerald-200 dark:border-white/10 shadow-lg animate-enter opacity-0" style={{ animationDelay: '0.8s' }}>
-          <Sparkles className="text-emerald-600 w-4 h-4 animate-pulse" />
-          <span className="text-[10px] sm:text-xs font-black text-emerald-700/80 dark:text-slate-400 uppercase tracking-[0.4em]">Intelligent Workspace</span>
+        <div className="mt-8 flex items-center gap-3 px-5 py-2.5 bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-full border border-slate-200 dark:border-white/10 shadow-lg animate-enter opacity-0" style={{ animationDelay: '0.8s' }}>
+          <Sparkles className="text-cyan-500 w-4 h-4 animate-pulse" />
+          <span className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">Intelligent Workspace</span>
         </div>
       </div>
 
       <div className="absolute bottom-16 flex flex-col items-center gap-4 animate-enter opacity-0" style={{ animationDelay: '1s' }}>
-        <div className="w-48 h-[2px] bg-emerald-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-emerald-600 to-transparent w-full h-full animate-[glow-line_2s_infinite]"></div>
+        <div className="w-48 h-[2px] bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent w-full h-full animate-[glow-line_2s_infinite]"></div>
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-700 dark:text-slate-600 uppercase tracking-widest">
+        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">
            <Orbit size={12} className="animate-spin duration-[3s]" />
-           Initializing Garden
+           Initializing Services
         </div>
       </div>
     </div>
@@ -127,7 +127,7 @@ function App() {
 
   return (
     <HashRouter>
-      {user && <LiveAIOverlay user={user} userProfile={userProfile} />}
+      {user && <LiveAIOverlay user={user} />}
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <Layout user={user} userProfile={userProfile} /> : <Navigate to="/login" />}>

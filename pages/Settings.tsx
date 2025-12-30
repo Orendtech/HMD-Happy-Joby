@@ -8,7 +8,7 @@ import { GlassCard } from '../components/GlassCard';
 import { 
     User as UserIcon, MapPin, Calendar, Mail, Lock, Save, 
     LogOut, Settings as SettingsIcon, Camera, Upload, 
-    Sun, Moon, BellRing, ShieldCheck, RotateCcw, Sparkles, RefreshCcw, Info, Key, Eye, EyeOff, Bot, Loader2, Sparkle
+    Sun, Moon, BellRing, ShieldCheck, RotateCcw, Sparkles, RefreshCcw, Info, Key, Eye, EyeOff, Bot, Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,7 +24,6 @@ const Settings: React.FC<Props> = ({ user }) => {
     const [startDate, setStartDate] = useState('');
     const [photoBase64, setPhotoBase64] = useState('');
     const [aiApiKey, setAiApiKey] = useState('');
-    const [isAiEnabled, setIsAiEnabled] = useState(false); // Default to false (closed)
     const [showApiKey, setShowApiKey] = useState(false);
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState('');
@@ -32,7 +31,7 @@ const Settings: React.FC<Props> = ({ user }) => {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
     const [updateLoading, setUpdateLoading] = useState(false);
-    const [appVersion] = useState("1.2.6");
+    const [appVersion] = useState("1.2.5");
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,7 +45,6 @@ const Settings: React.FC<Props> = ({ user }) => {
                 setStartDate(p.startDate || '');
                 setPhotoBase64(p.photoBase64 || '');
                 setAiApiKey(p.aiApiKey || '');
-                setIsAiEnabled(p.isAiEnabled === true); // Only enable if explicitly true
             }
         };
         load();
@@ -130,7 +128,7 @@ const Settings: React.FC<Props> = ({ user }) => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            const updateData: Partial<UserProfile> = { name, area, startDate, photoBase64, isAiEnabled };
+            const updateData: Partial<UserProfile> = { name, area, startDate, photoBase64 };
             if (profile?.role === 'admin') {
                 updateData.aiApiKey = aiApiKey;
             }
@@ -175,21 +173,6 @@ const Settings: React.FC<Props> = ({ user }) => {
                     </div>
                     <button onClick={toggleTheme} className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isDarkMode ? 'bg-cyan-600' : 'bg-slate-300'}`}>
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                    </button>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20">
-                    <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full bg-indigo-500/10 text-indigo-500`}>
-                            <Bot size={20} />
-                        </div>
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">ผู้ช่วย HMD AI <Sparkle size={10} className="fill-indigo-500 text-indigo-500 animate-pulse"/></h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">แสดงเมนู AI ลอยบนหน้าจอ</p>
-                        </div>
-                    </div>
-                    <button onClick={() => setIsAiEnabled(!isAiEnabled)} className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isAiEnabled ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${isAiEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                     </button>
                 </div>
 

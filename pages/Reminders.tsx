@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { User } from 'firebase/auth';
 import { GlassCard } from '../components/GlassCard';
@@ -89,7 +90,7 @@ const Reminders: React.FC<Props> = ({ user }) => {
             {/* Inline Creation Form - Expanding at the top */}
             {showForm && (
                 <div className="animate-enter">
-                    <GlassCard className="p-6 border-cyan-500/30 bg-white/80 dark:bg-slate-900/80 shadow-xl">
+                    <GlassCard className="p-6 border-cyan-500/30 bg-white/80 dark:bg-slate-900/80 shadow-xl overflow-visible">
                         <div className="space-y-5">
                             <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 mb-2">
                                 <Plus className="text-cyan-500" size={20} />

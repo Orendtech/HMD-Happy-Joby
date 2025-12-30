@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { ActivityPost, UserProfile, PostComment } from '../types';
@@ -81,7 +82,7 @@ const ImageCarousel: React.FC<{ images: string[] }> = ({ images }) => {
 const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) => {
     const [posts, setPosts] = useState<ActivityPost[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showEditor, setShowEditor] = useState(false);
+    const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [editingPostId, setEditingPostId] = useState<string | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(initialProfile);
@@ -175,7 +176,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
         setPostImages([]);
         setLocation('');
         setLocationSearch('');
-        setShowEditor(true);
+        setShowModal(true);
     };
 
     const handleOpenEdit = (post: ActivityPost) => {
@@ -185,7 +186,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
         setPostImages(post.imageUrls || []);
         setLocation(post.location || '');
         setLocationSearch(post.location || '');
-        setShowEditor(true);
+        setShowModal(true);
         setOpenMenuId(null);
     };
 
@@ -239,7 +240,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
                     location: location || undefined
                 });
             }
-            setShowEditor(false);
+            setShowModal(false);
             await loadPosts();
         } catch (e: any) { 
             console.error("Post Submission Error:", e);
@@ -248,8 +249,10 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
         finally { setIsSubmitting(false); }
     };
 
+    // Corrected handleLike function and completion of component
     const handleLike = async (post: ActivityPost) => {
         const isLiked = (post.likes || []).includes(user.uid);
+        // Optimistically update the UI
         setPosts(posts.map(p => p.id === post.id ? {
             ...p,
             likes: isLiked ? p.likes.filter(id => id !== user.uid) : [...p.likes, user.uid]
@@ -259,6 +262,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
             await toggleLikePost(post.id, user.uid, isLiked);
         } catch (error) {
             console.error("Like update failed:", error);
+            // Re-sync with server if error
             loadPosts();
         }
     };
@@ -290,114 +294,6 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
             console.error("Delete error", e);
         }
     };
-
-    if (showEditor) {
-        return (
-            <div className="fixed inset-0 z-[150] bg-[#d1fae5] dark:bg-[#020617] pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] px-2 sm:px-4 flex flex-col animate-enter overflow-hidden">
-                <div className="flex-1 flex flex-col bg-[#F5F5F7] dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden transition-colors duration-500 rounded-[40px] shadow-2xl border border-white/50 dark:border-white/5 relative">
-                    <header className="px-5 pt-6 pb-4 flex items-center gap-4 z-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 shrink-0">
-                        <button onClick={() => setShowEditor(false)} className="p-2.5 bg-slate-200 dark:bg-white/10 rounded-xl text-slate-700 dark:text-white transition-all active:scale-95"><ChevronLeft size={20} /></button>
-                        <div>
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{modalMode === 'create' ? 'แชร์กิจกรรมใหม่' : 'แก้ไขโพสต์'}</h2>
-                            <p className="text-[9px] font-black text-cyan-600 dark:text-cyan-500 uppercase tracking-widest">บอกเล่าเรื่องราวการทำงานของคุณ</p>
-                        </div>
-                    </header>
-
-                    <main className="flex-1 overflow-y-auto pb-10 px-6 pt-8 space-y-8 relative no-scrollbar">
-                        {/* Image Selection Area */}
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1 opacity-80 flex items-center gap-2">
-                                <Camera size={12} className="text-cyan-500" /> รูปภาพประกอบ (สูงสุด 3 รูป)
-                            </label>
-                            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
-                                {postImages.map((img, idx) => (
-                                    <div key={idx} className="relative flex-shrink-0 w-32 h-40 rounded-3xl overflow-hidden border border-white dark:border-white/10 group shadow-lg">
-                                        <img src={img} className="w-full h-full object-cover" alt="Preview" />
-                                        <button onClick={() => removeImage(idx)} className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"><X size={14}/></button>
-                                    </div>
-                                ))}
-                                {postImages.length < 3 && (
-                                    <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="flex-shrink-0 w-32 h-40 rounded-3xl border-2 border-dashed border-slate-300 dark:border-white/10 flex flex-col items-center justify-center text-slate-400 hover:text-cyan-500 hover:border-cyan-500/50 transition-all bg-white dark:bg-black/20 shadow-sm"
-                                    >
-                                        <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl mb-2 shadow-inner"><Plus size={24} /></div>
-                                        <span className="text-[8px] font-black mt-1 uppercase tracking-widest">เพิ่มรูปภาพ</span>
-                                    </button>
-                                )}
-                                <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" multiple className="hidden" />
-                            </div>
-                        </div>
-
-                        {/* Caption Input */}
-                        <div className="space-y-3">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1 opacity-80 flex items-center gap-2">
-                                <ImageIcon size={12} className="text-cyan-500" /> แคปชั่น
-                            </label>
-                            <textarea 
-                                value={caption} 
-                                onChange={e => setCaption(e.target.value)}
-                                rows={5}
-                                className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-[32px] p-6 text-slate-900 dark:text-white font-medium outline-none focus:ring-4 focus:ring-cyan-500/5 focus:border-cyan-500/50 transition-all shadow-inner resize-none text-sm placeholder-slate-400"
-                                placeholder="แชร์ความประทับใจ หรือสิ่งที่พบเจอในวันนี้..."
-                            />
-                        </div>
-
-                        {/* Location Selection */}
-                        <div className="space-y-3 relative" ref={dropdownRef}>
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1 opacity-80 flex items-center gap-2">
-                                <MapPin size={12} className="text-cyan-500" /> สถานที่ปฏิบัติงาน (Optional)
-                            </label>
-                            <div className="relative group">
-                                <Search className="absolute left-4 top-4 text-slate-400 group-focus-within:text-cyan-500 transition-colors" size={18} />
-                                <input 
-                                    value={locationSearch} 
-                                    onChange={e => { setLocationSearch(e.target.value); setIsDropdownOpen(true); }}
-                                    onFocus={() => setIsDropdownOpen(true)}
-                                    className="w-full bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-2xl py-4 pl-12 pr-6 text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all shadow-inner text-sm font-bold placeholder-slate-400"
-                                    placeholder="ค้นหาสถานพยาบาล..."
-                                />
-                                {isDropdownOpen && (
-                                    <div className="absolute top-full left-0 right-0 mt-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-[28px] shadow-2xl z-50 max-h-52 overflow-y-auto ring-1 ring-black/5 animate-enter no-scrollbar">
-                                        <div className="p-2 space-y-1">
-                                            {filteredLocations.map((loc, idx) => (
-                                                <button key={idx} onClick={() => handleSelectLocation(loc)} className="w-full text-left px-4 py-4 hover:bg-slate-50 dark:hover:bg-white/5 text-sm flex items-center justify-between rounded-2xl transition-all duration-200 group">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl group-hover:bg-cyan-500/10 transition-colors">
-                                                            <Building size={16} className="text-slate-400 group-hover:text-cyan-500" />
-                                                        </div>
-                                                        <span className="text-slate-900 dark:text-white font-bold tracking-tight">{loc}</span>
-                                                    </div>
-                                                    {location === loc && <Check size={16} className="text-cyan-500" />}
-                                                </button>
-                                            ))}
-                                            {locationSearch && !profile?.hospitals.includes(locationSearch) && (
-                                                <button onClick={handleAddNewLocation} className="w-full text-left px-6 py-5 bg-gradient-to-r from-cyan-500/5 to-transparent hover:from-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-xs flex items-center gap-3 border-t border-slate-100 dark:border-white/5 sticky bottom-0 bg-white dark:bg-slate-900 font-black transition-all">
-                                                    <div className="bg-cyan-500 text-white p-1.5 rounded-full shadow-lg shadow-cyan-500/20"><Plus size={14} /></div>
-                                                    เพิ่มรายชื่อใหม่: <span className="underline italic">"{locationSearch}"</span>
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Submit Button */}
-                        <div className="pt-6">
-                            <button 
-                                onClick={handleSubmit}
-                                disabled={isSubmitting || postImages.length === 0 || !caption}
-                                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 dark:from-cyan-600 dark:to-blue-700 py-5 rounded-[24px] font-black text-white shadow-2xl shadow-cyan-600/30 flex items-center justify-center gap-3 active:scale-95 transition-all disabled:opacity-50 uppercase tracking-widest text-sm"
-                            >
-                                {isSubmitting ? <Loader2 className="animate-spin" /> : <><Send size={20} /> {modalMode === 'create' ? 'แชร์เรื่องราวเลย' : 'บันทึกการแก้ไข'}</>}
-                            </button>
-                        </div>
-                    </main>
-                </div>
-            </div>
-        );
-    }
 
     if (loading && posts.length === 0) {
         return (
@@ -565,6 +461,98 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
                     </div>
                 )}
             </div>
+
+            {/* Modal for Create/Edit */}
+            {showModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
+                    <div className="w-full max-w-lg my-auto">
+                        <GlassCard className="p-8 border-cyan-500/30 bg-white dark:bg-slate-900 shadow-2xl relative overflow-visible">
+                            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-rose-500"><X size={24}/></button>
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">
+                                {modalMode === 'create' ? 'แชร์กิจกรรมใหม่' : 'แก้ไขโพสต์'}
+                            </h2>
+                            
+                            <div className="space-y-6">
+                                {/* Image Preview / Upload */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">รูปภาพ (สูงสุด 3 รูป)</label>
+                                    <div className="flex gap-2">
+                                        {postImages.map((img, idx) => (
+                                            <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 group">
+                                                <img src={img} className="w-full h-full object-cover" alt="Preview" />
+                                                <button onClick={() => removeImage(idx)} className="absolute top-1 right-1 p-1 bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X size={12}/></button>
+                                            </div>
+                                        ))}
+                                        {postImages.length < 3 && (
+                                            <button 
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="w-24 h-24 rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center text-slate-400 hover:text-cyan-500 hover:border-cyan-500/50 transition-all bg-slate-50 dark:bg-black/20"
+                                            >
+                                                <Camera size={24} />
+                                                <span className="text-[8px] font-bold mt-1 uppercase">เพิ่มรูป</span>
+                                            </button>
+                                        )}
+                                        <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" multiple className="hidden" />
+                                    </div>
+                                </div>
+
+                                {/* Caption */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">คำบรรยาย</label>
+                                    <textarea 
+                                        value={caption} 
+                                        onChange={e => setCaption(e.target.value)}
+                                        rows={3}
+                                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-medium outline-none focus:border-cyan-500 transition-all"
+                                        placeholder="วันนี้คุณทำอะไรมาบ้าง?"
+                                    />
+                                </div>
+
+                                {/* Location */}
+                                <div className="space-y-2 relative" ref={dropdownRef}>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">สถานที่ (Optional)</label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-3 text-slate-400" size={16} />
+                                        <input 
+                                            value={locationSearch} 
+                                            onChange={e => { setLocationSearch(e.target.value); setIsDropdownOpen(true); }}
+                                            onFocus={() => setIsDropdownOpen(true)}
+                                            className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl py-3 pl-10 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all"
+                                            placeholder="เลือกสถานพยาบาล..."
+                                        />
+                                        {isDropdownOpen && (
+                                            <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 max-h-48 overflow-y-auto ring-1 ring-black/5">
+                                                {filteredLocations.map((loc, idx) => (
+                                                    <button key={idx} onClick={() => handleSelectLocation(loc)} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-sm flex items-center justify-between border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors">
+                                                        <div className="flex items-center gap-2">
+                                                            <Building size={14} className="text-cyan-500" />
+                                                            <span className="text-slate-900 dark:text-white">{loc}</span>
+                                                        </div>
+                                                        {location === loc && <Check size={14} className="text-cyan-500" />}
+                                                    </button>
+                                                ))}
+                                                {locationSearch && !profile?.hospitals.includes(locationSearch) && (
+                                                    <button onClick={handleAddNewLocation} className="w-full text-left px-4 py-3 bg-cyan-50 dark:bg-cyan-900/20 text-cyan-600 dark:text-cyan-400 text-xs font-bold border-t border-slate-100 dark:border-white/5">
+                                                        + เพิ่มสถานพยาบาลใหม่: "{locationSearch}"
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <button 
+                                    onClick={handleSubmit}
+                                    disabled={isSubmitting || postImages.length === 0 || !caption}
+                                    className="w-full bg-cyan-600 py-4 rounded-2xl font-black text-white shadow-xl shadow-cyan-600/30 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                                >
+                                    {isSubmitting ? <Loader2 className="animate-spin" /> : <><Send size={20} /> {modalMode === 'create' ? 'โพสต์เลย' : 'บันทึกการแก้ไข'}</>}
+                                </button>
+                            </div>
+                        </GlassCard>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

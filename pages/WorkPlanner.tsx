@@ -305,7 +305,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                         </div>
                     )}
 
-                    <GlassCard className="p-6 shadow-2xl">
+                    <GlassCard className="p-6 overflow-visible shadow-2xl">
                         <div className="flex items-center justify-between mb-8 px-2">
                             <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
                                 {currentMonth.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
@@ -360,7 +360,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
 
                     {showForm && (
                         <div className="animate-enter">
-                            <GlassCard className="p-8 space-y-6 border-indigo-500/30 bg-white/90 dark:bg-slate-900/90 shadow-2xl backdrop-blur-2xl">
+                            <GlassCard className="p-8 space-y-6 border-indigo-500/30 bg-white/90 dark:bg-slate-900/90 shadow-2xl overflow-visible backdrop-blur-2xl">
                                 <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-4">
                                     <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl"><Calendar size={24} /></div>
                                     <div><h3 className="text-xl font-black text-slate-900 dark:text-white">{editingPlanId ? 'แก้ไขแผนงานเดิม' : 'เขียนแผนงานใหม่'}</h3><p className="text-xs text-slate-500 font-bold">สำหรับวันที่ {new Date(selectedDate).toLocaleDateString('th-TH')}</p></div>
@@ -368,7 +368,7 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                                 <div className="space-y-4">
                                     <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">หัวข้อแผนงาน</label><input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500 transition-all" placeholder="เช่น นัดพบลูกค้า/ตรวจเช็คเครื่อง" /></div>
                                     <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">รายละเอียดเพิ่มเติม</label><textarea value={content} onChange={e => setContent(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white resize-none outline-none focus:border-indigo-500 transition-all" placeholder="ระบุสิ่งที่ต้องทำ..." /></div>
-                                    <div className="space-y-4 bg-slate-50 dark:bg-black/20 p-5 rounded-[24px] border border-slate-200 dark:border-white/5">
+                                    <div className="space-y-4 bg-slate-50 dark:bg-black/20 p-5 rounded-[24px] border border-slate-200 dark:border-white/5 overflow-visible">
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">จุดนัดหมาย (Itinerary)</label>
                                         <div className="space-y-3">{itinerary.map((it, idx) => (<div key={idx} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm animate-enter"><div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">{idx + 1}</div><div className="flex-1"><div className="text-sm font-bold text-slate-900 dark:text-white">{it.location}</div><div className="text-[10px] text-slate-500 font-medium">{it.objective}</div></div><button onClick={() => setItinerary(itinerary.filter((_, i) => i !== idx))} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 size={16}/></button></div>))}</div>
                                         <div className="flex flex-col sm:flex-row gap-2 mt-4 relative" ref={suggestionsRef}>

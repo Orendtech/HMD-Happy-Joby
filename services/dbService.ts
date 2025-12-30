@@ -30,7 +30,6 @@ const getRemindersCol = (userId: string) => collection(db, `artifacts/${APP_ARTI
 const getWorkPlansCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/workplans`);
 const getActivityLogsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_logs`);
 const getActivityPostsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/activity_posts`);
-const getManagementLogsCol = () => collection(db, `artifacts/${APP_ARTIFACT_ID}/management_logs`);
 
 export const getTodayDateId = () => {
     const now = new Date();
@@ -62,29 +61,31 @@ export const addInteractionByAi = async (userId: string, locationName: string, c
     const attRef = getAttendanceRef(userId, today);
     const attSnap = await getDoc(attRef);
     
-    if (!attSnap.exists()) throw new Error("คุณยังไม่ได้เช็คอินในวันนี้ กรุณาเช็คอินก่อนเริ่มบันทึกกิจกรรมครับ");
+    if (!attSnap.exists()) {
+        throw new Error("ยังไม่ได้เช็คอินในวันนี้ กรุณาเช็คอินก่อนกรอกรายงาน");
+    }
 
     const data = attSnap.data() as AttendanceDay;
     const checkIns = data.checkIns || [];
     
-    // Find closest location match
-    let visitIdx = checkIns.findIndex(ci => 
-        ci.location.toLowerCase().includes(locationName.toLowerCase()) || 
-        locationName.toLowerCase().includes(ci.location.toLowerCase())
-    );
+    let visitIdx = checkIns.findIndex(ci => ci.location.toLowerCase().includes(locationName.toLowerCase()) || locationName.toLowerCase().includes(ci.location.toLowerCase()));
     
-    if (visitIdx === -1) throw new Error(`ไม่พบรายการเช็คอินที่ "${locationName}" ในวันนี้ (คุณเช็คอินที่: ${checkIns.map(c => c.location).join(', ')})`);
+    if (visitIdx === -1) {
+        throw new Error(`ไม่พบรายการเช็คอินที่ ${locationName} ในวันนี้ กรุณาเช็คอินที่นี่ก่อนครับ หรือระบุชื่อสถานที่ให้ชัดเจน`);
+    }
 
     const report = data.report || { visits: [] };
     if (!report.visits) report.visits = [];
     
-    // Ensure visits array matches checkIns length
     while (report.visits.length < checkIns.length) {
         const idx = report.visits.length;
         report.visits.push({
             location: checkIns[idx].location,
             checkInTime: checkIns[idx].timestamp,
-            summary: '', metWith: [], pipeline: [], interactions: []
+            summary: '',
+            metWith: [],
+            pipeline: [],
+            interactions: []
         });
     }
 
@@ -92,17 +93,18 @@ export const addInteractionByAi = async (userId: string, locationName: string, c
     if (!report.visits[visitIdx].interactions) report.visits[visitIdx].interactions = [];
     report.visits[visitIdx].interactions!.push(interaction);
     
-    // Auto-aggregate summaries for the visit
     report.visits[visitIdx].metWith = report.visits[visitIdx].interactions!.map(i => i.customerName);
     report.visits[visitIdx].summary = report.visits[visitIdx].interactions!.map(i => `${i.customerName}: ${i.summary}`).join('\n');
 
     await updateDoc(attRef, { report });
-    return `บันทึกกิจกรรมการพบ "${customerName}" ที่ "${checkIns[visitIdx].location}" เรียบร้อยแล้ว ข้อมูลจะปรากฏในรายงานเช็คเอาท์ของคุณครับ`;
+    return `บันทึกข้อมูลพบ ${customerName} (${department}) ที่ ${checkIns[visitIdx].location} สำเร็จแล้วครับ`;
 };
 
 export const createContactByAi = async (userId: string, name: string, hospital: string, department: string, phone: string = '') => {
     const customer: Customer = { name, hospital, department, phone };
-    await updateDoc(getUserRef(userId), { customers: arrayUnion(customer) });
+    await updateDoc(getUserRef(userId), {
+        customers: arrayUnion(customer)
+    });
     return `สร้างรายชื่อผู้ติดต่อใหม่: ${name} (${department}) ที่ ${hospital} เรียบร้อยแล้วครับ`;
 };
 
@@ -110,23 +112,17 @@ export const finalizeCheckoutByAi = async (userId: string) => {
     const today = getTodayDateId();
     const attRef = getAttendanceRef(userId, today);
     const attSnap = await getDoc(attRef);
+    
     if (!attSnap.exists()) throw new Error("ไม่พบข้อมูลการทำงานของวันนี้");
-    
     const data = attSnap.data() as AttendanceDay;
-    if (data.checkOut) return "คุณได้ทำการเช็คเอาท์เรียบร้อยไปก่อนหน้านี้แล้วครับ";
     
-    // Ensure all interactions are aggregated into the summary before final close
-    const report = data.report || { visits: [] };
-    const finalSummary = report.visits?.map(v => `[${v.location}] ${v.summary}`).join('\n\n') || 'ไม่มีกิจกรรมที่บันทึก';
+    if (data.checkOut) return "วันนี้คุณเช็คเอาท์เรียบร้อยแล้วครับ";
     
     const userRef = getUserRef(userId);
     const userSnap = await getDoc(userRef);
     const userData = userSnap.data() as UserProfile;
 
-    await updateDoc(attRef, { 
-        checkOut: Timestamp.now(),
-        "report.summary": finalSummary 
-    });
+    await updateDoc(attRef, { checkOut: Timestamp.now() });
     
     await addDoc(getActivityLogsCol(), {
         userId,
@@ -136,39 +132,45 @@ export const finalizeCheckoutByAi = async (userId: string) => {
         timestamp: Timestamp.now()
     });
 
-    return `เช็คเอาท์เรียบร้อยแล้วครับ! ผมสรุปกิจกรรมทั้งหมดจาก ${data.checkIns.length} สถานที่ส่งให้หัวหน้างานเรียบร้อยแล้ว พักผ่อนได้เลยครับ`;
+    return "เช็คเอาท์และส่งรายงานสรุปผลปฏิบัติงานเรียบร้อยแล้วครับ พักผ่อนได้เลย!";
 };
 
+/**
+ * AI Global Intelligence: Aggregates sales pipeline from all users for manager/admin overview
+ */
 export const getGlobalPipelineForAi = async () => {
     const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`));
     const globalDeals: any[] = [];
+    
     usersSnap.forEach(uDoc => {
         const userData = uDoc.data() as UserProfile;
-        if (userData.activePipeline) {
+        if (userData.activePipeline && userData.activePipeline.length > 0) {
             userData.activePipeline.forEach(deal => {
                 globalDeals.push({
                     ownerName: userData.name || userData.email.split('@')[0],
-                    product: deal.product, value: deal.value, stage: deal.stage,
+                    product: deal.product,
+                    value: deal.value,
+                    stage: deal.stage,
+                    probability: deal.probability,
+                    expectedClose: deal.expectedCloseDate || 'Not Specified',
                     customer: deal.customerName || 'Unknown'
                 });
             });
         }
     });
+    
     return globalDeals;
-};
-
-export const addManagementLogByAi = async (userId: string, userName: string, title: string, reportContent: string, category: string = 'General') => {
-    await addDoc(getManagementLogsCol(), {
-        authorId: userId, authorName: userName, title, content: reportContent,
-        category, timestamp: Timestamp.now(), dateId: getTodayDateId()
-    });
-    return `บันทึกรายงานการจัดการเรื่อง "${title}" เข้าสู่ระบบ Management Log เรียบร้อยแล้วครับ`;
 };
 
 // Activity Feed functions
 export const createActivityPost = async (post: Omit<ActivityPost, 'id' | 'likes' | 'comments' | 'timestamp'>) => {
     const ref = doc(getActivityPostsCol());
-    const newPost = { ...post, likes: [], comments: [], timestamp: Timestamp.now() };
+    const newPost = {
+        ...post,
+        likes: [],
+        comments: [],
+        timestamp: Timestamp.now()
+    };
     await setDoc(ref, newPost);
     return ref.id;
 };
@@ -181,13 +183,20 @@ export const getActivityPosts = async (): Promise<ActivityPost[]> => {
 
 export const toggleLikePost = async (postId: string, userId: string, isLiked: boolean) => {
     const ref = doc(getActivityPostsCol(), postId);
-    await updateDoc(ref, { likes: isLiked ? arrayRemove(userId) : arrayUnion(userId) });
+    await updateDoc(ref, {
+        likes: isLiked ? arrayRemove(userId) : arrayUnion(userId)
+    });
 };
 
 export const addCommentToPost = async (postId: string, comment: Omit<PostComment, 'timestamp'>) => {
     const ref = doc(getActivityPostsCol(), postId);
-    const fullComment = { ...comment, timestamp: Timestamp.now() };
-    await updateDoc(ref, { comments: arrayUnion(fullComment) });
+    const fullComment = {
+        ...comment,
+        timestamp: Timestamp.now()
+    };
+    await updateDoc(ref, {
+        comments: arrayUnion(fullComment)
+    });
 };
 
 export const updateActivityPost = async (postId: string, data: Partial<Pick<ActivityPost, 'caption' | 'imageUrls' | 'location'>>) => {
@@ -202,16 +211,28 @@ export const deleteActivityPost = async (postId: string) => {
 // Work Plans
 export const getWorkPlans = async (userId?: string): Promise<WorkPlan[]> => {
     try {
-        let q = userId ? query(getWorkPlansCol(), where('userId', '==', userId), limit(200)) : query(getWorkPlansCol(), limit(300));
+        let q;
+        if (userId) {
+            q = query(getWorkPlansCol(), where('userId', '==', userId), limit(200));
+        } else {
+            q = query(getWorkPlansCol(), limit(300));
+        }
         const snap = await getDocs(q);
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() as any } as WorkPlan));
         return data.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    } catch (e) { return []; }
+    } catch (e) {
+        console.error("Failed to fetch workplans", e);
+        return [];
+    }
 };
 
 export const addWorkPlan = async (plan: Omit<WorkPlan, 'id'>) => {
     const ref = doc(getWorkPlansCol());
-    await setDoc(ref, { ...plan, status: 'draft', createdAt: new Date().toISOString() });
+    await setDoc(ref, { 
+        ...plan, 
+        status: 'draft',
+        createdAt: new Date().toISOString() 
+    });
     return ref.id;
 };
 
@@ -219,21 +240,39 @@ export const saveWorkPlan = async (plan: Partial<WorkPlan> & { userId: string })
     const { id, ...data } = plan;
     if (id) {
         const ref = doc(getWorkPlansCol(), id);
-        await updateDoc(ref, { ...data, createdAt: new Date().toISOString() });
+        await updateDoc(ref, { 
+            ...data, 
+            createdAt: new Date().toISOString() 
+        });
         return id;
     } else {
         const ref = doc(getWorkPlansCol());
-        await setDoc(ref, { ...data, status: 'draft', createdAt: new Date().toISOString() });
+        await setDoc(ref, { 
+            ...data, 
+            status: 'draft',
+            createdAt: new Date().toISOString() 
+        });
         return ref.id;
     }
 };
 
 export const submitPlansForApproval = async (planIds: string[]) => {
     const batch = writeBatch(db);
+    let userId = '';
+    
+    if (planIds.length > 0) {
+        const firstDoc = await getDoc(doc(getWorkPlansCol(), planIds[0]));
+        if (firstDoc.exists()) {
+            const d = firstDoc.data();
+            userId = d.userId;
+        }
+    }
+
     planIds.forEach(id => {
         const ref = doc(getWorkPlansCol(), id);
         batch.update(ref, { status: 'pending' });
     });
+    
     await batch.commit();
 };
 
@@ -252,7 +291,10 @@ export const getReminders = async (userId: string): Promise<Reminder[]> => {
         const snap = await getDocs(q);
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() as any } as Reminder));
         return data.sort((a, b) => a.dueTime.localeCompare(b.dueTime));
-    } catch (e) { return []; }
+    } catch (e) {
+        console.error("Failed to fetch reminders", e);
+        return [];
+    }
 };
 
 export const addReminder = async (userId: string, reminder: Omit<Reminder, 'id'>) => {
@@ -285,8 +327,11 @@ export const checkIn = async (userId: string, location: string, lat: number, lng
     const userSnap = await getDoc(userRef); const userData = userSnap.data() as UserProfile;
     
     await addDoc(getActivityLogsCol(), {
-        userId, userName: userData.name || userData.email.split('@')[0],
-        type: 'check-in', location, timestamp: Timestamp.now()
+        userId,
+        userName: userData.name || userData.email.split('@')[0],
+        type: 'check-in',
+        location,
+        timestamp: Timestamp.now()
     });
 
     let currentXp = userData.xp || 0; let currentLevel = userData.level || 1; let currentStreak = userData.currentStreak || 0; const lastActive = userData.lastActiveDate || '';
@@ -324,8 +369,10 @@ export const checkOut = async (userId: string, reportData: DailyReport, dateId?:
     if (isFinal && !isAlreadyCheckedOut) {
         updateData.checkOut = Timestamp.now();
         await addDoc(getActivityLogsCol(), {
-            userId, userName: userData.name || userData.email.split('@')[0],
-            type: 'check-out', location: reportData.visits?.[reportData.visits.length - 1]?.location || 'N/A',
+            userId,
+            userName: userData.name || userData.email.split('@')[0],
+            type: 'check-out',
+            location: reportData.visits?.[reportData.visits.length - 1]?.location || 'N/A',
             timestamp: Timestamp.now()
         });
     }
@@ -388,13 +435,14 @@ export const updateOpportunity = async (userId: string, dateId: string, location
 };
 
 export const getTodayAttendance = async (userId: string): Promise<AttendanceDay | null> => { const today = getTodayDateId(); const snap = await getDoc(getAttendanceRef(userId, today)); return snap.exists() ? snap.data() as AttendanceDay : null; };
-export const getUserHistory = async (userId: string): Promise<AttendanceDay[]> => { try { const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance`); const q = query(attColRef); const snap = await getDocs(q); return snap.docs.map(d => ({ ...d.data() as AttendanceDay, id: d.id })).sort((a, b) => b.id.localeCompare(a.id)); } catch (e) { return []; } };
+export const getUserHistory = async (userId: string): Promise<AttendanceDay[]> => { try { const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance`); const q = query(attColRef); const snap = await getDocs(q); const results = snap.docs.map(d => { const data = d.data() as AttendanceDay; return { ...data, id: data.id || d.id }; }); return results.sort((a, b) => b.id.localeCompare(a.id)); } catch (e) { return []; } };
 export const getAllUsers = async (): Promise<AdminUser[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); return usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as UserProfile })); } catch (e) { return []; } };
 export const getTeamMembers = async (managerId: string): Promise<AdminUser[]> => { try { const allUsers = await getAllUsers(); return allUsers.filter(u => u.reportsTo === managerId || u.id === managerId); } catch (e) { return []; } };
-export const getAllGlobalCustomers = async (): Promise<Array<Customer & { addedBy: string, userId: string }>> => { try { const users = await getAllUsers(); const allCustomers: Array<Customer & { addedBy: string, userId: string }> = []; users.forEach(user => { if (user.customers) { user.customers.forEach(c => { allCustomers.push({ ...c, addedBy: user.name || user.email, userId: user.id }); }); } }); return allCustomers.sort((a, b) => a.hospital.localeCompare(b.hospital)); } catch (e) { return []; } };
+export const getAllGlobalCustomers = async (): Promise<Array<Customer & { addedBy: string, userId: string }>> => { try { const users = await getAllUsers(); const allCustomers: Array<Customer & { addedBy: string, userId: string }> = []; users.forEach(user => { if (user.customers && Array.isArray(user.customers)) { user.customers.forEach(c => { allCustomers.push({ ...c, addedBy: user.name || user.email, userId: user.id }); }); } }); return allCustomers.sort((a, b) => a.hospital.localeCompare(b.hospital)); } catch (e) { return []; } };
 export const toggleUserStatus = async (userId: string, currentStatus: boolean) => { await updateDoc(getUserRef(userId), { isApproved: !currentStatus }); };
+export const toggleUserStatusUpdate = async (userId: string, currentStatus: boolean) => { await updateDoc(getUserRef(userId), { isApproved: !currentStatus }); };
 export const updateUserRole = async (userId: string, newRole: 'admin' | 'manager' | 'user') => { await updateDoc(getUserRef(userId), { role: newRole }); };
 export const adminCreateUser = async (email: string, pass: string, reportsTo?: string) => { const secondaryApp = initializeApp(firebaseConfig, "Secondary"); const secondaryAuth = getAuth(secondaryApp); try { const cred = await createUserWithEmailAndPassword(secondaryAuth, email, pass); await initializeUser(cred.user.uid, email); await updateDoc(getUserRef(cred.user.uid), { isApproved: true, reportsTo: reportsTo || '' }); await signOut(secondaryAuth); await deleteApp(secondaryApp); } catch (e) { await deleteApp(secondaryApp); throw e; } };
-export const getAllUsersTodayLocations = async (): Promise<UserLocationData[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const results: UserLocationData[] = []; const today = getTodayDateId(); for (const userDoc of usersSnap.docs) { const userId = userDoc.id; const userData = userDoc.data() as UserProfile; const attSnap = await getDoc(getAttendanceRef(userId, today)); if (attSnap.exists()) { const attData = attSnap.data() as AttendanceDay; if (attData.checkIns && attData.checkIns.length > 0) { results.push({ userId, email: userData.email, name: userData.name, photoBase64: userData.photoBase64, lastCheckIn: attData.checkIns[attData.checkIns.length - 1], isCheckedOut: !!attData.checkOut }); } } } return results; } catch (e) { return []; } };
-export const getGlobalReportRange = async (startDate: string, endDate: string): Promise<any[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const reportData: any[] = []; for (const userDoc of usersSnap.docs) { const userData = userDoc.data() as UserProfile; const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userDoc.id}/attendance`); const q = query(attColRef, where(documentId(), '>=', startDate), where(documentId(), '<=', endDate)); const attSnaps = await getDocs(q); attSnaps.forEach(attSnap => { const attData = attSnap.data() as AttendanceDay; if (attData.report?.visits) { attData.report.visits.forEach((v) => { reportData.push({ userEmail: userData.email, userName: userData.name || userData.email.split('@')[0], date: attData.id, checkInTime: formatTimestamp(v.checkInTime), checkOutTime: formatTimestamp(attData.checkOut), locations: v.location, checkInCount: 1, hospitalCount: 1, reportSummary: v.summary || '', metWith: v.metWith?.join(', ') || '', pipeline: v.pipeline?.map(p => p.product).join(' | ') || '' }); }); } }); } return reportData.sort((a, b) => a.date.localeCompare(b.date)); } catch (e) { return []; } };
-const formatTimestamp = (ts: any) => { if (!ts) return '-'; try { if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString('th-TH'); return new Date(ts).toLocaleTimeString('th-TH'); } catch (e) { return '-'; } };
+export const getAllUsersTodayLocations = async (): Promise<UserLocationData[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const results: UserLocationData[] = []; const today = getTodayDateId(); for (const userDoc of usersSnap.docs) { const userId = userDoc.id; const userData = userDoc.data() as UserProfile; const attSnap = await getDoc(getAttendanceRef(userId, today)); if (attSnap.exists()) { const attData = attSnap.data() as AttendanceDay; if (attData.checkIns && attData.checkIns.length > 0) { const latest = attData.checkIns[attData.checkIns.length - 1]; results.push({ userId, email: userData.email, name: userData.name, photoBase64: userData.photoBase64, lastCheckIn: latest, isCheckedOut: !!attData.checkOut }); } } } return results; } catch (e) { return []; } };
+export const getGlobalReportRange = async (startDate: string, endDate: string): Promise<any[]> => { try { const usersSnap = await getDocs(collection(db, `artifacts/${APP_ARTIFACT_ID}/users`)); const reportData: any[] = []; for (const userDoc of usersSnap.docs) { const userId = userDoc.id; const userData = userDoc.data() as UserProfile; const attColRef = collection(db, `artifacts/${APP_ARTIFACT_ID}/users/${userId}/attendance`); const q = query(attColRef, where(documentId(), '>=', startDate), where(documentId(), '<=', endDate)); const attSnaps = await getDocs(q); attSnaps.forEach(attSnap => { const attData = attSnap.data() as AttendanceDay; if (attData.report && attData.report.visits && attData.report.visits.length > 0) { attData.report.visits.forEach((visit) => { let pipelineStr = ''; if (visit.pipeline) { pipelineStr = visit.pipeline.map(p => `${p.product} (${p.stage})`).join(' | '); } let metWithStr = visit.metWith ? visit.metWith.join(', ') : ''; reportData.push({ userEmail: userData.email, userName: userData.name || userData.email.split('@')[0], date: attData.id, checkInTime: formatTimestamp(visit.checkInTime), checkOutTime: formatTimestamp(attData.checkOut), locations: visit.location, checkInCount: 1, hospitalCount: 1, reportSummary: visit.summary || '', metWith: metWithStr, pipeline: pipelineStr }); }); } else { const checkInCount = attData.checkIns.length; const locationNames = attData.checkIns.map(c => c.location); const uniqueLocations = new Set(locationNames).size; let metWithStr = ''; if (Array.isArray(attData.report?.metWith)) { metWithStr = attData.report.metWith.join(' | '); } else if (typeof attData.report?.metWith === 'string') { metWithStr = attData.report.metWith; } let pipelineStr = ''; if (Array.isArray(attData.report?.pipeline)) { pipelineStr = attData.report.pipeline.map(p => `${p.product} (${p.stage})`).join(' | '); } reportData.push({ userEmail: userData.email, userName: userData.name || userData.email.split('@')[0], date: attData.id, checkInTime: formatTimestamp(attData.checkIns[0]?.timestamp), checkOutTime: formatTimestamp(attData.checkOut), locations: locationNames.join(', '), checkInCount: checkInCount, hospitalCount: uniqueLocations, reportSummary: attData.report?.summary || '', metWith: metWithStr, pipeline: pipelineStr }); } }); } return reportData.sort((a, b) => { if (a.date !== b.date) return a.date.localeCompare(b.date); return a.userEmail.localeCompare(b.userEmail); }); } catch (e) { return []; } };
+const formatTimestamp = (ts: any) => { if (!ts) return '-'; try { if (typeof ts.toDate === 'function') return ts.toDate().toLocaleTimeString('th-TH'); if (ts.seconds !== undefined) return new Date(ts.seconds * 1000).toLocaleTimeString('th-TH'); return new Date(ts).toLocaleTimeString('th-TH'); } catch (e) { return '-'; } };

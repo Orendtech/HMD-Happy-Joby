@@ -61,8 +61,7 @@ export interface UserProfile {
     currentStreak?: number;
     lastActiveDate?: string;
     lastRewardClaimedMonth?: string;
-    aiApiKey?: string;
-    isAiEnabled?: boolean; // New toggle for AI Menu
+    aiApiKey?: string; // New field for Gemini API Key management
 }
 
 export interface CheckInRecord {
@@ -90,6 +89,7 @@ export interface VisitReport {
 export interface DailyReport {
     summary?: string; 
     metWith?: string[] | string;
+    // Fix: Changed pipeline from recursive union to PipelineData[]
     pipeline?: PipelineData[];
     visits?: VisitReport[];
 }

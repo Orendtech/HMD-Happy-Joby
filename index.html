@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="th" class="notranslate" translate="no">
   <head>
@@ -7,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
     
     <!-- PWA & Theme Settings -->
-    <meta name="theme-color" content="#d1fae5" id="meta-theme-color">
+    <meta name="theme-color" content="#F5F5F7" id="meta-theme-color">
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Happy Joby" />
@@ -31,8 +30,8 @@
           if (metaThemeColor) metaThemeColor.setAttribute('content', '#020617');
         } else {
           document.documentElement.classList.remove('dark');
-          document.documentElement.style.backgroundColor = '#d1fae5';
-          if (metaThemeColor) metaThemeColor.setAttribute('content', '#d1fae5');
+          document.documentElement.style.backgroundColor = '#F5F5F7';
+          if (metaThemeColor) metaThemeColor.setAttribute('content', '#F5F5F7');
         }
       })();
     </script>
@@ -41,7 +40,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
      <style>
-      :root { --bg-light: #d1fae5; --bg-dark: #020617; }
+      :root { --bg-light: #F5F5F7; --bg-dark: #020617; }
       html, body { font-family: 'Sarabun', sans-serif; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-light); }
       html.dark, html.dark body { background-color: var(--bg-dark); }
       
@@ -52,7 +51,7 @@
       @keyframes glow-line { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
 
       .letter-anim { display: inline-block; opacity: 0; animation: letter-reveal 0.8s cubic-bezier(0.16, 1, 1, 1) forwards; }
-      .glow-text { text-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+      .glow-text { text-shadow: 0 0 20px rgba(6, 182, 212, 0.3); }
       .dark .glow-text { text-shadow: 0 0 30px rgba(6, 182, 212, 0.6); }
 
       @keyframes fade-in-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -67,7 +66,12 @@
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-8px); }
       }
+      @keyframes rotate-slow {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
 
+      /* Improved Error Alert */
       #fallback-error {
         display: none;
         position: fixed;
@@ -85,7 +89,7 @@
     <script>
         tailwind.config = {
             darkMode: 'class',
-            theme: { extend: { colors: { primary: { DEFAULT: '#10b981', glow: '#34d399' }, }, } }
+            theme: { extend: { colors: { primary: { DEFAULT: '#06b6d4', glow: '#22d3ee' }, }, } }
         }
     </script>
     
@@ -120,9 +124,35 @@
       <div style="background: rgba(244, 63, 94, 0.1); padding: 2rem; border-radius: 2rem; border: 1px solid rgba(244, 63, 94, 0.2); max-width: 400px;">
         <h1 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; color: #fb7185;">การโหลดขัดข้อง</h1>
         <p id="error-desc" style="color: #94a3b8; font-size: 0.875rem; margin-bottom: 2rem;">ขออภัย ระบบไม่สามารถโหลดข้อมูลสำคัญได้ในขณะนี้</p>
-        <button onclick="window.location.reload()" style="background: #10b981; color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: bold; border: none; cursor: pointer; width: 100%;">ลองใหม่อีกครั้ง</button>
+        <button onclick="window.location.reload()" style="background: #06b6d4; color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; font-weight: bold; border: none; cursor: pointer; width: 100%;">ลองใหม่อีกครั้ง</button>
       </div>
     </div>
+
+    <script>
+      function showFallback(msg) {
+        const fallback = document.getElementById('fallback-error');
+        const desc = document.getElementById('error-desc');
+        if (fallback && desc) {
+          desc.innerText = msg || desc.innerText;
+          fallback.style.display = 'flex';
+        }
+      }
+
+      window.addEventListener('error', function(event) {
+        console.error('Runtime Error:', event.error);
+        if (event.message.includes('import') || event.message.includes('SyntaxError') || event.message.includes('useRef')) {
+          showFallback('เบราว์เซอร์ของคุณพบปัญหาในการรัน React (' + event.message + ') กรุณาลองใช้ Chrome หรือ Safari รุ่นล่าสุด');
+        }
+      });
+
+      // ตรวจสอบความว่างเปล่าของ Root หลังจากเวลาผ่านไป
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && root.innerHTML === '') {
+          showFallback('แอปค้างหน้าขาวเป็นเวลานานเกินไป กรุณาตรวจสอบอินเทอร์เน็ตหรือรีเฟรชหน้าจอ');
+        }
+      }, 15000);
+    </script>
 
     <script type="module" src="/index.tsx"></script>
   </body>
