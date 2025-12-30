@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { User } from 'firebase/auth';
 import { getUserProfile, getTodayAttendance, getReminders, addReminder, addInteractionByAi, finalizeCheckoutByAi, createContactByAi, getGlobalPipelineForAi } from '../services/dbService';
-// Import UserProfile type from types
 import { UserProfile } from '../types';
 
 interface Props {
@@ -117,7 +116,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const [isListening, setIsListening] = useState(false);
     const [inputVolume, setInputVolume] = useState(0);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    // Profile state added to be accessible in the render scope
     const [profile, setProfile] = useState<UserProfile | null>(null);
     
     const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 180 });
@@ -130,12 +128,26 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const nextStartTimeRef = useRef(0);
     const activeSources = useRef(new Set<AudioBufferSourceNode>());
 
-    // Fetch profile on initialization
     useEffect(() => {
         if (user) {
             getUserProfile(user.uid).then(setProfile);
         }
     }, [user]);
+
+    // Handle System Theme Color (Status Bar Color)
+    useEffect(() => {
+        const metaThemeColor = document.getElementById('meta-theme-color');
+        if (!metaThemeColor) return;
+
+        if (isOpen) {
+            // Force status bar to match AI dark background
+            metaThemeColor.setAttribute('content', '#020617');
+        } else {
+            // Restore based on system/app theme
+            const isDark = document.documentElement.classList.contains('dark');
+            metaThemeColor.setAttribute('content', isDark ? '#020617' : '#F5F5F7');
+        }
+    }, [isOpen]);
 
     const toggleAI = async () => {
         if (isOpen) {
@@ -212,9 +224,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             }
 
             const profileData = await getUserProfile(user.uid);
-            const isPrivileged = profileData?.role === 'admin' || profileData?.role === 'manager';
             
-            // Generate full date and time context in Thai
             const now = new Date();
             const dateStr = now.toLocaleDateString('th-TH', { 
                 weekday: 'long', 
@@ -235,15 +245,9 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 กฎเหล็ก (Strict Protocols):
                 1. **ห้ามมั่วข้อมูล**: ใช้ข้อมูลจากฐานข้อมูลที่เราส่งให้เท่านั้น ห้ามเดาวันที่หรือเดือนเองเด็ดขาด
                 2. **การทำงานสำหรับ Admin/Manager**: 
-                   - คุณมีสิทธิ์ใช้เครื่องมือ "get_global_sales_intelligence" เพื่อดูข้อมูลของพนักงานทุกคน
-                   - เมื่อได้รับคำถามเกี่ยวกับ "ภาพรวม", "ยอดรวม", "ยอดขายเดือนนี้" หรือ "ใครถือดีลไหน" ให้ใช้เครื่องมือนี้ทันที
-                   - สรุปข้อมูลให้แม่นยำตามเดือนปัจจุบัน (${now.toLocaleDateString('th-TH', { month: 'long' })}) เช่น ยอดรวมทั้งหมดเท่าไหร่, ใครมีดีลใหญ่ที่สุด และมีโอกาสสำเร็จกี่เปอร์เซ็นต์
-                3. **การทำงานปกติ**: 
-                   - บันทึกการเข้าพบ (add_interaction) และจัดการรายชื่อ (create_new_contact)
-                   - รายชื่อลูกค้าของคุณ: ${JSON.stringify(profileData?.customers || [])}
-                4. **บุคลิก**: สุขุม แม่นยำ เหมือน JARVIS มีความสามารถในการวิเคราะห์ข้อมูลสูง
-                
-                ${isPrivileged ? "สิทธิ์เข้าถึง: สูงสุด (คุณสามารถรายงานข้อมูลทีมได้)" : "สิทธิ์เข้าถึง: ส่วนบุคคล"}
+                   - เมื่อได้รับคำถามเกี่ยวกับ "ภาพรวม", "ยอดรวม", "ยอดขายเดือนนี้" ให้ใช้เครื่องมือ "get_global_sales_intelligence" ทันที
+                3. **การทำงานปกติ**: บันทึกกิจกรรม (add_interaction) และจัดการรายชื่อ
+                4. **บุคลิก**: สุขุม แม่นยำ เหมือน JARVIS วิเคราะห์ข้อมูลสูง
             `;
 
             const effectiveApiKey = profileData?.aiApiKey || process.env.API_KEY || "";
@@ -309,7 +313,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                             });
                             source.start(nextStartTimeRef.current);
                             nextStartTimeRef.current += audioBuffer.duration;
-                            // Scheduling audio playback correctly using current property of the ref
                             activeSources.current.add(source);
                         }
                     },
@@ -331,7 +334,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         }
     };
 
-    // Drag Logic for the floating button
     const onMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
         setIsDragging(true);
         const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
@@ -367,12 +369,12 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         <>
             {/* FLOATING TRIGGER BUTTON */}
             <div 
-                className={`fixed z-[1000] cursor-grab active:cursor-grabbing transition-transform ${isDragging ? '' : 'duration-300'} group`}
+                className={`fixed z-[1001] cursor-grab active:cursor-grabbing transition-transform ${isDragging ? '' : 'duration-300'} group`}
                 style={{ left: position.x, top: position.y }}
                 onMouseDown={onMouseDown}
                 onTouchStart={onMouseDown}
             >
-                <div className={`relative w-20 h-20 flex items-center justify-center animate-float`}>
+                <div className="relative w-20 h-20 flex items-center justify-center animate-float">
                     {!isOpen && (
                         <>
                             <div className="absolute inset-0 border-2 border-dashed border-cyan-500/40 rounded-full animate-rotate-slow"></div>
@@ -401,124 +403,94 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
 
             {/* FULLSCREEN IMMERSIVE OVERLAY */}
             {isOpen && (
-                <div className="fixed inset-0 z-[999] bg-[#020617] flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,1)]">
+                <div className="fixed inset-0 z-[1000] bg-[#020617] flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,1)] top-0 left-0 right-0 bottom-0">
+                    {/* Background Visuals */}
                     <div className="absolute inset-0 pointer-events-none overflow-hidden">
                         <div className="absolute top-[-20%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_70%)] opacity-50"></div>
                         <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[150px] animate-nebula-slow opacity-30"></div>
                         <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-nebula-reverse opacity-30"></div>
                     </div>
 
+                    {/* Header with Safe Area Padding */}
                     <div className="relative z-10 w-full" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-                        <div className="max-w-2xl mx-auto flex justify-between items-center h-24 px-8 opacity-60">
+                        <div className="max-w-2xl mx-auto flex justify-between items-center h-20 px-8">
                             <div className="flex items-center gap-3">
                                 <Radio size={16} className="text-cyan-400 animate-pulse" />
                                 <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Status</span>
-                                    <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">Auth: {getUserRoleLabel(profile)}</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Active</span>
+                                    <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">
+                                        Agent: {profile?.name || user.email?.split('@')[0]}
+                                    </span>
                                 </div>
                             </div>
-                            <button onClick={toggleAI} className="p-4 bg-white/5 hover:bg-rose-500/20 rounded-3xl transition-all border border-white/5">
-                                <X size={24} className="hover:text-rose-400 transition-colors" />
+                            <button onClick={toggleAI} className="p-3 bg-white/5 hover:bg-rose-500/20 rounded-2xl transition-all border border-white/5">
+                                <X size={20} className="hover:text-rose-400 transition-colors" />
                             </button>
                         </div>
                     </div>
 
+                    {/* Main Content Area */}
                     <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
-                        <div className="w-full max-w-2xl flex flex-col items-center space-y-16">
-                            
-                            <div className="relative flex items-center justify-center w-80 h-80">
-                                <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[100px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
+                        <div className="w-full max-w-2xl flex flex-col items-center space-y-12">
+                            {/* Visual Pulse Orb */}
+                            <div className="relative flex items-center justify-center w-72 h-72">
+                                <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[80px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
                                 
-                                <div className="relative w-64 h-64 flex items-center justify-center">
+                                <div className="relative w-56 h-56 flex items-center justify-center">
                                     <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-600/40 to-blue-400/40 rounded-full animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`} 
                                          style={{ transform: isListening ? `scale(${1 + inputVolume * 0.4})` : 'scale(1)' }}></div>
                                     <div className={`absolute inset-4 bg-gradient-to-bl from-blue-500/40 to-indigo-400/40 rounded-full animate-neural-wave-reverse ${isListening || isSpeaking ? '' : 'paused'}`}
                                          style={{ transform: isListening ? `scale(${1 + inputVolume * 0.25})` : 'scale(1)' }}></div>
                                     <div className={`absolute inset-8 bg-gradient-to-br from-indigo-600/60 to-purple-500/60 rounded-full animate-neural-pulse ${isListening || isSpeaking ? '' : 'paused'}`}></div>
                                     
-                                    <div className="relative z-20 w-36 h-36 bg-slate-900 border-2 border-white/10 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden">
+                                    <div className="relative z-20 w-32 h-32 bg-slate-900 border-2 border-white/10 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden">
                                         <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 to-transparent"></div>
                                         {isConnecting ? (
-                                            <Loader2 size={56} className="text-white animate-spin opacity-40" />
+                                            <Loader2 size={48} className="text-white animate-spin opacity-40" />
                                         ) : (
-                                            <div className={`transition-all duration-500 ${isSpeaking ? 'scale-110' : isListening ? 'scale-100' : 'scale-90 opacity-30'}`}>
-                                                <Bot size={64} className={`${isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-500'} transition-colors duration-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]`} />
-                                            </div>
-                                        )}
-                                        {(isListening || isSpeaking) && (
-                                            <div className="absolute inset-1 border-2 border-cyan-400/20 rounded-full animate-spin-slow"></div>
+                                            <Bot size={56} className={`${isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-500'} transition-colors duration-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]`} />
                                         )}
                                     </div>
-
-                                    {(isListening || isSpeaking) && (
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                            <div className="w-full h-full border border-cyan-500/10 rounded-full animate-ring-expand-1"></div>
-                                            <div className="w-full h-full border border-white/5 rounded-full animate-ring-expand-2"></div>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
-                            <div className="text-center space-y-8">
-                                <div className="space-y-3">
-                                    <h2 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20 drop-shadow-[0_4px_20px_rgba(255,255,255,0.1)]">Coach Pro</h2>
+                            {/* Status Text */}
+                            <div className="text-center space-y-6">
+                                <div className="space-y-2">
+                                    <h2 className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20">AI Coach</h2>
                                     <div className="flex justify-center">
-                                        <div className={`flex items-center gap-4 px-8 py-2.5 rounded-full border backdrop-blur-3xl transition-all duration-700 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.2)]' : isSpeaking ? 'bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)]' : isListening ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
-                                            {isListening && !isSpeaking && !isConnecting && <Mic size={18} className="text-emerald-400 animate-pulse" />}
-                                            {isSpeaking && <Activity size={18} className="text-cyan-400 animate-bounce" />}
-                                            <span className={`text-sm font-black uppercase tracking-[0.5em] ${errorMsg ? 'text-rose-400' : isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-600'}`}>
-                                                {errorMsg ? 'Link Compromised' : isConnecting ? 'Syncing...' : isSpeaking ? 'Transmitting' : isListening ? 'Listening' : 'Ready'}
+                                        <div className={`flex items-center gap-4 px-6 py-2 rounded-full border backdrop-blur-3xl transition-all duration-700 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30' : isSpeaking ? 'bg-cyan-500/10 border-cyan-500/30' : isListening ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
+                                            <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${errorMsg ? 'text-rose-400' : isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-600'}`}>
+                                                {errorMsg ? 'Error' : isConnecting ? 'Connecting' : isSpeaking ? 'Speaking' : isListening ? 'Listening' : 'Ready'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                {errorMsg && (
-                                    <div className="flex flex-col items-center gap-2 animate-bounce">
-                                        <ShieldAlert size={20} className="text-rose-500" />
-                                        <p className="text-rose-400/80 text-xs font-bold uppercase tracking-widest">{errorMsg}</p>
-                                    </div>
-                                )}
+                                {errorMsg && <p className="text-rose-400/80 text-[10px] font-bold uppercase tracking-widest">{errorMsg}</p>}
                             </div>
 
-                            <div className="w-full max-w-md h-16 flex items-end justify-center gap-1.5 px-4 overflow-hidden">
-                                {Array.from({ length: 48 }).map((_, i) => {
-                                    const delay = i * 0.03;
-                                    let h = "6px";
-                                    let opacity = "opacity-10";
-                                    if (isSpeaking) {
-                                        h = `${30 + Math.random() * 70}%`;
-                                        opacity = "opacity-100";
-                                    } else if (isListening) {
-                                        const v = inputVolume * (0.4 + Math.random() * 0.8);
-                                        h = `${12 + v * 88}%`;
-                                        opacity = v > 0.05 ? "opacity-80" : "opacity-20";
-                                    }
+                            {/* Soundwave Animation */}
+                            <div className="w-full max-w-xs h-12 flex items-end justify-center gap-1 overflow-hidden">
+                                {Array.from({ length: 32 }).map((_, i) => {
+                                    let h = "4px";
+                                    if (isSpeaking) h = `${20 + Math.random() * 80}%`;
+                                    else if (isListening) h = `${10 + inputVolume * 90 * (Math.random() * 0.5 + 0.5)}%`;
                                     return (
-                                        <div 
-                                            key={i} 
-                                            className={`w-[3px] rounded-full transition-all duration-150 bg-gradient-to-t ${isSpeaking ? 'from-blue-600 to-cyan-400' : 'from-emerald-600 to-cyan-400'} ${opacity}`} 
-                                            style={{ height: h, transitionDelay: `${delay}s` }}
-                                        ></div>
+                                        <div key={i} className={`w-[2px] rounded-full bg-cyan-500 transition-all duration-150 ${isListening || isSpeaking ? 'opacity-100' : 'opacity-20'}`} style={{ height: h }}></div>
                                     );
                                 })}
                             </div>
                         </div>
                     </div>
 
-                    <div className="relative z-10 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-8 flex flex-col items-center space-y-10">
-                        <div className="grid grid-cols-3 gap-16 opacity-30 hover:opacity-100 transition-opacity duration-500">
-                             <div className="flex flex-col items-center gap-2 group cursor-help"><Target size={24} className="group-hover:text-cyan-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Decision</span></div>
-                             <div className="flex flex-col items-center gap-2 group cursor-help"><Cpu size={24} className="group-hover:text-indigo-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Process</span></div>
-                             <div className="flex flex-col items-center gap-2 group cursor-help"><Zap size={24} className="group-hover:text-amber-400 transition-colors" /><span className="text-[9px] font-black uppercase tracking-widest">Intelligence</span></div>
-                        </div>
-                        
+                    {/* Bottom Action Area */}
+                    <div className="relative z-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-4 flex flex-col items-center">
                         <button 
                             onClick={toggleAI} 
-                            className="group relative px-24 py-6 rounded-[32px] border border-white/10 font-black text-[12px] uppercase tracking-[0.6em] transition-all overflow-hidden active:scale-95 shadow-[0_20px_40px_rgba(0,0,0,0.5)]"
+                            className="group relative px-16 py-4 rounded-3xl border border-white/10 font-black text-[10px] uppercase tracking-[0.6em] transition-all active:scale-95 overflow-hidden"
                         >
-                            <div className="absolute inset-0 bg-white/5 group-hover:bg-rose-500/10 transition-colors"></div>
-                            <span className="relative z-10 text-white/40 group-hover:text-white transition-colors">Terminate Link</span>
-                            <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-700"></div>
+                            <div className="absolute inset-0 bg-white/5 group-hover:bg-rose-500/10"></div>
+                            <span className="relative z-10 text-white/40 group-hover:text-white">Close Link</span>
                         </button>
                     </div>
                 </div>
@@ -527,51 +499,23 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
             <style dangerouslySetInnerHTML={{ __html: `
                 @keyframes nebula-slow { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(3%, 2%) scale(1.05); } }
                 @keyframes nebula-reverse { 0%, 100% { transform: translate(0, 0) scale(1.05); } 50% { transform: translate(-3%, -3%) scale(1); } }
-                
                 @keyframes neural-wave { 
                     0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(0deg); } 
                     50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; transform: rotate(180deg); } 
                 }
-                @keyframes neural-wave-reverse { 
-                    0%, 100% { border-radius: 40% 60% 70% 30% / 50% 60% 30% 60%; transform: rotate(360deg); } 
-                    50% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; transform: rotate(180deg); } 
-                }
                 @keyframes neural-pulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.03); opacity: 0.8; } }
-                
-                @keyframes ring-expand { 
-                    0% { transform: scale(1); opacity: 0.4; border-width: 3px; } 
-                    100% { transform: scale(2.2); opacity: 0; border-width: 0.5px; } 
-                }
-                
                 .animate-nebula-slow { animation: nebula-slow 25s ease-in-out infinite; }
                 .animate-nebula-reverse { animation: nebula-reverse 30s ease-in-out infinite; }
                 .animate-neural-wave { animation: neural-wave 12s linear infinite; }
-                .animate-neural-wave-reverse { animation: neural-wave-reverse 15s linear infinite; }
                 .animate-neural-pulse { animation: neural-pulse 6s ease-in-out infinite; }
-                
-                .animate-ring-expand-1 { animation: ring-expand 5s cubic-bezier(0.16, 1, 0.3, 1) infinite; }
-                .animate-ring-expand-2 { animation: ring-expand 5s cubic-bezier(0.16, 1, 0.3, 1) infinite 2.5s; }
-                .animate-spin-slow { animation: spin 10s linear infinite; }
-                .animate-fade-in { animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                
+                .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
                 @keyframes fadeIn { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: blur(0px); } }
-                
-                .paused { animation-play-state: paused; }
-                
                 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
                 .animate-float { animation: float 4s ease-in-out infinite; }
                 @keyframes rotate-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-                @keyframes rotate-reverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
                 .animate-rotate-slow { animation: rotate-slow 12s linear infinite; }
-                .animate-rotate-reverse { animation: rotate-reverse 8s linear infinite; }
+                .paused { animation-play-state: paused; }
             ` }} />
         </>
     );
 };
-
-// Helper function to get readable user role label
-function getUserRoleLabel(profile: UserProfile | null) {
-    if (!profile) return 'Guest';
-    const role = profile.role?.toUpperCase() || 'USER';
-    return role === 'ADMIN' ? 'Verified Admin' : role === 'MANAGER' ? 'Team Manager' : 'Field Agent';
-}
