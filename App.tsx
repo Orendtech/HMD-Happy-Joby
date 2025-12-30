@@ -2,9 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from './firebaseConfig';
-import { initializeUser, getUserProfile } from './services/dbService';
-import { Lock, Sparkles, Orbit, AlertTriangle } from 'lucide-react';
+import { auth, db, APP_ARTIFACT_ID } from './firebaseConfig';
+import { initializeUser } from './services/dbService';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { Lock, Sparkles, Orbit } from 'lucide-react';
 import { UserProfile } from './types';
 
 // Pages
@@ -28,7 +29,6 @@ const FullPageLoader = () => {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600 rounded-full blur-[120px] animate-pulse delay-1000"></div>
       </div>
-
       <div className="relative z-10 flex flex-col items-center">
         <div className="flex flex-wrap justify-center items-center gap-x-2 sm:gap-x-4">
           <div className="flex">
@@ -42,13 +42,11 @@ const FullPageLoader = () => {
             ))}
           </div>
         </div>
-        
         <div className="mt-8 flex items-center gap-3 px-5 py-2.5 bg-white/40 dark:bg-white/5 backdrop-blur-xl rounded-full border border-slate-200 dark:border-white/10 shadow-lg animate-enter opacity-0" style={{ animationDelay: '0.8s' }}>
           <Sparkles className="text-cyan-500 w-4 h-4 animate-pulse" />
           <span className="text-[10px] sm:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.4em]">Intelligent Workspace</span>
         </div>
       </div>
-
       <div className="absolute bottom-16 flex flex-col items-center gap-4 animate-enter opacity-0" style={{ animationDelay: '1s' }}>
         <div className="w-48 h-[2px] bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500 to-transparent w-full h-full animate-[glow-line_2s_infinite]"></div>
@@ -66,47 +64,34 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-    const safeBootTimer = setTimeout(() => {
-      if (loading && isMounted) {
-        setLoading(false);
-      }
-    }, 10000);
+    let profileUnsubscribe: (() => void) | null = null;
 
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      try {
-        if (currentUser && isMounted) {
-           setUser(currentUser);
-           try {
-             await initializeUser(currentUser.uid, currentUser.email || 'unknown');
-             const profile = await getUserProfile(currentUser.uid);
-             if (isMounted) setUserProfile(profile);
-           } catch (profileErr) {
-             console.error("Profile Load Error:", profileErr);
-           }
-        } else if (isMounted) {
-           setUser(null);
-           setUserProfile(null);
-        }
-        setTimeout(() => {
-          if (isMounted) setLoading(false);
-          clearTimeout(safeBootTimer);
-        }, 2000);
-      } catch (authErr: any) {
-        if (isMounted) {
-          setInitError(authErr.message || "การเชื่อมต่อล้มเหลว");
+    const authUnsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (profileUnsubscribe) profileUnsubscribe();
+
+      if (currentUser) {
+        setUser(currentUser);
+        await initializeUser(currentUser.uid, currentUser.email || 'unknown');
+        
+        // Use real-time snapshot for the profile to sync AI toggle immediately
+        profileUnsubscribe = onSnapshot(doc(db, `artifacts/${APP_ARTIFACT_ID}/users/${currentUser.uid}`), (snapshot) => {
+          if (snapshot.exists()) {
+            setUserProfile(snapshot.data() as UserProfile);
+          }
           setLoading(false);
-        }
+        });
+      } else {
+        setUser(null);
+        setUserProfile(null);
+        setLoading(false);
       }
     });
 
     return () => {
-      isMounted = false;
-      unsubscribe();
-      clearTimeout(safeBootTimer);
+      authUnsubscribe();
+      if (profileUnsubscribe) profileUnsubscribe();
     };
   }, []);
 
