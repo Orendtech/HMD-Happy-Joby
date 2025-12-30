@@ -7,7 +7,8 @@ import {
     UserPlus, Save, User as UserIcon, ClipboardList, Settings, Bell, 
     Target, MapPin, Building, MessageSquare, Edit, Send, Map as MapIcon,
     Trophy, Gift, Star, Coins, Box, Info, ChevronLeft, AlertCircle, ChevronRight,
-    PartyPopper, CheckCircle2
+    PartyPopper, CheckCircle2, Award, Crown, ShieldCheck, Maximize2, Minimize2,
+    CalendarCheck, ListChecks, HelpCircle
 } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { GlassCard } from '../components/GlassCard';
@@ -16,8 +17,7 @@ import {
     addHospital, addCustomer, getReminders, getWorkPlans, getTodayDateId, getUserHistory,
     updateUserProfile
 } from '../services/dbService';
-import { 
-    UserProfile, AttendanceDay, DailyReport, PipelineData, 
+import { UserProfile, AttendanceDay, DailyReport, PipelineData, 
     VisitReport, Interaction, Reminder, WorkPlan 
 } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -44,10 +44,10 @@ interface XpParticle {
 }
 
 const getRankTitle = (level: number) => {
-    if (level >= 9) return { title: 'LEGEND', color: 'text-white', themeColor: '#f59e0b' }; 
-    if (level >= 7) return { title: 'ELITE', color: 'text-white', themeColor: '#e11d48' };  
-    if (level >= 5) return { title: 'RANGER', color: 'text-white', themeColor: '#4f46e5' }; 
-    if (level >= 3) return { title: 'SCOUT', color: 'text-white', themeColor: '#06b6d4' };  
+    if (level >= 9) return { title: 'LEGEND', color: 'text-amber-400', themeColor: '#f59e0b' }; 
+    if (level >= 7) return { title: 'ELITE', color: 'text-rose-400', themeColor: '#e11d48' };  
+    if (level >= 5) return { title: 'RANGER', color: 'text-purple-400', themeColor: '#4f46e5' }; 
+    if (level >= 3) return { title: 'SCOUT', color: 'text-cyan-400', themeColor: '#06b6d4' };  
     return { title: 'ROOKIE', color: 'text-slate-400', themeColor: '' }; 
 };
 
@@ -124,42 +124,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const [newLevelDisplay, setNewLevelDisplay] = useState(0);
 
     const [isSavingReport, setIsSavingReport] = useState(false);
-
-    const dailyProgress = useMemo(() => {
-        if (!todayData) return 0;
-        const target = 5; 
-        return Math.min(100, (todayData.checkIns.length / target) * 100);
-    }, [todayData]);
-
-    const getWorkingDaysInMonth = () => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        const lastDay = new Date(year, month + 1, 0).getDate();
-        let count = 0;
-        for (let i = 1; i <= lastDay; i++) {
-            const day = new Date(year, month, i).getDay();
-            if (day !== 0 && day !== 6) count++; 
-        }
-        return count;
-    };
-
-    const monthlyQuestStats = useMemo(() => {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
-        
-        const currentMonthHistory = history.filter(h => h.id.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`));
-        const completedDays = currentMonthHistory.filter(h => 
-            h.checkIns.length > 0 && h.report?.visits && h.report.visits.length > 0 && h.checkOut
-        ).length;
-
-        const targetDays = getWorkingDaysInMonth(); 
-        const progress = Math.min(100, (completedDays / targetDays) * 100);
-        const isClaimed = profile?.lastRewardClaimedMonth === `${year}-${String(month+1).padStart(2,'0')}`;
-        
-        return { completedDays, targetDays, progress, isClaimed };
-    }, [history, profile]);
+    
+    const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
 
     const refreshData = async () => {
         try {
@@ -202,6 +168,36 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     const currentLevel = profile?.level || 1; 
     const rank = getRankTitle(currentLevel);
+
+    const getWorkingDaysInMonth = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        let count = 0;
+        for (let i = 1; i <= lastDay; i++) {
+            const day = new Date(year, month, i).getDay();
+            if (day !== 0 && day !== 6) count++; 
+        }
+        return count;
+    };
+
+    const monthlyQuestStats = useMemo(() => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        
+        const currentMonthHistory = history.filter(h => h.id.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`));
+        const completedDays = currentMonthHistory.filter(h => 
+            h.checkIns.length > 0 && h.report?.visits && h.report.visits.length > 0 && h.checkOut
+        ).length;
+
+        const targetDays = getWorkingDaysInMonth(); 
+        const progress = Math.min(100, (completedDays / targetDays) * 100);
+        const isClaimed = profile?.lastRewardClaimedMonth === `${year}-${String(month+1).padStart(2,'0')}`;
+        
+        return { completedDays, targetDays, progress, isClaimed };
+    }, [history, profile]);
 
     useEffect(() => {
         refreshData();
@@ -366,16 +362,11 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const isCheckedOut = todayData && !!todayData.checkOut;
     const currentStage = isCheckedOut ? 'completed' : isCheckedInToday ? 'working' : 'idle';
     
-    const getTheme = (level: number) => {
-        if (level >= 9) return { cardBg: 'bg-gradient-to-br from-amber-400 via-orange-500 to-yellow-600', textPrimary: 'text-white', textSecondary: 'text-amber-100', settingsBtn: 'bg-white/20 text-white', avatarBorder: 'border-white/50', progressTrack: 'bg-black/20', progressFill: 'bg-white', statIcon: 'text-white fill-white', divider: 'border-white/20' };
-        if (level >= 7) return { cardBg: 'bg-gradient-to-br from-rose-500 via-pink-600 to-red-500', textPrimary: 'text-white', textSecondary: 'text-rose-100', settingsBtn: 'bg-white/20 text-white', avatarBorder: 'border-white/50', progressTrack: 'bg-black/20', progressFill: 'bg-white', statIcon: 'text-white fill-white', divider: 'border-white/20' };
-        if (level >= 5) return { cardBg: 'bg-gradient-to-br from-purple-600 via-indigo-600 to-violet-700', textPrimary: 'text-white', textSecondary: 'text-purple-100', settingsBtn: 'bg-white/20 text-white', avatarBorder: 'border-white/50', progressTrack: 'bg-black/20', progressFill: 'bg-white', statIcon: 'text-white fill-white', divider: 'border-white/20' };
-        if (level >= 3) return { cardBg: 'bg-gradient-to-br from-cyan-500 via-blue-500 to-sky-600', textPrimary: 'text-white', textSecondary: 'text-cyan-100', settingsBtn: 'bg-white/20 text-white', avatarBorder: 'border-white/50', progressTrack: 'bg-black/20', progressFill: 'bg-white', statIcon: 'text-white fill-white', divider: 'border-white/20' };
-        return { cardBg: 'bg-white dark:bg-slate-900', textPrimary: 'text-slate-900 dark:text-white', textSecondary: 'text-slate-500 dark:text-slate-400', settingsBtn: 'bg-slate-50 dark:bg-slate-800 text-slate-400', avatarBorder: 'border-slate-100 dark:border-slate-700', progressTrack: 'bg-slate-100 dark:bg-slate-800', progressFill: 'bg-gradient-to-r from-cyan-400 to-blue-500', statIcon: 'text-orange-500 fill-orange-500', divider: 'border-slate-100 dark:border-white/5' };
+    const getBadgeInfo = (role?: string) => {
+        if (role === 'admin') return { label: 'ผู้ดูแลระบบ', color: 'text-indigo-400', icon: <Crown size={10} /> };
+        if (role === 'manager') return { label: 'หัวหน้างาน', color: 'text-emerald-400', icon: <ShieldCheck size={10} /> };
+        return { label: 'พนักงาน', color: 'text-slate-400', icon: <UserIcon size={10} /> };
     };
-
-    const theme = getTheme(currentLevel);
-    const badge = { label: profile?.role?.toUpperCase() === 'ADMIN' ? 'ผู้ดูแลระบบ' : profile?.role?.toUpperCase() === 'MANAGER' ? 'หัวหน้างาน' : 'พนักงาน', bg: currentLevel >= 3 ? 'bg-black/20 border-white/30 text-white' : 'bg-slate-500/10 border-slate-500/20 text-slate-500' };
 
     const handleOpenVisitReport = (idx: number) => { setExpandedVisitIdx(idx); setIsFinalCheckout(false); setShowReportModal(true); };
     const handleCheckOutStart = () => { if ("vibrate" in navigator) navigator.vibrate(100); setIsFinalCheckout(true); setExpandedVisitIdx(0); setShowReportModal(true); };
@@ -400,7 +391,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     ))}
                 </div>
 
-                <div className="relative w-full max-w-sm text-center space-y-8 animate-bounce-in">
+                <div className="relative w-full max-sm text-center space-y-8 animate-bounce-in">
                     <div className="relative inline-block">
                         <div className="absolute -inset-8 bg-amber-500/20 dark:bg-amber-500/30 rounded-full blur-[40px] animate-pulse"></div>
                         <div className="w-32 h-32 bg-gradient-to-br from-amber-400 to-orange-600 rounded-[40px] flex items-center justify-center shadow-[0_20px_50px_rgba(245,158,11,0.3)] dark:shadow-[0_20px_50px_rgba(245,158,11,0.5)] border-4 border-white/50 dark:border-white/30 relative z-10 rotate-12">
@@ -449,102 +440,111 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     <button onClick={() => setShowQuestPage(false)} className="p-3 bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 rounded-2xl text-slate-700 dark:text-white transition-all active:scale-95"><ChevronLeft size={24} /></button>
                     <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Monthly Quest</h2><p className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">สะสมรางวัลภารกิจรายเดือน</p></div>
                 </header>
-
-                <main className="flex-1 overflow-y-auto pb-10 px-4 pt-6 space-y-6 relative">
+                <main className="flex-1 overflow-y-auto pb-10 px-4 pt-6 space-y-6 relative no-scrollbar">
                     <div className="absolute top-20 right-0 w-64 h-64 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-                    <div className="absolute bottom-20 left-0 w-80 h-80 bg-orange-600/5 dark:bg-orange-600/10 rounded-full blur-[120px] pointer-events-none"></div>
-
+                    
                     <div className="relative z-10 space-y-6">
-                        <div className="flex justify-between items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-6 shadow-xl dark:shadow-2xl relative overflow-hidden group">
-                            <Coins className="absolute -right-6 -bottom-6 text-amber-500/10 w-40 h-40 rotate-12 group-hover:scale-110 transition-transform duration-1000" />
-                            <div className="flex items-center gap-4 relative z-10">
-                                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-2xl animate-pulse"><Trophy size={36} className="text-slate-900 fill-slate-900" /></div>
-                                <div><h3 className="text-slate-900 dark:text-white font-black text-3xl tracking-tight leading-none">฿500</h3><p className="text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cash Rewards</p></div>
-                            </div>
-                            <div className="text-right relative z-10">
-                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</div>
-                                <div className={`px-3 py-1 rounded-full text-[10px] font-black ${monthlyQuestStats.isClaimed ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-slate-900'}`}>
-                                    {monthlyQuestStats.isClaimed ? 'CLAIMED' : 'ACTIVE'}
-                                </div>
-                            </div>
+                        {/* Reward Header */}
+                        <div className="flex justify-between items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-6 shadow-xl relative overflow-hidden">
+                             <Coins className="absolute -right-6 -bottom-6 text-amber-500/10 w-40 h-40 rotate-12" />
+                             <div className="flex items-center gap-4 relative z-10">
+                                 <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-2xl animate-pulse"><Trophy size={36} className="text-slate-900 fill-slate-900" /></div>
+                                 <div><h3 className="text-slate-900 dark:text-white font-black text-3xl tracking-tight leading-none">฿500</h3><p className="text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cash Rewards</p></div>
+                             </div>
                         </div>
 
+                        {/* Progress Section */}
                         <div className="bg-white/70 dark:bg-white/5 p-6 rounded-[36px] border border-slate-200 dark:border-white/5 shadow-inner space-y-4 backdrop-blur-md">
                             <div className="flex justify-between items-end">
                                 <div className="flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Tracker</span><span className="text-lg font-black text-slate-900 dark:text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} <span className="text-slate-500 font-bold text-sm">DAYS</span></span></div>
                                 <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 dark:bg-amber-500/20 rounded-full border border-amber-500/20 dark:border-amber-500/30"><Star size={12} className="text-amber-600 dark:text-amber-500 fill-amber-600 dark:fill-amber-500" /><span className="text-xs font-black text-amber-600 dark:text-amber-500">{Math.round(monthlyQuestStats.progress)}%</span></div>
                             </div>
                             <div className="h-6 w-full bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden border border-slate-300 dark:border-white/10 p-1">
-                                <div style={{ width: `${monthlyQuestStats.progress}%` }} className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative">
-                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%)] bg-[length:20px_20px] animate-[progress-shine_2s_linear_infinite]"></div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-7 gap-2.5 pt-4">
-                                {Array.from({ length: monthlyQuestStats.targetDays }).map((_, i) => {
-                                    const isDone = i < monthlyQuestStats.completedDays;
-                                    const isCurrent = i === monthlyQuestStats.completedDays;
-                                    return (
-                                        <div key={i} className={`aspect-square rounded-xl flex items-center justify-center transition-all duration-500 ${isDone ? 'bg-amber-500 text-slate-900 shadow-lg scale-100' : isCurrent ? 'bg-slate-200 dark:bg-slate-800 border-2 border-dashed border-amber-500/50 animate-pulse' : 'bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-white/5'}`}>
-                                            {isDone ? <Star size={16} fill="currentColor" className="animate-enter" /> : <div className="text-[10px] font-black opacity-50">{i + 1}</div>}
-                                        </div>
-                                    );
-                                })}
+                                <div style={{ width: `${monthlyQuestStats.progress}%` }} className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
                             </div>
                         </div>
 
-                        <div className="bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-[40px] p-8 space-y-6 backdrop-blur-md shadow-sm">
-                            <div className="flex items-center gap-3 mb-2"><div className="p-2 bg-amber-500/10 rounded-xl text-amber-600 dark:text-amber-500"><Info size={20} /></div><h4 className="text-slate-900 dark:text-white font-black text-sm uppercase tracking-widest">กติกาการรับรางวัล (RULES)</h4></div>
-                            <div className="space-y-6">
-                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/10 dark:border-amber-500/20">1</div><p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed"><span className="text-slate-900 dark:text-white font-bold block mb-1">เช็คอิน (Check-in)</span> ในสถานที่ปฏิบัติงานจริงทุกวันทำงาน (จันทร์-ศุกร์) ตลอดเดือน</p></div>
-                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/10 dark:border-amber-500/20">2</div><p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed"><span className="text-slate-900 dark:text-white font-bold block mb-1">บันทึกรายงานกิจกรรม (Visit Report)</span> ให้ครบถ้วนทุกสถานที่ที่ท่านได้เข้าพบในวันนั้นๆ อย่างละเอียด</p></div>
-                                <div className="flex gap-4"><div className="w-8 h-8 rounded-2xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-500 flex items-center justify-center text-xs font-black shrink-0 border border-amber-500/10 dark:border-amber-500/20">3</div><p className="text-sm text-slate-600 dark:text-slate-300 font-medium leading-relaxed"><span className="text-slate-900 dark:text-white font-bold block mb-1">เช็คเอาท์ (Check-out)</span> เพื่อสรุปยอดและส่งรายงานการปฏิบัติงานเมื่อจบวันทุกครั้ง</p></div>
+                        {/* Condition / How to Earn Section (NEW) */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 px-2">
+                                <HelpCircle size={16} className="text-amber-500" />
+                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">เงื่อนไขการสะสมวันทำงาน</h3>
                             </div>
-                            <div className="pt-6 border-t border-slate-200 dark:border-white/5 flex gap-3"><AlertCircle size={16} className="text-amber-600 dark:text-amber-400 shrink-0" /><p className="text-[11px] text-amber-600 dark:text-amber-400/80 italic leading-relaxed">* หากทำครบเงื่อนไข ระบบจะปลดล็อกเงินรางวัล 500 บาท และโอนเข้าพอร์ตสะสมของคุณโดยอัตโนมัติเมื่อกดรับสิทธิ์</p></div>
+                            
+                            <div className="grid grid-cols-1 gap-3">
+                                <div className="bg-white/50 dark:bg-white/5 p-5 rounded-[28px] border border-slate-200 dark:border-white/5 flex gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center shrink-0 border border-cyan-500/20">
+                                        <MapPin className="text-cyan-500" size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-slate-900 dark:text-white">1. เช็คอินเข้าสถานที่</h4>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">เริ่มการทำงานโดยการเช็คอินที่สถานพยาบาลหรือสถานที่นัดพบในแต่ละวัน</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/50 dark:bg-white/5 p-5 rounded-[28px] border border-slate-200 dark:border-white/5 flex gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20">
+                                        <ClipboardList className="text-purple-500" size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-slate-900 dark:text-white">2. บันทึกรายงานกิจกรรม</h4>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">ต้องระบุรายละเอียดการเข้าพบอย่างน้อย 1 รายการ เพื่อยืนยันว่าได้ปฏิบัติงานจริง</p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/50 dark:bg-white/5 p-5 rounded-[28px] border border-slate-200 dark:border-white/5 flex gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                        <LogOut className="text-emerald-500" size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black text-slate-900 dark:text-white">3. เช็คเอาท์จบวัน</h4>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">กดเช็คเอาท์เพื่อสรุปรายงานทั้งหมด ระบบจะนับ 1 วันที่มีคุณภาพให้ทันที</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="pb-10">
-                            {monthlyQuestStats.isClaimed ? (
-                                <div className="bg-emerald-500 rounded-[32px] p-6 flex items-center justify-between shadow-2xl shadow-emerald-500/20">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center"><CheckCircle2 className="text-emerald-500" size={28} /></div>
+                        {/* XP Breakdown Section (NEW) */}
+                        <div className="space-y-4 pt-2">
+                             <div className="flex items-center gap-2 px-2">
+                                <Zap size={16} className="text-cyan-500" />
+                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">คะแนน XP และโบนัส</h3>
+                            </div>
+                            <GlassCard className="p-0 border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20">
+                                <div className="divide-y divide-slate-200 dark:divide-white/5">
+                                    <div className="p-4 flex justify-between items-center">
+                                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เช็คอินก่อน 09:00 น. (Early Bonus)</span>
+                                        <span className="text-xs font-black text-cyan-500">+50 XP</span>
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center">
+                                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เช็คอินเข้างานปกติ</span>
+                                        <span className="text-xs font-black text-slate-400">+15 XP</span>
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center">
+                                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">การเช็คอินจุดอื่นๆ ระหว่างวัน</span>
+                                        <span className="text-xs font-black text-slate-400">+5 XP</span>
+                                    </div>
+                                    <div className="p-4 flex justify-between items-center bg-orange-500/5">
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Status</span>
-                                            <span className="text-sm font-black text-white uppercase">REWARD CLAIMED!</span>
+                                            <span className="text-[11px] font-black text-orange-600 dark:text-orange-400">Streak Bonus (ความต่อเนื่อง)</span>
+                                            <span className="text-[9px] text-orange-500/70 font-medium">เพิ่มขึ้นตามจำนวนวันที่ทำติดต่อกัน</span>
                                         </div>
-                                    </div>
-                                    <span className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full text-white">SUCCESS</span>
-                                </div>
-                            ) : monthlyQuestStats.progress >= 100 ? (
-                                <button 
-                                    onClick={handleClaimReward}
-                                    disabled={isSavingReport}
-                                    className="w-full bg-gradient-to-r from-amber-400 to-orange-600 rounded-[32px] p-6 flex items-center justify-between shadow-2xl animate-pulse active:scale-95 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-slate-950 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform">
-                                            <Gift className="text-amber-500" size={24} />
-                                        </div>
-                                        <div className="flex flex-col text-left">
-                                            <span className="text-[10px] font-black text-slate-900 uppercase tracking-tighter">Mission Completed</span>
-                                            <span className="text-xl font-black text-slate-950 uppercase">CLAIM ฿500 NOW</span>
-                                        </div>
-                                    </div>
-                                    <ChevronRight className="text-slate-950 group-hover:translate-x-1 transition-transform" size={32} />
-                                </button>
-                            ) : (
-                                <div className="bg-slate-200/50 dark:bg-white/10 rounded-[32px] p-6 flex items-center justify-between border border-slate-300 dark:border-white/5 shadow-sm dark:shadow-none backdrop-blur-sm">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-sm"><Gift className="text-slate-400 dark:text-slate-500" size={24} /></div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Next Target</span>
-                                            <span className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase">อีก {monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วันเพื่อรับรางวัล</span>
-                                        </div>
-                                    </div>
-                                    <div className="p-1.5 bg-white/50 dark:bg-black/20 rounded-xl">
-                                        <Info className="text-slate-400 dark:text-slate-600" size={20} />
+                                        <span className="text-xs font-black text-orange-500">Max +50 XP</span>
                                     </div>
                                 </div>
-                            )}
+                            </GlassCard>
+                        </div>
+
+                        <div className="pt-6">
+                            <button 
+                                onClick={handleClaimReward}
+                                disabled={monthlyQuestStats.progress < 100 || monthlyQuestStats.isClaimed || isSavingReport}
+                                className={`w-full py-5 rounded-[28px] font-black uppercase tracking-widest text-sm transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${monthlyQuestStats.isClaimed ? 'bg-emerald-500 text-white' : monthlyQuestStats.progress >= 100 ? 'bg-gradient-to-r from-amber-400 to-orange-600 text-white shadow-orange-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-80'}`}
+                            >
+                                {monthlyQuestStats.isClaimed ? <CheckCircle2 size={20} /> : <Gift size={20} />}
+                                {monthlyQuestStats.isClaimed ? 'CLAIMED' : monthlyQuestStats.progress >= 100 ? 'CLAIM ฿500 NOW' : `สะสมอีก ${monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วัน เพื่อรับรางวัล`}
+                            </button>
+                            <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-widest">ทำภารกิจให้ครบเงื่อนไขทุกวันเพื่อรักษาสิทธิ์</p>
                         </div>
                     </div>
                 </main>
@@ -619,58 +619,153 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         );
     }
 
+    const badge = getBadgeInfo(profile?.role);
+
     return (
         <div className="w-full max-w-2xl mx-auto space-y-6">
-            {/* Sticky Header Section - Unified for smooth scroll with small top margin */}
-            <div className="sticky top-2 z-30 pt-0 pb-2 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all rounded-[32px] px-0.5">
-                <div className="flex items-stretch gap-2">
-                    {/* Profile Card Container */}
-                    <div className={`flex-1 relative rounded-[28px] shadow-lg pb-6 pt-6 px-6 overflow-hidden transition-all duration-500 ${theme.cardBg}`}>
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-                        <div className="flex justify-between items-start mb-4 relative z-10">
-                            <div className="flex items-center gap-4">
-                                <div className="relative shrink-0">
-                                    <div className={`w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm overflow-hidden border-2 ${theme.avatarBorder}`}>{profile?.photoBase64 ? (<img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />) : (<div className="w-full h-full flex items-center justify-center text-white text-lg font-bold">{profile?.name?.[0] || user.email?.[0]?.toUpperCase()}</div>)}</div>
-                                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-                                        <span className={`text-[8px] font-black px-2 py-0.5 rounded-full border uppercase shadow-md whitespace-nowrap backdrop-blur-md ${badge.bg}`}>
-                                            {badge.label}
-                                        </span>
+            {/* COLLAPSIBLE PREMIUM HEADER DESIGN */}
+            <div className="sticky top-2 z-30 pt-0 pb-2 px-1">
+                <GlassCard className={`p-0 border-white/40 dark:border-white/10 shadow-2xl bg-white/90 dark:bg-slate-950/80 backdrop-blur-3xl overflow-hidden rounded-[36px] group transition-all duration-500 ${isHeaderExpanded ? 'ring-2 ring-amber-500/20' : ''}`}>
+                    {/* Inner Glass Highlights */}
+                    <div className={`absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2 transition-opacity duration-700 ${isHeaderExpanded ? 'opacity-80' : 'opacity-40'}`}></div>
+                    
+                    <div className="relative z-10 flex flex-col sm:flex-row">
+                        {/* LEFT: Identity & Mini-Stats Section */}
+                        <div className={`flex-1 flex flex-col transition-all duration-500 ${isHeaderExpanded ? 'p-6 sm:p-8' : 'p-4 sm:p-6'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-4">
+                                    {/* Avatar Container */}
+                                    <div className="relative shrink-0 w-fit">
+                                        <div className={`transition-all duration-500 rounded-[28px] border-2 border-white/20 p-0.5 bg-white/5 backdrop-blur-md shadow-2xl ${isHeaderExpanded ? 'w-20 h-20 sm:w-24 sm:h-24' : 'w-14 h-14 sm:w-16 sm:h-16'}`}>
+                                            {profile?.photoBase64 ? (
+                                                <img src={profile.photoBase64} alt="Profile" className={`w-full h-full object-cover transition-all duration-500 ${isHeaderExpanded ? 'rounded-[20px]' : 'rounded-[22px]'}`} />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-white bg-gradient-to-br from-slate-700 to-slate-900 rounded-full">
+                                                    <UserIcon size={isHeaderExpanded ? 32 : 24} />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-1 min-w-0">
+                                        <h1 className={`font-black text-slate-900 dark:text-white tracking-tighter truncate drop-shadow-sm transition-all duration-500 ${isHeaderExpanded ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>
+                                            {profile?.name || user.email?.split('@')[0]}
+                                        </h1>
+                                        <div className="flex items-center gap-2 mt-0.5 opacity-70">
+                                            <MapPin size={10} className="text-cyan-400" />
+                                            <span className="text-[10px] font-bold text-slate-600 dark:text-white uppercase tracking-wider truncate">
+                                                {profile?.area || 'Happy Joby Region'}
+                                            </span>
+                                        </div>
+                                        {/* FIXED BADGE POSITIONING */}
+                                        {isHeaderExpanded && (
+                                            <div className="mt-2 w-fit animate-enter">
+                                                <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900/80 backdrop-blur-xl rounded-full border border-white/10 shadow-lg whitespace-nowrap">
+                                                    <div className={`w-1.5 h-1.5 rounded-full ${badge.color.replace('text-', 'bg-')} animate-pulse`}></div>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${badge.color}`}>{badge.label}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+                                
+                                {/* Toggle Control - Compact view version */}
+                                {!isHeaderExpanded && (
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex flex-col items-end mr-2">
+                                            <div className="flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+                                                <Coins size={12} className="text-amber-500 fill-amber-500" />
+                                                <span className="text-sm font-black text-slate-900 dark:text-white">฿500</span>
+                                            </div>
+                                            <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mt-1.5 overflow-hidden">
+                                                <div style={{ width: `${monthlyQuestStats.progress}%` }} className="h-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] transition-all duration-1000"></div>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => setIsHeaderExpanded(true)}
+                                            className="p-2.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 hover:text-amber-500 hover:border-amber-500/30 transition-all active:scale-90"
+                                        >
+                                            <Maximize2 size={18} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
-                                <div className="flex flex-col leading-tight ml-1">
-                                    <h1 className={`text-lg font-bold truncate max-w-[150px] ${theme.textPrimary}`}>
-                                        {profile?.name || user.email?.split('@')[0]}
-                                    </h1>
-                                    <p className={`text-[11px] font-black uppercase tracking-tight mt-0.5 opacity-80 ${theme.textSecondary}`}>
-                                        {profile?.area || 'Happy Joby Workspace'}
-                                    </p>
+                            {/* Full View Expanse */}
+                            {isHeaderExpanded && (
+                                <div className="animate-enter">
+                                    <div className="flex items-center gap-4 mt-6">
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Efficiency</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                <span className="text-sm font-black text-slate-900 dark:text-white">LV.{currentLevel}</span>
+                                            </div>
+                                        </div>
+                                        <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/5"></div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Momentum</span>
+                                            <div className="flex items-center gap-1">
+                                                <Flame size={14} className="text-orange-500 fill-orange-500" />
+                                                <span className="text-sm font-black text-slate-900 dark:text-white">{profile?.currentStreak || 0} DAY</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Monthly Quest Details */}
+                                    <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5 space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <div className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-1">Monthly Goal Status</div>
+                                                <div className="flex items-baseline gap-1.5">
+                                                    <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">฿500</span>
+                                                    <Coins size={16} className="text-amber-400 fill-amber-400 animate-bounce" />
+                                                </div>
+                                            </div>
+                                            <div className="p-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[20px] text-amber-400 shadow-inner">
+                                                <Trophy size={24} />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-2.5">
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest">Performance Metrics</span>
+                                                <div className="flex items-baseline gap-1">
+                                                    <span className="text-base font-black text-slate-900 dark:text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays}</span>
+                                                    <span className="text-[8px] font-black text-slate-400 dark:text-white/30 uppercase">DAYS</span>
+                                                </div>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden border border-slate-200 dark:border-white/5 shadow-inner">
+                                                <div 
+                                                    style={{ width: `${monthlyQuestStats.progress}%` }} 
+                                                    className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative shadow-[0_0_15px_rgba(245,158,11,0.3)]"
+                                                >
+                                                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between items-center pt-1">
+                                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
+                                                    <CheckCircle2 size={10} /> {Math.round(monthlyQuestStats.progress)}% Verified Completion
+                                                </span>
+                                                <button onClick={() => setShowQuestPage(true)} className="text-[9px] font-black text-slate-500 dark:text-white/60 hover:text-cyan-600 dark:hover:text-white uppercase tracking-widest flex items-center gap-1 group transition-colors">
+                                                    View Details <ChevronRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <button 
+                                        onClick={() => setIsHeaderExpanded(false)}
+                                        className="w-full mt-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-500 flex items-center justify-center gap-2 transition-all active:scale-95 group"
+                                    >
+                                        <Minimize2 size={14} className="group-hover:-translate-y-0.5 transition-transform" />
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Close Overview</span>
+                                    </button>
                                 </div>
-                            </div>
-                            <div className="flex items-center gap-1"><button onClick={() => navigate('/settings')} className={`p-2 rounded-full ${theme.settingsBtn} shadow-sm border border-white/10 active:scale-90 transition-all`}><Settings size={18} /></button></div>
-                        </div>
-                        <div className="flex items-center gap-3 relative z-10">
-                            <div className="flex-shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center relative overflow-hidden backdrop-blur-md bg-black/5 border border-white/10 shadow-inner"><span className={`text-xl font-black ${theme.textPrimary}`}>{currentLevel}</span>{isHudBouncing && <div className="absolute -top-1 -right-1 w-3 h-3 bg-white rounded-full animate-ping"></div>}</div>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-end mb-1"><span className={`text-[8px] font-black tracking-widest uppercase opacity-80 ${theme.textPrimary}`}>{rank.title}</span><div className="flex items-baseline gap-1"><span className={`text-xs font-bold ${theme.textPrimary}`}>{profile?.xp || 0}</span><span className={`text-[8px] ${theme.textSecondary}`}>XP</span></div></div>
-                                <div className={`h-2 w-full rounded-full overflow-hidden ${theme.progressTrack}`}><div style={{ width: `${Math.min(100, Math.max(0, (((profile?.xp || 0) - ((currentLevel - 1) * (currentLevel - 1) * 100)) / ((currentLevel * currentLevel * 100) - ((currentLevel - 1) * (currentLevel - 1) * 100))) * 100))}%` }} className={`h-full rounded-full transition-all duration-700 ${theme.progressFill}`}></div></div>
-                            </div>
-                            <div className={`flex flex-col items-center pl-2 border-l ${theme.divider}`}><div className={`flex items-center gap-0.5 ${theme.statIcon}`}><Flame size={16} /><span className={`text-lg font-bold ${theme.textPrimary}`}>{profile?.currentStreak || 0}</span></div><span className={`text-[7px] font-black uppercase tracking-wider ${theme.textSecondary}`}>STREAK</span></div>
+                            )}
                         </div>
                     </div>
-
-                    {/* Monthly Quest Pill Button on the Right - Aligned vertically to Profile Card */}
-                    <button onClick={() => setShowQuestPage(true)} className="w-16 flex flex-col items-center justify-center bg-slate-200 dark:bg-slate-800 rounded-[28px] shadow-lg active:scale-95 transition-all group relative border-2 border-white/30 overflow-hidden shrink-0">
-                        <div className={`absolute bottom-0 left-0 right-0 transition-all duration-1000 ease-out z-0 ${monthlyQuestStats.isClaimed ? 'bg-emerald-500' : 'bg-gradient-to-t from-amber-600 via-orange-500 to-yellow-400'}`} style={{ height: `${monthlyQuestStats.progress}%` }}>
-                            <div className="absolute top-0 left-[-50%] w-[200%] h-12 bg-white/20 blur-sm animate-[wave_3s_linear_infinite] rounded-[45%]"></div>
-                        </div>
-                        <div className="relative z-10 flex flex-col items-center drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
-                            {monthlyQuestStats.isClaimed ? <CheckCircle2 size={28} className="text-white" /> : <Box size={28} className={`${monthlyQuestStats.progress > 50 ? 'text-white' : 'text-orange-500'} group-hover:scale-110 transition-transform`} />}
-                            <span className={`text-[8px] font-black ${monthlyQuestStats.progress > 30 ? 'text-white' : 'text-slate-500'} uppercase tracking-tighter mt-1`}>{monthlyQuestStats.isClaimed ? 'DONE' : 'QUEST'}</span>
-                            <div className={`text-[7px] font-black ${monthlyQuestStats.progress > 70 ? 'text-white/80' : monthlyQuestStats.isClaimed ? 'text-white' : 'text-amber-600'} mt-0.5`}>{Math.round(monthlyQuestStats.progress)}%</div>
-                        </div>
-                    </button>
-                </div>
+                </GlassCard>
             </div>
 
             <div className="space-y-6 pt-2">
@@ -710,10 +805,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     100% { opacity: 0; transform: translateY(-150px) scale(1); } 
                 } 
                 .animate-fly-xp { animation: fly-xp 1.2s ease-out forwards; }
-                @keyframes progress-shine {
-                    from { background-position: 0 0; }
-                    to { background-position: 40px 0; }
-                }
                 @keyframes bounce-in {
                     0% { transform: scale(0.3); opacity: 0; }
                     50% { transform: scale(1.05); }
@@ -721,11 +812,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     100% { transform: scale(1); opacity: 1; }
                 }
                 .animate-bounce-in { animation: bounce-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-                @keyframes wave {
-                    0% { transform: translateX(-50%) skewY(-2deg) scale(1); }
-                    50% { transform: translateX(-50%) skewY(2deg) scale(1.1); }
-                    100% { transform: translateX(-50%) skewY(-2deg) scale(1); }
-                }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             `}} />
