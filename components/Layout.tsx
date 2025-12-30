@@ -25,10 +25,11 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             const metaThemeColor = document.getElementById('meta-theme-color');
             if (!metaThemeColor) return;
             const isDark = document.documentElement.classList.contains('dark');
-            const color = isDark ? '#020617' : '#F5F5F7';
+            // Deeper Mint Green gradient top color for light mode
+            const color = isDark ? '#020617' : '#d1fae5';
             if (metaThemeColor.getAttribute('content') !== color) {
                 metaThemeColor.setAttribute('content', color);
-                document.documentElement.style.backgroundColor = color;
+                document.documentElement.style.backgroundColor = isDark ? '#020617' : '#ffffff';
             }
         };
         syncStatusBar();
@@ -112,23 +113,27 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     const badgeStyle = (() => {
         if (userProfile?.role === 'admin') return { label: 'ADMIN', bg: 'bg-indigo-100 dark:bg-indigo-500/30 border-indigo-200 dark:border-indigo-500/50 text-indigo-600 dark:text-indigo-300' };
         if (userProfile?.role === 'manager') return { label: 'MANAGER', bg: 'bg-emerald-100 dark:bg-emerald-500/30 border-emerald-200 dark:border-emerald-500/50 text-emerald-600 dark:text-emerald-300' };
-        return { label: 'USER', bg: 'bg-slate-100 dark:bg-slate-700/50 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400' };
+        return { label: 'USER', bg: 'bg-emerald-50 dark:bg-slate-700/50 border-emerald-100 dark:border-slate-600 text-emerald-600 dark:text-slate-400' };
     })();
 
     return (
-        <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-[#020617] text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">
-             <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-cyan-400/10 dark:bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen animate-pulse duration-[10000ms]"></div>
-             <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
+        <div className="h-[100dvh] flex flex-col bg-white dark:bg-[#020617] text-slate-900 dark:white font-sans relative overflow-hidden transition-colors duration-500">
+             {/* Lush Mint Garden Gradient Background - Light Mode Only */}
+             <div className="absolute inset-0 bg-gradient-to-b from-[#d1fae5] via-[#f0fdf4] to-white dark:hidden z-0"></div>
+             
+             {/* Decorative Blobs - Green/Mint theme */}
+             <div className="absolute top-[-15%] left-[-10%] w-[500px] h-[500px] bg-emerald-400/15 dark:bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-multiply dark:mix-blend-screen animate-pulse duration-[10000ms] z-1"></div>
+             <div className="absolute top-[20%] right-[-10%] w-[400px] h-[400px] bg-lime-400/15 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-multiply dark:mix-blend-screen z-1"></div>
 
             {!isHomePage && (
-                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
+                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#d1fae5]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
                     <div className="flex items-center gap-4">
                         <div className="relative shrink-0">
                             <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden">
                                     {userProfile?.photoBase64 ? (
                                         <img src={userProfile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+                                        <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
                                             <span className="text-lg font-bold text-white uppercase tracking-wider">
                                                 {userProfile?.name ? userProfile.name.charAt(0) : user.email?.charAt(0)}
                                             </span>
@@ -147,28 +152,28 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                 {userProfile?.name || user.email?.split('@')[0]}
                                 <BadgeCheck size={16} className="text-emerald-500 fill-white shrink-0" />
                             </span>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-tight mt-0.5">
+                            <p className="text-[11px] text-emerald-700/80 dark:text-slate-400 font-black uppercase tracking-tight mt-0.5">
                                 {userProfile?.area || 'Happy Joby Workspace'}
                             </p>
                         </div>
                     </div>
                     
                     <div className="flex items-center gap-2 self-start mt-1">
-                        <button onClick={() => navigate('/dashboard')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm"><MapIcon size={20} className="text-slate-400" /></button>
-                        <button onClick={() => navigate('/reminders')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm relative">
-                            <Bell size={20} className="text-slate-400" />
+                        <button onClick={() => navigate('/dashboard')} className="p-2.5 bg-white dark:bg-slate-800 border border-emerald-100 dark:border-slate-700 rounded-full shadow-sm"><MapIcon size={20} className="text-emerald-500 dark:text-slate-400" /></button>
+                        <button onClick={() => navigate('/reminders')} className="p-2.5 bg-white dark:bg-slate-800 border border-emerald-100 dark:border-slate-700 rounded-full shadow-sm relative">
+                            <Bell size={20} className="text-emerald-500 dark:text-slate-400" />
                             {pendingRemindersCount > 0 && <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[8px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-800 shadow-md">{pendingRemindersCount}</span>}
                         </button>
-                        <button onClick={() => navigate('/settings')} className="p-2.5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-full shadow-sm"><Settings size={20} className="text-slate-400" /></button>
+                        <button onClick={() => navigate('/settings')} className="p-2.5 bg-white dark:bg-slate-800 border border-emerald-100 dark:border-slate-700 rounded-full shadow-sm"><Settings size={20} className="text-emerald-500 dark:text-slate-400" /></button>
                     </div>
                 </header>
             )}
 
-            <main className={`flex-1 overflow-y-auto pb-24 z-0 scroll-smooth pt-4 px-4`}>
+            <main className={`flex-1 overflow-y-auto pb-24 z-10 scroll-smooth pt-4 px-4`}>
                 <Outlet />
             </main>
 
-            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/5 pb-[env(safe-area-inset-bottom)] pt-2">
+            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-emerald-600 dark:bg-slate-900/90 backdrop-blur-xl border-t border-emerald-500/20 dark:border-white/5 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-4px_20px_rgba(16,185,129,0.1)]">
                 <div className="flex justify-around items-center h-16 max-w-xl mx-auto w-full px-2">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
@@ -176,17 +181,17 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                             <button
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
-                                className={`relative flex flex-col items-center justify-center w-full h-full group ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500'}`}
+                                className={`relative flex flex-col items-center justify-center w-full h-full group transition-all duration-300 ${isActive ? 'text-white dark:text-cyan-400' : 'text-emerald-100/60 dark:text-slate-500'}`}
                             >
-                                <div className={`relative transform transition-all duration-300 ${isActive ? '-translate-y-1' : ''}`}>
+                                <div className={`relative transform transition-all duration-300 ${isActive ? '-translate-y-1 scale-110' : ''}`}>
                                     {item.icon}
                                     {item.badge !== undefined && item.badge > 0 && (
-                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-md px-1 animate-pulse">
+                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-emerald-600 dark:border-slate-900 shadow-md px-1 animate-pulse">
                                             {item.badge}
                                         </span>
                                     )}
                                 </div>
-                                <span className={`text-[10px] font-medium mt-1 transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 hidden'}`}>
+                                <span className={`text-[10px] font-bold mt-1 transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 hidden'}`}>
                                     {item.label}
                                 </span>
                             </button>

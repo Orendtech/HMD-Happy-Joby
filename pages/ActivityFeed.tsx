@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { ActivityPost, UserProfile, PostComment } from '../types';
@@ -249,10 +248,8 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
         finally { setIsSubmitting(false); }
     };
 
-    // Corrected handleLike function and completion of component
     const handleLike = async (post: ActivityPost) => {
         const isLiked = (post.likes || []).includes(user.uid);
-        // Optimistically update the UI
         setPosts(posts.map(p => p.id === post.id ? {
             ...p,
             likes: isLiked ? p.likes.filter(id => id !== user.uid) : [...p.likes, user.uid]
@@ -262,7 +259,6 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
             await toggleLikePost(post.id, user.uid, isLiked);
         } catch (error) {
             console.error("Like update failed:", error);
-            // Re-sync with server if error
             loadPosts();
         }
     };
@@ -466,7 +462,7 @@ const ActivityFeed: React.FC<Props> = ({ user, userProfile: initialProfile }) =>
             {showModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
                     <div className="w-full max-w-lg my-auto">
-                        <GlassCard className="p-8 border-cyan-500/30 bg-white dark:bg-slate-900 shadow-2xl relative overflow-visible">
+                        <GlassCard className="p-8 border-cyan-500/30 bg-white dark:bg-slate-900 shadow-2xl relative">
                             <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-rose-500"><X size={24}/></button>
                             <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">
                                 {modalMode === 'create' ? 'แชร์กิจกรรมใหม่' : 'แก้ไขโพสต์'}
