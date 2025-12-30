@@ -1,5 +1,5 @@
 
-import { Bot, X, Loader2, Mic, Radio, Activity, Target, Cpu, FileText, ClipboardCheck } from 'lucide-react';
+import { Bot, X, Loader2, Mic, Radio, Activity, Target, Cpu, FileText, ClipboardCheck, AlertTriangle } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from '@google/genai';
 import { User } from 'firebase/auth';
@@ -154,22 +154,47 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
     const micStreamRef = useRef<MediaStream | null>(null);
     const nextStartTimeRef = useRef(0);
     const activeSources = useRef(new Set<AudioBufferSourceNode>());
+    const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
 
-    // Immediate reaction to isAiEnabled from prop
-    if (!userProfile || userProfile.isAiEnabled !== true) {
+    // Completely unmount if AI is disabled in settings
+    if (!userProfile?.isAiEnabled) {
         return null;
     }
 
     const stopSession = () => {
-        if (sessionRef.current) { try { sessionRef.current.close(); } catch (e) {} sessionRef.current = null; }
-        if (micStreamRef.current) { micStreamRef.current.getTracks().forEach(t => t.stop()); micStreamRef.current = null; }
-        activeSources.current.forEach(s => { try { s.stop(); } catch (e) {} });
+        setIsListening(false);
+        setIsSpeaking(false);
+        setIsConnecting(false);
+        setInputVolume(0);
+
+        if (sessionRef.current) {
+            try { sessionRef.current.close(); } catch (e) {}
+            sessionRef.current = null;
+        }
+
+        if (scriptProcessorRef.current) {
+            scriptProcessorRef.current.disconnect();
+            scriptProcessorRef.current = null;
+        }
+
+        if (micStreamRef.current) {
+            micStreamRef.current.getTracks().forEach(t => t.stop());
+            micStreamRef.current = null;
+        }
+
+        activeSources.current.forEach(s => {
+            try { s.stop(); } catch (e) {}
+        });
         activeSources.current.clear();
-        if (audioContexts.current.input) try { audioContexts.current.input.close(); } catch(e){}
-        if (audioContexts.current.output) try { audioContexts.current.output.close(); } catch(e){}
+
+        if (audioContexts.current.input) {
+            try { audioContexts.current.input.close(); } catch(e){}
+        }
+        if (audioContexts.current.output) {
+            try { audioContexts.current.output.close(); } catch(e){}
+        }
         audioContexts.current = {};
         nextStartTimeRef.current = 0;
-        setIsListening(false); setIsSpeaking(false); setIsConnecting(false); setInputVolume(0);
     };
 
     const handleToolCall = async (fc: any) => {
@@ -210,37 +235,45 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
     };
 
     const startSession = async () => {
-        setIsConnecting(true); setErrorMsg(null); nextStartTimeRef.current = 0;
+        stopSession();
+        setIsConnecting(true);
+        setErrorMsg(null);
+        nextStartTimeRef.current = 0;
+
         try {
-            // 1. Setup AudioContext IMMEDIATELY on click to satisfy mobile browser requirements
+            // 1. Initialise AudioContexts inside the click event flow
             const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
             const inputCtx = new AudioContextClass({ sampleRate: 16000 });
             const outputCtx = new AudioContextClass({ sampleRate: 24000 });
             
-            // Resume immediately
+            // Critical for mobile: resume immediately
             await inputCtx.resume();
             await outputCtx.resume();
             audioContexts.current = { input: inputCtx, output: outputCtx };
 
-            // 2. Request microphone
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // 2. Get Mic Access
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }});
             micStreamRef.current = stream;
-            
-            const isPrivileged = userProfile?.role === 'admin' || userProfile?.role === 'manager';
+
             const now = new Date();
             const dateStr = now.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
             const timeStr = now.toLocaleTimeString('th-TH');
 
             const systemInstruction = `
                 คุณคือ "HMD AI" ระบบปฏิบัติการอัจฉริยะส่วนตัว
+                ชื่อผู้ใช้: ${userProfile?.name || user.email?.split('@')[0]}
                 สถานะผู้ใช้: ${userProfile?.role?.toUpperCase()}
                 เวลาปัจจุบัน: ${dateStr}, ${timeStr}
-                กฎการทำงาน: บันทึกรายงานการเข้าพบ (add_interaction), แจ้งเตือน (add_reminder), เช็คเอาท์ (finalize_checkout)
-                บุคลิก: สุขุม มืออาชีพ เป็นมิตร
+                บุคลิก: ฉลาด ทันสมัย มืออาชีพ
+                หน้าที่: บันทึกรายงาน (add_interaction), ตั้งเตือน (add_reminder), เช็คเอาท์ (finalize_checkout)
             `;
 
             const effectiveApiKey = userProfile?.aiApiKey || process.env.API_KEY || "";
-            if (!effectiveApiKey) throw new Error("Missing API Key. Please contact admin.");
+            if (!effectiveApiKey) throw new Error("ไม่พบ API Key กรุณาตั้งค่าในหน้าโปรไฟล์");
 
             const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
             
@@ -256,17 +289,28 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                     onopen: () => {
                         setIsConnecting(false); 
                         setIsListening(true);
+                        
                         const source = inputCtx.createMediaStreamSource(stream);
                         const scriptProcessor = inputCtx.createScriptProcessor(4096, 1, 1);
+                        scriptProcessorRef.current = scriptProcessor;
+
                         scriptProcessor.onaudioprocess = (e) => {
+                            if (!isListening) return;
                             const inputData = e.inputBuffer.getChannelData(0);
-                            let sum = 0; for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
+                            
+                            // Visual volume feedback
+                            let sum = 0; 
+                            for (let i = 0; i < inputData.length; i++) sum += inputData[i] * inputData[i];
                             const rms = Math.sqrt(sum / inputData.length);
-                            setInputVolume(Math.min(1, rms * 10));
+                            setInputVolume(Math.min(1, rms * 8));
+
                             sessionPromise.then(s => {
-                                if (s) s.sendRealtimeInput({ media: createBlob(inputData) });
-                            });
+                                if (s && s.sendRealtimeInput) {
+                                    s.sendRealtimeInput({ media: createBlob(inputData) });
+                                }
+                            }).catch(() => {});
                         };
+
                         source.connect(scriptProcessor); 
                         scriptProcessor.connect(inputCtx.destination);
                     },
@@ -274,7 +318,9 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                         if (message.toolCall) {
                             for (const fc of message.toolCall.functionCalls) {
                                 const toolResult = await handleToolCall(fc);
-                                sessionPromise.then(s => s.sendToolResponse({ functionResponses: { id: fc.id, name: fc.name, response: toolResult } }));
+                                sessionPromise.then(s => s.sendToolResponse({ 
+                                    functionResponses: { id: fc.id, name: fc.name, response: toolResult } 
+                                }));
                             }
                         }
                         const base64Audio = message.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
@@ -295,25 +341,37 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                         }
                     },
                     onerror: (e: any) => { 
-                        console.error("AI Link Failed:", e);
-                        setErrorMsg("Connection error. Try again."); 
+                        console.error("AI Error:", e);
+                        setErrorMsg("การเชื่อมต่อขัดข้อง (Check Network/API Key)"); 
                         stopSession(); 
                     },
-                    onclose: () => { stopSession(); }
+                    onclose: (e: any) => { 
+                        console.log("AI Session Closed", e);
+                        if (isOpen) {
+                            setErrorMsg("เซสชันสิ้นสุดลงแล้ว");
+                            stopSession();
+                        }
+                    }
                 }
             });
             sessionRef.current = await sessionPromise;
         } catch (error: any) { 
-            console.error("Critical AI Error:", error);
-            setErrorMsg(error.message || "Access denied."); 
+            console.error("AI Startup Error:", error);
+            setErrorMsg(error.message || "ไม่สามารถเปิดไมโครโฟนได้"); 
             setIsConnecting(false); 
         }
     };
 
     const toggleAI = (e: React.MouseEvent | React.TouchEvent) => { 
         e.preventDefault();
-        if (isOpen) { stopSession(); setIsOpen(false); } 
-        else { setIsOpen(true); startSession(); } 
+        e.stopPropagation();
+        if (isOpen) { 
+            stopSession(); 
+            setIsOpen(false); 
+        } else { 
+            setIsOpen(true); 
+            startSession(); 
+        } 
     };
 
     const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
@@ -377,41 +435,59 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
 
             {isOpen && (
                 <div className="fixed inset-0 z-[999] bg-[#020617] flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden">
-                    <div className="absolute inset-0 pointer-events-none opacity-30"><div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[150px] animate-nebula-slow"></div><div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-nebula-reverse"></div></div>
+                    <div className="absolute inset-0 pointer-events-none opacity-30">
+                        <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[150px] animate-nebula-slow"></div>
+                        <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-nebula-reverse"></div>
+                    </div>
+                    
                     <div className="relative z-10 w-full" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
                         <div className="max-w-2xl mx-auto flex justify-between items-center h-24 px-8 opacity-60">
-                            <div className="flex items-center gap-3"><Radio size={16} className="text-cyan-400 animate-pulse" /><div className="flex flex-col"><span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Status</span><span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">Auth: {getUserRoleLabel(userProfile)}</span></div></div>
+                            <div className="flex items-center gap-3">
+                                <Radio size={16} className="text-cyan-400 animate-pulse" />
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Status</span>
+                                    <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">User: {userProfile?.name || 'Authorized Personnel'}</span>
+                                </div>
+                            </div>
                             <button onClick={toggleAI} className="p-4 bg-white/5 hover:bg-rose-500/20 rounded-3xl transition-all border border-white/5"><X size={24} /></button>
                         </div>
                     </div>
+
                     <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
                         <div className="w-full max-w-2xl flex flex-col items-center space-y-16">
                             <div className="relative flex items-center justify-center w-80 h-80">
                                 <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[100px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
                                 <div className="relative w-64 h-64 flex items-center justify-center">
-                                    <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-600/40 to-blue-400/40 rounded-full animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`} style={{ transform: isListening ? `scale(${1 + inputVolume * 0.4})` : 'scale(1)' }}></div>
+                                    <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-600/40 to-blue-400/40 rounded-full animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`} style={{ transform: isListening ? `scale(${1 + inputVolume * 0.5})` : 'scale(1)' }}></div>
                                     <div className="relative z-20 w-36 h-36 bg-slate-900 border-2 border-white/10 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden">
                                         {isConnecting ? <Loader2 size={56} className="text-white animate-spin opacity-40" /> : <Bot size={64} className={`${isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-500'} transition-colors duration-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]`} />}
                                     </div>
                                 </div>
                             </div>
+
                             <div className="text-center space-y-8">
                                 <div className="space-y-3">
                                     <h2 className="text-6xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20">HMD AI</h2>
-                                    <div className="flex justify-center">
-                                        <div className={`flex items-center gap-4 px-8 py-2.5 rounded-full border backdrop-blur-3xl transition-all duration-700 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30' : isSpeaking ? 'bg-cyan-500/10 border-cyan-500/30' : isListening ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
+                                    <div className="flex flex-col items-center gap-3">
+                                        <div className={`flex items-center gap-4 px-8 py-2.5 rounded-full border backdrop-blur-3xl transition-all duration-700 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.2)]' : isSpeaking ? 'bg-cyan-500/10 border-cyan-500/30' : isListening ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
                                             {isListening && !isSpeaking && !isConnecting && <Mic size={18} className="text-emerald-400 animate-pulse" />}
                                             {isSpeaking && <Activity size={18} className="text-cyan-400 animate-bounce" />}
+                                            {errorMsg && <AlertTriangle size={18} className="text-rose-400" />}
                                             <span className={`text-sm font-black uppercase tracking-[0.5em] ${errorMsg ? 'text-rose-400' : isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-600'}`}>
                                                 {errorMsg ? 'Link Failed' : isConnecting ? 'Syncing...' : isSpeaking ? 'Transmitting' : isListening ? 'Listening' : 'Ready'}
                                             </span>
                                         </div>
+                                        {errorMsg && (
+                                            <button onClick={startSession} className="text-[10px] font-black text-cyan-500 underline uppercase tracking-widest animate-pulse">
+                                                Tap here to Re-Connect
+                                            </button>
+                                        )}
                                     </div>
-                                    {errorMsg && <p className="text-[10px] text-rose-500 font-bold uppercase mt-2">{errorMsg}</p>}
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <div className="relative z-10 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-8 flex flex-col items-center space-y-10">
                         <div className="grid grid-cols-4 gap-12 opacity-30 hover:opacity-100 transition-opacity duration-500">
                             <div className="flex flex-col items-center gap-2"><Target size={24} /><span className="text-[9px] font-black uppercase">Goal</span></div>
@@ -434,19 +510,13 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                 .animate-nebula-slow { animation: nebula-slow 25s ease-in-out infinite; }
                 .animate-nebula-reverse { animation: nebula-reverse 30s ease-in-out infinite; }
                 .animate-neural-wave { animation: neural-wave 12s linear infinite; }
-                .animate-rotate-slow { animation: spin 12s linear infinite; }
+                .animate-rotate-slow { animation: rotate-slow 12s linear infinite; }
                 .animate-float { animation: float 4s ease-in-out infinite; }
                 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-                .animate-fade-in { animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .animate-fade-in { animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
                 @keyframes fadeIn { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: blur(0px); } }
                 .paused { animation-play-state: paused; }
             ` }} />
         </>
     );
 };
-
-function getUserRoleLabel(profile: UserProfile | null) {
-    if (!profile) return 'Guest';
-    const role = profile.role?.toUpperCase() || 'USER';
-    return role === 'ADMIN' ? 'Verified Admin' : role === 'MANAGER' ? 'Team Manager' : 'Field Agent';
-}
