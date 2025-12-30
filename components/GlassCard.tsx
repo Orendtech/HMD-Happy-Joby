@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface GlassCardProps {
@@ -28,15 +27,15 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     switch(variant) {
         case 'highlight':
             // Cyan tint
-            variantStyles = "bg-white/90 dark:bg-slate-900/80 border-cyan-100 dark:border-cyan-500/30 shadow-[0_8px_30px_rgb(6,182,212,0.15)]";
+            variantStyles = "bg-white/90 dark:bg-zinc-900/80 border-cyan-100 dark:border-cyan-500/30 shadow-[0_8px_30px_rgb(6,182,212,0.15)]";
             break;
         case 'danger':
             // Rose tint
             variantStyles = "bg-white/90 dark:bg-rose-950/30 border-rose-100 dark:border-rose-500/20 shadow-[0_8px_30px_rgb(225,29,72,0.1)]";
             break;
         default:
-            // Standard Card: Clean White in Light, Deep Dark in Night
-            variantStyles = "bg-white/70 dark:bg-slate-900/60 border-white/50 dark:border-white/10 shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-2xl";
+            // Standard Card: Clean White in Light, Elevated Black in Night
+            variantStyles = "bg-white/70 dark:bg-zinc-950/60 border-white/50 dark:border-white/10 shadow-[0_4px_20px_rgb(0,0,0,0.03)] dark:shadow-2xl";
     }
 
     return (
@@ -46,7 +45,7 @@ export const GlassCard: React.FC<GlassCardProps> = ({
             className={`
                 ${baseStyles}
                 ${variantStyles}
-                ${shouldHover ? 'hover:bg-white dark:hover:bg-slate-800/80 hover:scale-[1.02] hover:shadow-[0_10px_40px_rgb(0,0,0,0.08)] cursor-pointer' : ''}
+                ${shouldHover ? 'hover:bg-white dark:hover:bg-zinc-900/80 hover:scale-[1.02] hover:shadow-[0_10px_40px_rgb(0,0,0,0.08)] cursor-pointer' : ''}
                 ${className}
             `}
         >
