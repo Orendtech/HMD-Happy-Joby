@@ -24,6 +24,7 @@ const Settings: React.FC<Props> = ({ user }) => {
     const [startDate, setStartDate] = useState('');
     const [photoBase64, setPhotoBase64] = useState('');
     const [aiApiKey, setAiApiKey] = useState('');
+    const [isAiEnabled, setIsAiEnabled] = useState(false);
     const [showApiKey, setShowApiKey] = useState(false);
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState('');
@@ -45,6 +46,7 @@ const Settings: React.FC<Props> = ({ user }) => {
                 setStartDate(p.startDate || '');
                 setPhotoBase64(p.photoBase64 || '');
                 setAiApiKey(p.aiApiKey || '');
+                setIsAiEnabled(!!p.isAiEnabled);
             }
         };
         load();
@@ -128,7 +130,7 @@ const Settings: React.FC<Props> = ({ user }) => {
     const handleSave = async () => {
         setLoading(true);
         try {
-            const updateData: Partial<UserProfile> = { name, area, startDate, photoBase64 };
+            const updateData: Partial<UserProfile> = { name, area, startDate, photoBase64, isAiEnabled };
             if (profile?.role === 'admin') {
                 updateData.aiApiKey = aiApiKey;
             }
@@ -173,6 +175,25 @@ const Settings: React.FC<Props> = ({ user }) => {
                     </div>
                     <button onClick={toggleTheme} className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isDarkMode ? 'bg-cyan-600' : 'bg-slate-300'}`}>
                         <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                    </button>
+                </div>
+
+                {/* AI Assistant Toggle Section */}
+                <div className="p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white dark:bg-slate-800 rounded-xl text-indigo-500 shadow-sm">
+                            <Bot size={20} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white">AI Coach (Beta)</h3>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">เปิดใช้งานผู้ช่วยอัจฉริยะแบบ Real-time</p>
+                        </div>
+                    </div>
+                    <button 
+                        onClick={() => setIsAiEnabled(!isAiEnabled)} 
+                        className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isAiEnabled ? 'bg-indigo-600' : 'bg-slate-300'}`}
+                    >
+                        <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${isAiEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
                     </button>
                 </div>
 

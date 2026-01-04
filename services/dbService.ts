@@ -44,10 +44,24 @@ export const initializeUser = async (userId: string, email: string) => {
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
         const initialProfile: UserProfile = {
-            email, lastLogin: Timestamp.now(), hospitals: ["โรงพยาบาลทั่วไป", "โรงพยาบาลศูนย์"], customers: [], role: 'user', isApproved: false, activePipeline: [], reportsTo: '', xp: 0, level: 1, currentStreak: 0, lastActiveDate: ''
+            email, 
+            lastLogin: Timestamp.now(), 
+            hospitals: ["โรงพยาบาลทั่วไป", "โรงพยาบาลศูนย์"], 
+            customers: [], 
+            role: 'user', 
+            isApproved: false, 
+            activePipeline: [], 
+            reportsTo: '', 
+            xp: 0, 
+            level: 1, 
+            currentStreak: 0, 
+            lastActiveDate: '',
+            isAiEnabled: false // ปิดไว้ก่อนตามคำขอ
         };
         await setDoc(userRef, initialProfile);
-    } else { await updateDoc(userRef, { lastLogin: Timestamp.now() }); }
+    } else { 
+        await updateDoc(userRef, { lastLogin: Timestamp.now() }); 
+    }
 };
 
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => { const snap = await getDoc(getUserRef(userId)); return snap.exists() ? snap.data() as UserProfile : null; };

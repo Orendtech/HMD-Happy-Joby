@@ -23,7 +23,7 @@ import { LiveAIOverlay } from './components/LiveAIOverlay';
 
 const FullPageLoader = () => {
   return (
-    <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#020617] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-700">
+    <div className="min-h-screen bg-[#F5F5F7] dark:bg-black flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-700">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] opacity-20 dark:opacity-30 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500 rounded-full blur-[120px] animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-600 rounded-full blur-[120px] animate-pulse delay-1000"></div>
@@ -114,7 +114,7 @@ function App() {
 
   if (user && userProfile && userProfile.isApproved === false) {
       return (
-        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 text-center space-y-4">
+        <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white p-6 text-center space-y-4">
             <div className="p-4 bg-red-500/10 rounded-full">
                 <Lock className="w-12 h-12 text-red-400" />
             </div>
@@ -127,7 +127,7 @@ function App() {
 
   return (
     <HashRouter>
-      {user && <LiveAIOverlay user={user} />}
+      {user && <LiveAIOverlay user={user} userProfile={userProfile} />}
       <Routes>
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
         <Route path="/" element={user ? <Layout user={user} userProfile={userProfile} /> : <Navigate to="/login" />}>

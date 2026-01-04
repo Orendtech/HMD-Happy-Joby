@@ -25,7 +25,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             const metaThemeColor = document.getElementById('meta-theme-color');
             if (!metaThemeColor) return;
             const isDark = document.documentElement.classList.contains('dark');
-            const color = isDark ? '#020617' : '#F5F5F7';
+            const color = isDark ? '#000000' : '#F5F5F7';
             if (metaThemeColor.getAttribute('content') !== color) {
                 metaThemeColor.setAttribute('content', color);
                 document.documentElement.style.backgroundColor = color;
@@ -116,12 +116,12 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
     })();
 
     return (
-        <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-[#020617] text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">
+        <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-black text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">
              <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-cyan-400/10 dark:bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen animate-pulse duration-[10000ms]"></div>
              <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
 
             {!isHomePage && (
-                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-transparent transition-all">
+                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-black/80 backdrop-blur-xl border-b border-transparent transition-all">
                     <div className="flex items-center gap-4">
                         <div className="relative shrink-0">
                             <div className="w-12 h-12 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center shadow-md border border-white dark:border-slate-700 relative overflow-hidden">
@@ -167,7 +167,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 <Outlet />
             </main>
 
-            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/5 pb-[env(safe-area-inset-bottom)] pt-2">
+            <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-slate-200/50 dark:border-white/5 pb-[env(safe-area-inset-bottom)] pt-2">
                 <div className="flex justify-around items-center h-16 max-w-xl mx-auto w-full px-2">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;

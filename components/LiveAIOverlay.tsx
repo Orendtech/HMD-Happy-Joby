@@ -8,6 +8,7 @@ import { UserProfile } from '../types';
 
 interface Props {
     user: User;
+    userProfile: UserProfile | null;
 }
 
 // Audio Utilities
@@ -109,14 +110,13 @@ const tools: { functionDeclarations: FunctionDeclaration[] }[] = [{
     ]
 }];
 
-export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
+export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [inputVolume, setInputVolume] = useState(0);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [profile, setProfile] = useState<UserProfile | null>(null);
     
     const [position, setPosition] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 180 });
     const [isDragging, setIsDragging] = useState(false);
@@ -128,11 +128,10 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
     const nextStartTimeRef = useRef(0);
     const activeSources = useRef(new Set<AudioBufferSourceNode>());
 
-    useEffect(() => {
-        if (user) {
-            getUserProfile(user.uid).then(setProfile);
-        }
-    }, [user]);
+    // Early return if AI is not enabled by user (Defensive coding: ensure it's strictly true)
+    if (userProfile?.isAiEnabled !== true) {
+        return null;
+    }
 
     // Handle System Theme Color (Status Bar Color)
     useEffect(() => {
@@ -140,12 +139,10 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
         if (!metaThemeColor) return;
 
         if (isOpen) {
-            // Force status bar to match AI dark background
-            metaThemeColor.setAttribute('content', '#020617');
+            metaThemeColor.setAttribute('content', '#000000');
         } else {
-            // Restore based on system/app theme
             const isDark = document.documentElement.classList.contains('dark');
-            metaThemeColor.setAttribute('content', isDark ? '#020617' : '#F5F5F7');
+            metaThemeColor.setAttribute('content', isDark ? '#000000' : '#F5F5F7');
         }
     }, [isOpen]);
 
@@ -223,8 +220,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 throw new Error("ไม่สามารถเข้าถึงไมโครโฟนได้ กรุณาตรวจสอบการตั้งค่าความปลอดภัย");
             }
 
-            const profileData = await getUserProfile(user.uid);
-            
             const now = new Date();
             const dateStr = now.toLocaleDateString('th-TH', { 
                 weekday: 'long', 
@@ -236,7 +231,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
 
             const systemInstruction = `
                 คุณคือ "Happy Joby AI Coach" ระบบปฏิบัติการอัจฉริยะแบบ Real-time
-                สถานะผู้ใช้ปัจจุบัน: ${profileData?.role?.toUpperCase()}
+                สถานะผู้ใช้ปัจจุบัน: ${userProfile?.role?.toUpperCase()}
                 
                 บริบทเวลา (Current Context):
                 - วันนี้คือ: ${dateStr}
@@ -250,7 +245,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 4. **บุคลิก**: สุขุม แม่นยำ เหมือน JARVIS วิเคราะห์ข้อมูลสูง
             `;
 
-            const effectiveApiKey = profileData?.aiApiKey || process.env.API_KEY || "";
+            const effectiveApiKey = userProfile?.aiApiKey || process.env.API_KEY || "";
             const ai = new GoogleGenAI({ apiKey: effectiveApiKey });
             
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -367,7 +362,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
 
     return (
         <>
-            {/* FLOATING TRIGGER BUTTON */}
             <div 
                 className={`fixed z-[1001] cursor-grab active:cursor-grabbing transition-transform ${isDragging ? '' : 'duration-300'} group`}
                 style={{ left: position.x, top: position.y }}
@@ -401,17 +395,14 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                 </div>
             </div>
 
-            {/* FULLSCREEN IMMERSIVE OVERLAY */}
             {isOpen && (
-                <div className="fixed inset-0 z-[1000] bg-[#020617] flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,1)] top-0 left-0 right-0 bottom-0">
-                    {/* Background Visuals */}
+                <div className="fixed inset-0 z-[1000] bg-black flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,1)] top-0 left-0 right-0 bottom-0">
                     <div className="absolute inset-0 pointer-events-none overflow-hidden">
                         <div className="absolute top-[-20%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_70%)] opacity-50"></div>
                         <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[150px] animate-nebula-slow opacity-30"></div>
                         <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-nebula-reverse opacity-30"></div>
                     </div>
 
-                    {/* Header with Safe Area Padding */}
                     <div className="relative z-10 w-full" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
                         <div className="max-w-2xl mx-auto flex justify-between items-center h-20 px-8">
                             <div className="flex items-center gap-3">
@@ -419,7 +410,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Active</span>
                                     <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">
-                                        Agent: {profile?.name || user.email?.split('@')[0]}
+                                        Agent: {userProfile?.name || user.email?.split('@')[0]}
                                     </span>
                                 </div>
                             </div>
@@ -429,10 +420,8 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         </div>
                     </div>
 
-                    {/* Main Content Area */}
                     <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
                         <div className="w-full max-w-2xl flex flex-col items-center space-y-12">
-                            {/* Visual Pulse Orb */}
                             <div className="relative flex items-center justify-center w-72 h-72">
                                 <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[80px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
                                 
@@ -454,7 +443,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                                 </div>
                             </div>
 
-                            {/* Status Text */}
                             <div className="text-center space-y-6">
                                 <div className="space-y-2">
                                     <h2 className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20">AI Coach</h2>
@@ -469,7 +457,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                                 {errorMsg && <p className="text-rose-400/80 text-[10px] font-bold uppercase tracking-widest">{errorMsg}</p>}
                             </div>
 
-                            {/* Soundwave Animation */}
                             <div className="w-full max-w-xs h-12 flex items-end justify-center gap-1 overflow-hidden">
                                 {Array.from({ length: 32 }).map((_, i) => {
                                     let h = "4px";
@@ -483,7 +470,6 @@ export const LiveAIOverlay: React.FC<Props> = ({ user }) => {
                         </div>
                     </div>
 
-                    {/* Bottom Action Area */}
                     <div className="relative z-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-4 flex flex-col items-center">
                         <button 
                             onClick={toggleAI} 

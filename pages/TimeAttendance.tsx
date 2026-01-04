@@ -8,7 +8,7 @@ import {
     Target, MapPin, Building, MessageSquare, Edit, Send, Map as MapIcon,
     Trophy, Gift, Star, Coins, Box, Info, ChevronLeft, AlertCircle, ChevronRight,
     PartyPopper, CheckCircle2, Award, Crown, ShieldCheck, Maximize2, Minimize2,
-    CalendarCheck, ListChecks, HelpCircle
+    CalendarCheck, ListChecks, HelpCircle, Activity, Cpu, Radio, Fingerprint
 } from 'lucide-react';
 import { MapDisplay } from '../components/MapDisplay';
 import { GlassCard } from '../components/GlassCard';
@@ -124,8 +124,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const [newLevelDisplay, setNewLevelDisplay] = useState(0);
 
     const [isSavingReport, setIsSavingReport] = useState(false);
-    
-    const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
 
     const refreshData = async () => {
         try {
@@ -363,9 +361,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const currentStage = isCheckedOut ? 'completed' : isCheckedInToday ? 'working' : 'idle';
     
     const getBadgeInfo = (role?: string) => {
-        if (role === 'admin') return { label: 'ผู้ดูแลระบบ', color: 'text-indigo-400', icon: <Crown size={10} /> };
-        if (role === 'manager') return { label: 'หัวหน้างาน', color: 'text-emerald-400', icon: <ShieldCheck size={10} /> };
-        return { label: 'พนักงาน', color: 'text-slate-400', icon: <UserIcon size={10} /> };
+        if (role === 'admin') return { label: 'ADMIN', color: 'text-indigo-400', icon: <Crown size={12} /> };
+        if (role === 'manager') return { label: 'MANAGER', color: 'text-emerald-400', icon: <ShieldCheck size={12} /> };
+        return { label: 'FIELD', color: 'text-cyan-400', icon: <UserIcon size={12} /> };
     };
 
     const handleOpenVisitReport = (idx: number) => { setExpandedVisitIdx(idx); setIsFinalCheckout(false); setShowReportModal(true); };
@@ -373,7 +371,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     if (showRewardModal) {
         return (
-            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-6 overflow-hidden transition-colors duration-500">
+            <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-50 dark:bg-black px-6 overflow-hidden transition-colors duration-500">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.1)_0%,transparent_70%)] dark:bg-[radial-gradient(circle_at_center,rgba(245,158,11,0.15)_0%,transparent_70%)]"></div>
                 
                 <div className="absolute inset-0 pointer-events-none">
@@ -435,7 +433,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     if (showQuestPage) {
         return (
-            <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-slate-950 text-slate-900 dark:text-white animate-enter overflow-hidden transition-colors duration-500">
+            <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-black text-slate-900 dark:text-white animate-enter overflow-hidden transition-colors duration-500">
                 <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4 flex items-center gap-4 z-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 shrink-0">
                     <button onClick={() => setShowQuestPage(false)} className="p-3 bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 rounded-2xl text-slate-700 dark:text-white transition-all active:scale-95"><ChevronLeft size={24} /></button>
                     <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Monthly Quest</h2><p className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">สะสมรางวัลภารกิจรายเดือน</p></div>
@@ -444,7 +442,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     <div className="absolute top-20 right-0 w-64 h-64 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
                     
                     <div className="relative z-10 space-y-6">
-                        {/* Reward Header */}
                         <div className="flex justify-between items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-6 shadow-xl relative overflow-hidden">
                              <Coins className="absolute -right-6 -bottom-6 text-amber-500/10 w-40 h-40 rotate-12" />
                              <div className="flex items-center gap-4 relative z-10">
@@ -453,7 +450,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                              </div>
                         </div>
 
-                        {/* Progress Section */}
                         <div className="bg-white/70 dark:bg-white/5 p-6 rounded-[36px] border border-slate-200 dark:border-white/5 shadow-inner space-y-4 backdrop-blur-md">
                             <div className="flex justify-between items-end">
                                 <div className="flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Tracker</span><span className="text-lg font-black text-slate-900 dark:text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} <span className="text-slate-500 font-bold text-sm">DAYS</span></span></div>
@@ -464,7 +460,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             </div>
                         </div>
 
-                        {/* Condition / How to Earn Section (NEW) */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 px-2">
                                 <HelpCircle size={16} className="text-amber-500" />
@@ -504,7 +499,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             </div>
                         </div>
 
-                        {/* XP Breakdown Section (NEW) */}
                         <div className="space-y-4 pt-2">
                              <div className="flex items-center gap-2 px-2">
                                 <Zap size={16} className="text-cyan-500" />
@@ -556,7 +550,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         if (showAddContactView) {
              return (
                 <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-10 pt-12 px-4">
-                    <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
+                    <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-black z-20 py-2">
                         <button onClick={() => setShowAddContactView(false)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10"><ArrowLeft size={20} /></button>
                         <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><UserPlus className="text-purple-500" size={24}/> เพิ่มรายชื่อใหม่</h2><p className="text-sm text-slate-500 dark:text-slate-400">กำลังเพิ่มรายชื่อที่ {todayData?.checkIns[expandedVisitIdx]?.location}</p></div>
                     </div>
@@ -571,7 +565,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
         }
         return (
             <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-60 pt-12 px-4 relative">
-                <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-[#020617] z-20 py-2">
+                <div className="flex items-center gap-4 sticky top-0 bg-[#F5F5F7] dark:bg-black z-20 py-2">
                     <button onClick={() => setShowReportModal(false)} className="p-3 bg-white dark:bg-slate-800 rounded-full shadow-sm border border-slate-200 dark:border-white/10"><ArrowLeft size={20} /></button>
                     <div><h2 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2"><Sparkles className="text-purple-500" size={24}/> {isCheckedOut ? 'แก้ไขข้อมูลรายงาน' : (isFinalCheckout ? 'สรุปรายงานการปฏิบัติงาน' : 'บันทึกรายละเอียดกิจกรรม')}</h2><p className="text-sm text-slate-500 dark:text-slate-400">{isCheckedOut ? 'คุณสามารถอัปเดตข้อมูลย้อนหลังได้' : (isFinalCheckout ? `สรุปรายละเอียดการเข้าพบ ${todayData?.checkIns.length} สถานที่` : 'คุณสามารถบันทึกรายละเอียดแต่ละที่ไว้ก่อนได้')}</p></div>
                 </div>
@@ -622,150 +616,71 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const badge = getBadgeInfo(profile?.role);
 
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-6">
-            {/* COLLAPSIBLE PREMIUM HEADER DESIGN */}
-            <div className="sticky top-2 z-30 pt-0 pb-2 px-1">
-                <GlassCard className={`p-0 border-white/40 dark:border-white/10 shadow-2xl bg-white/90 dark:bg-slate-950/80 backdrop-blur-3xl overflow-hidden rounded-[36px] group transition-all duration-500 ${isHeaderExpanded ? 'ring-2 ring-amber-500/20' : ''}`}>
-                    {/* Inner Glass Highlights */}
-                    <div className={`absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2 transition-opacity duration-700 ${isHeaderExpanded ? 'opacity-80' : 'opacity-40'}`}></div>
+        <div className="w-full max-w-2xl mx-auto space-y-4">
+            {/* COMPACT CLEAN HEADER WITH RAINBOW GLOW */}
+            <div className="sticky top-2 z-30 px-1">
+                <div className="relative p-[3px] rounded-[32px] overflow-hidden group/header">
+                    {/* Rainbow Border Glow Effect */}
+                    <div className="absolute inset-0 bg-rainbow-gradient opacity-80 group-hover/header:opacity-100 transition-opacity animate-rainbow-spin"></div>
                     
-                    <div className="relative z-10 flex flex-col sm:flex-row">
-                        {/* LEFT: Identity & Mini-Stats Section */}
-                        <div className={`flex-1 flex flex-col transition-all duration-500 ${isHeaderExpanded ? 'p-6 sm:p-8' : 'p-4 sm:p-6'}`}>
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-4">
-                                    {/* Avatar Container */}
-                                    <div className="relative shrink-0 w-fit">
-                                        <div className={`transition-all duration-500 rounded-[28px] border-2 border-white/20 p-0.5 bg-white/5 backdrop-blur-md shadow-2xl ${isHeaderExpanded ? 'w-20 h-20 sm:w-24 sm:h-24' : 'w-14 h-14 sm:w-16 sm:h-16'}`}>
+                    <GlassCard className="p-4 sm:p-5 border-transparent dark:border-transparent shadow-xl bg-white dark:bg-black overflow-hidden rounded-[30px] relative z-10">
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                                {/* Compact Avatar */}
+                                <div className="relative shrink-0">
+                                    <div className="w-14 h-14 rounded-2xl p-[2px] bg-rainbow-gradient shadow-lg animate-rainbow-spin">
+                                        <div className="w-full h-full bg-slate-900 rounded-[14px] overflow-hidden relative border border-white/10">
                                             {profile?.photoBase64 ? (
-                                                <img src={profile.photoBase64} alt="Profile" className={`w-full h-full object-cover transition-all duration-500 ${isHeaderExpanded ? 'rounded-[20px]' : 'rounded-[22px]'}`} />
+                                                <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
                                             ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-white bg-gradient-to-br from-slate-700 to-slate-900 rounded-full">
-                                                    <UserIcon size={isHeaderExpanded ? 32 : 24} />
+                                                <div className="w-full h-full flex items-center justify-center text-white bg-slate-800">
+                                                    <Fingerprint size={24} className="text-cyan-400" />
                                                 </div>
                                             )}
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div className="flex-1 min-w-0">
-                                        <h1 className={`font-black text-slate-900 dark:text-white tracking-tighter truncate drop-shadow-sm transition-all duration-500 ${isHeaderExpanded ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl'}`}>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <h1 className="font-black text-slate-900 dark:text-white tracking-tighter truncate text-xl sm:text-2xl">
                                             {profile?.name || user.email?.split('@')[0]}
                                         </h1>
-                                        <div className="flex items-center gap-2 mt-0.5 opacity-70">
-                                            <MapPin size={10} className="text-cyan-400" />
-                                            <span className="text-[10px] font-bold text-slate-600 dark:text-white uppercase tracking-wider truncate">
-                                                {profile?.area || 'Happy Joby Region'}
-                                            </span>
+                                        <div className={`flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded-full border dark:border-white/10 shadow-sm ${badge.color}`}>
+                                            {badge.icon} {badge.label}
                                         </div>
-                                        {/* FIXED BADGE POSITIONING */}
-                                        {isHeaderExpanded && (
-                                            <div className="mt-2 w-fit animate-enter">
-                                                <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900/80 backdrop-blur-xl rounded-full border border-white/10 shadow-lg whitespace-nowrap">
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${badge.color.replace('text-', 'bg-')} animate-pulse`}></div>
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${badge.color}`}>{badge.label}</span>
-                                                </div>
-                                            </div>
-                                        )}
+                                    </div>
+                                    
+                                    {/* Premium Efficiency Bar */}
+                                    <div className="mt-2 flex items-center gap-3">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">LV.{currentLevel}</span>
+                                        </div>
+                                        <div className="flex-1 h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden border border-slate-200 dark:border-white/5 p-[1px]">
+                                            <div 
+                                                style={{ width: `${(profile?.xp || 0) % 100}%` }} 
+                                                className="h-full rounded-full bg-rainbow-gradient shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all duration-1000"
+                                            ></div>
+                                        </div>
                                     </div>
                                 </div>
-                                
-                                {/* Toggle Control - Compact view version */}
-                                {!isHeaderExpanded && (
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex flex-col items-end mr-2">
-                                            <div className="flex items-center gap-1.5 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                                                <Coins size={12} className="text-amber-500 fill-amber-500" />
-                                                <span className="text-sm font-black text-slate-900 dark:text-white">฿500</span>
-                                            </div>
-                                            <div className="w-16 h-1 bg-slate-200 dark:bg-white/10 rounded-full mt-1.5 overflow-hidden">
-                                                <div style={{ width: `${monthlyQuestStats.progress}%` }} className="h-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] transition-all duration-1000"></div>
-                                            </div>
-                                        </div>
-                                        <button 
-                                            onClick={() => setIsHeaderExpanded(true)}
-                                            className="p-2.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 hover:text-amber-500 hover:border-amber-500/30 transition-all active:scale-90"
-                                        >
-                                            <Maximize2 size={18} />
-                                        </button>
-                                    </div>
-                                )}
                             </div>
 
-                            {/* Full View Expanse */}
-                            {isHeaderExpanded && (
-                                <div className="animate-enter">
-                                    <div className="flex items-center gap-4 mt-6">
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Efficiency</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                                <span className="text-sm font-black text-slate-900 dark:text-white">LV.{currentLevel}</span>
-                                            </div>
-                                        </div>
-                                        <div className="w-[1px] h-6 bg-slate-200 dark:bg-white/5"></div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Momentum</span>
-                                            <div className="flex items-center gap-1">
-                                                <Flame size={14} className="text-orange-500 fill-orange-500" />
-                                                <span className="text-sm font-black text-slate-900 dark:text-white">{profile?.currentStreak || 0} DAY</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Monthly Quest Details */}
-                                    <div className="mt-8 pt-6 border-t border-slate-100 dark:border-white/5 space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <div>
-                                                <div className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-1">Monthly Goal Status</div>
-                                                <div className="flex items-baseline gap-1.5">
-                                                    <span className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">฿500</span>
-                                                    <Coins size={16} className="text-amber-400 fill-amber-400 animate-bounce" />
-                                                </div>
-                                            </div>
-                                            <div className="p-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[20px] text-amber-400 shadow-inner">
-                                                <Trophy size={24} />
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="space-y-2.5">
-                                            <div className="flex justify-between items-end">
-                                                <span className="text-[9px] font-black text-slate-500 dark:text-white/50 uppercase tracking-widest">Performance Metrics</span>
-                                                <div className="flex items-baseline gap-1">
-                                                    <span className="text-base font-black text-slate-900 dark:text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays}</span>
-                                                    <span className="text-[8px] font-black text-slate-400 dark:text-white/30 uppercase">DAYS</span>
-                                                </div>
-                                            </div>
-                                            <div className="h-2 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden border border-slate-200 dark:border-white/5 shadow-inner">
-                                                <div 
-                                                    style={{ width: `${monthlyQuestStats.progress}%` }} 
-                                                    className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative shadow-[0_0_15px_rgba(245,158,11,0.3)]"
-                                                >
-                                                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between items-center pt-1">
-                                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
-                                                    <CheckCircle2 size={10} /> {Math.round(monthlyQuestStats.progress)}% Verified Completion
-                                                </span>
-                                                <button onClick={() => setShowQuestPage(true)} className="text-[9px] font-black text-slate-500 dark:text-white/60 hover:text-cyan-600 dark:hover:text-white uppercase tracking-widest flex items-center gap-1 group transition-colors">
-                                                    View Details <ChevronRight size={10} className="group-hover:translate-x-0.5 transition-transform" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <button 
-                                        onClick={() => setIsHeaderExpanded(false)}
-                                        className="w-full mt-6 py-3 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-500 flex items-center justify-center gap-2 transition-all active:scale-95 group"
-                                    >
-                                        <Minimize2 size={14} className="group-hover:-translate-y-0.5 transition-transform" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Close Overview</span>
-                                    </button>
+                            {/* Premium Reward Badge - Minimalist bouncing reward value */}
+                            <button 
+                                onClick={() => setShowQuestPage(true)}
+                                className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] py-2 px-5 flex items-center justify-center shadow-xl active:scale-95 transition-all group/reward overflow-hidden shrink-0"
+                            >
+                                <div className="absolute inset-0 bg-rainbow-gradient opacity-0 group-hover/reward:opacity-5 transition-opacity"></div>
+                                <div className="flex items-center justify-center relative z-10">
+                                    <span className="text-lg font-black text-slate-900 dark:text-white leading-none animate-bounce">
+                                        ฿500
+                                    </span>
                                 </div>
-                            )}
+                            </button>
                         </div>
-                    </div>
-                </GlassCard>
+                    </GlassCard>
+                </div>
             </div>
 
             <div className="space-y-6 pt-2">
@@ -814,6 +729,33 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                 .animate-bounce-in { animation: bounce-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+                /* Rainbow Border Effect */
+                .bg-rainbow-gradient {
+                    background: linear-gradient(
+                        45deg,
+                        #ff0000,
+                        #ff7300,
+                        #fffb00,
+                        #48ff00,
+                        #00ffd5,
+                        #002bff,
+                        #7a00ff,
+                        #ff00c8,
+                        #ff0000
+                    );
+                    background-size: 400%;
+                }
+
+                @keyframes rainbow-spin {
+                    0% { background-position: 0% 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0% 50%; }
+                }
+
+                .animate-rainbow-spin {
+                    animation: rainbow-spin 6s linear infinite;
+                }
             `}} />
         </div>
     )
