@@ -26,6 +26,10 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
             if (!metaThemeColor) return;
             const isDark = document.documentElement.classList.contains('dark');
             const color = isDark ? '#000000' : '#F5F5F7';
+            
+            // ส่งคำสั่ง color-scheme ไปให้ Browser เพื่อคุมสี Status Bar ใน iPhone
+            document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+            
             if (metaThemeColor.getAttribute('content') !== color) {
                 metaThemeColor.setAttribute('content', color);
                 document.documentElement.style.backgroundColor = color;

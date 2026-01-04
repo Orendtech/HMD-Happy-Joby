@@ -19,19 +19,21 @@
 
     <title>Happy Joby - Intelligent Workspace</title>
     
-    <!-- Theme Initialization Script -->
+    <!-- Theme Initialization Script - บังคับ Light Mode และส่งคำสั่ง color-scheme ไปที่ Browser -->
     <script>
       (function() {
-        const isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isDark = localStorage.theme === 'dark';
         const metaThemeColor = document.getElementById('meta-theme-color');
         
         if (isDark) {
           document.documentElement.classList.add('dark');
           document.documentElement.style.backgroundColor = '#000000';
+          document.documentElement.style.colorScheme = 'dark';
           if (metaThemeColor) metaThemeColor.setAttribute('content', '#000000');
         } else {
           document.documentElement.classList.remove('dark');
           document.documentElement.style.backgroundColor = '#F5F5F7';
+          document.documentElement.style.colorScheme = 'light';
           if (metaThemeColor) metaThemeColor.setAttribute('content', '#F5F5F7');
         }
       })();
@@ -42,8 +44,18 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
      <style>
       :root { --bg-light: #F5F5F7; --bg-dark: #000000; }
-      html, body { font-family: 'Prompt', sans-serif; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--bg-light); }
-      html.dark, html.dark body { background-color: var(--bg-dark); }
+      
+      /* บังคับสี Browser พื้นฐานให้ตรงกับ Theme */
+      html { color-scheme: light; }
+      html.dark { color-scheme: dark; }
+
+      html, body { 
+        font-family: 'Prompt', sans-serif; 
+        -webkit-tap-highlight-color: transparent; 
+        margin: 0; padding: 0; width: 100%; height: 100%; 
+        background-color: var(--bg-light) !important; 
+      }
+      html.dark, html.dark body { background-color: var(--bg-dark) !important; }
       
       @keyframes letter-reveal {
         0% { opacity: 0; transform: translateY(30px) scale(0.8); filter: blur(12px); }
@@ -72,7 +84,6 @@
         to { transform: rotate(360deg); }
       }
 
-      /* Improved Error Alert */
       #fallback-error {
         display: none;
         position: fixed;
@@ -146,7 +157,6 @@
         }
       });
 
-      // ตรวจสอบความว่างเปล่าของ Root หลังจากเวลาผ่านไป
       setTimeout(() => {
         const root = document.getElementById('root');
         if (root && root.innerHTML === '') {

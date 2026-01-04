@@ -617,8 +617,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
 
     return (
         <div className="w-full max-w-2xl mx-auto space-y-4">
-            {/* COMPACT CLEAN HEADER WITH RAINBOW GLOW */}
-            <div className="sticky top-2 z-30 px-1">
+            {/* COMPACT CLEAN HEADER WITH RAINBOW GLOW - Added extra top padding for safe area */}
+            <div className="sticky top-0 z-30 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 px-1">
                 <div className="relative p-[3px] rounded-[32px] overflow-hidden group/header">
                     {/* Rainbow Border Glow Effect */}
                     <div className="absolute inset-0 bg-rainbow-gradient opacity-80 group-hover/header:opacity-100 transition-opacity animate-rainbow-spin"></div>
@@ -626,9 +626,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     <GlassCard className="p-4 sm:p-5 border-transparent dark:border-transparent shadow-xl bg-white dark:bg-black overflow-hidden rounded-[30px] relative z-10">
                         <div className="relative z-10 flex items-center justify-between">
                             <div className="flex items-center gap-4 flex-1 min-w-0">
-                                {/* Compact Avatar */}
+                                {/* Compact Avatar - Rainbow Frame Removed */}
                                 <div className="relative shrink-0">
-                                    <div className="w-14 h-14 rounded-2xl p-[2px] bg-rainbow-gradient shadow-lg animate-rainbow-spin">
+                                    <div className="w-14 h-14 rounded-2xl p-[2px] bg-slate-200 dark:bg-slate-800 shadow-lg">
                                         <div className="w-full h-full bg-slate-900 rounded-[14px] overflow-hidden relative border border-white/10">
                                             {profile?.photoBase64 ? (
                                                 <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
@@ -651,7 +651,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                         </div>
                                     </div>
                                     
-                                    {/* Premium Efficiency Bar */}
+                                    {/* Premium Efficiency Bar - Rainbow Gradient Removed */}
                                     <div className="mt-2 flex items-center gap-3">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">LV.{currentLevel}</span>
@@ -659,19 +659,18 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                         <div className="flex-1 h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden border border-slate-200 dark:border-white/5 p-[1px]">
                                             <div 
                                                 style={{ width: `${(profile?.xp || 0) % 100}%` }} 
-                                                className="h-full rounded-full bg-rainbow-gradient shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all duration-1000"
+                                                className="h-full rounded-full bg-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all duration-1000"
                                             ></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Premium Reward Badge - Minimalist bouncing reward value */}
+                            {/* Premium Reward Badge - Minimalist bouncing reward value (Rainbow Hover Removed) */}
                             <button 
                                 onClick={() => setShowQuestPage(true)}
-                                className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] py-2 px-5 flex items-center justify-center shadow-xl active:scale-95 transition-all group/reward overflow-hidden shrink-0"
+                                className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] py-2 px-5 flex items-center justify-center shadow-xl active:scale-95 transition-all shrink-0"
                             >
-                                <div className="absolute inset-0 bg-rainbow-gradient opacity-0 group-hover/reward:opacity-5 transition-opacity"></div>
                                 <div className="flex items-center justify-center relative z-10">
                                     <span className="text-lg font-black text-slate-900 dark:text-white leading-none animate-bounce">
                                         ฿500
