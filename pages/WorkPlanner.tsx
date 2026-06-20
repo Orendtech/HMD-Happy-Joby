@@ -275,122 +275,121 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
     const filteredHospitals = newLoc === '' ? (localProfile?.hospitals || []) : (localProfile?.hospitals.filter(h => h.toLowerCase().includes(newLoc.toLowerCase())) || []);
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6 animate-enter pb-32 px-4 pt-6">
-            <div className="bg-slate-200 dark:bg-slate-900/80 p-1.5 rounded-[24px] flex gap-1 border border-slate-200 dark:border-white/10 shadow-sm backdrop-blur-xl">
-                <button onClick={() => setActiveTab('calendar')} className={`flex-1 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'calendar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}><CalendarDays size={16} /> แผนงาน</button>
-                <button onClick={() => setActiveTab('approvals')} className={`flex-1 py-3 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'approvals' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xl' : 'text-slate-500'}`}><ListChecks size={16} /> การอนุมัติ {((isPrivileged && allPendingPlans.length > 0) || (!isPrivileged && userDrafts.length > 0)) && (<span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] animate-pulse">{isPrivileged ? allPendingPlans.length : userDrafts.length}</span>)}</button>
+        <div className="max-w-2xl mx-auto space-y-4 animate-enter pb-24 px-3 pt-3">
+            <div className="bg-slate-200 dark:bg-slate-900/85 p-1 rounded-2xl flex gap-1 border border-slate-200 dark:border-white/10 shadow-sm backdrop-blur-xl">
+                <button onClick={() => setActiveTab('calendar')} className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'calendar' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md' : 'text-slate-500'}`}><CalendarDays size={14} /> แผนงาน</button>
+                <button onClick={() => setActiveTab('approvals')} className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'approvals' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md' : 'text-slate-500'}`}><ListChecks size={14} /> การอนุมัติ {((isPrivileged && allPendingPlans.length > 0) || (!isPrivileged && userDrafts.length > 0)) && (<span className="bg-rose-500 text-white text-[9px] px-1.5 py-0.5 rounded-full min-w-[16px] animate-pulse">{isPrivileged ? allPendingPlans.length : userDrafts.length}</span>)}</button>
             </div>
 
             {activeTab === 'calendar' && (
                 <>
-                    <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-[32px] border border-slate-200 dark:border-white/5 shadow-sm">
+                    <div className="flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
                         <div>
-                            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">ปฏิทินแผนงาน</h2>
-                            <p className="text-slate-500 text-xs font-bold mt-2 uppercase tracking-wider">จัดตารางงานของคุณ</p>
+                            <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none">ปฏิทินแผนงาน</h2>
+                            <p className="text-slate-500 text-[10px] font-bold mt-1 uppercase tracking-wider">จัดตารางงานของคุณ</p>
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => setShowExportOptions(!showExportOptions)} className={`p-3 rounded-2xl transition-all active:scale-95 bg-white/50 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-white/10 shadow-sm`}><Download size={22} /></button>
-                            <button onClick={() => { if(showForm) resetForm(); else setShowForm(true); }} className={`p-3.5 rounded-2xl transition-all active:scale-95 bg-indigo-600 text-white shadow-lg shadow-indigo-600/30`}>{showForm ? <X size={22} /> : <Plus size={22} />}</button>
+                        <div className="flex gap-1.5">
+                            <button onClick={() => setShowExportOptions(!showExportOptions)} className={`p-2 rounded-xl transition-all active:scale-95 bg-white/50 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-white/10 shadow-xs`}><Download size={18} /></button>
+                            <button onClick={() => { if(showForm) resetForm(); else setShowForm(true); }} className={`p-2.5 rounded-xl transition-all active:scale-95 bg-orange-600 text-white shadow-md shadow-orange-600/20`}>{showForm ? <X size={18} /> : <Plus size={18} />}</button>
                         </div>
                     </div>
 
                     {isPrivileged && (
-                        <div className="bg-white/50 dark:bg-slate-900/40 p-1 rounded-[24px] border border-slate-200 dark:border-white/10 flex items-center shadow-sm">
-                            <div className="p-3 bg-indigo-500 text-white rounded-[20px] shadow-lg shrink-0"><Users size={20} /></div>
-                            <select value={targetUserId} onChange={(e) => handleUserChange(e.target.value)} className="flex-1 bg-transparent px-4 py-2 text-sm font-bold text-slate-900 dark:text-white outline-none appearance-none">
+                        <div className="bg-white/50 dark:bg-slate-900/40 p-0.5 rounded-xl border border-slate-200 dark:border-white/10 flex items-center shadow-xs">
+                            <div className="p-2 bg-indigo-500 text-white rounded-lg shadow shrink-0"><Users size={16} /></div>
+                            <select value={targetUserId} onChange={(e) => handleUserChange(e.target.value)} className="flex-1 bg-transparent px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-white outline-none appearance-none">
                                 <option value={user.uid}>มุมมองส่วนตัว (ฉัน)</option>
                                 {teamMembers.filter(u => u.id !== user.uid).map(m => (<option key={m.id} value={m.id}>{m.name || m.email}</option>))}
                             </select>
-                            <div className="pr-4 pointer-events-none text-slate-400"><ChevronDown size={16} /></div>
+                            <div className="pr-3 pointer-events-none text-slate-400"><ChevronDown size={14} /></div>
                         </div>
                     )}
 
-                    <GlassCard className="p-6 overflow-visible shadow-2xl">
-                        <div className="flex items-center justify-between mb-8 px-2">
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                    <GlassCard className="p-4 overflow-visible shadow-md">
+                        <div className="flex items-center justify-between mb-5 px-1">
+                            <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight">
                                 {currentMonth.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
                             </h3>
-                            <div className="flex gap-1.5">
-                                <button onClick={() => changeMonth(-1)} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors"><ChevronLeft size={22}/></button>
-                                <button onClick={() => changeMonth(1)} className="p-2.5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-xl transition-colors"><ChevronRight size={22}/></button>
+                            <div className="flex gap-1">
+                                <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"><ChevronLeft size={18}/></button>
+                                <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/10 rounded-lg transition-colors"><ChevronRight size={18}/></button>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-7 gap-1 mb-4">
-                            {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(d => (
-                                <div key={d} className="text-center text-xs font-black text-slate-600 dark:text-slate-300 uppercase py-2 tracking-widest opacity-90">{d}</div>
+                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                            {['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'].map((d, i) => (
+                                <span key={i} className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{d}</span>
                             ))}
                         </div>
 
-                        <div className="grid grid-cols-7 gap-1">
-                            {blanks.map(b => <div key={`b-${b}`} className="aspect-square flex items-center justify-center opacity-0"></div>)}
-                            {days.map(d => {
-                                const dateObj = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d);
-                                const dateStr = formatLocalDate(dateObj); 
+                        <div className="grid grid-cols-7 gap-1 text-center">
+                            {blanks.map((_, i) => (<div key={`blank-${i}`} />))}
+                            {days.map((d) => {
+                                const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), d);
+                                const dateStr = formatLocalDate(dayDate);
                                 const isSelected = selectedDate === dateStr;
-                                const isToday = formatLocalDate(new Date()) === dateStr;
                                 const plan = getPlanForDay(d);
                                 const statusUI = plan ? getStatusUI(plan.status) : null;
 
                                 return (
-                                    <button 
-                                        key={d} 
-                                        onClick={() => setSelectedDate(dateStr)} 
-                                        className={`aspect-square flex flex-col items-center justify-center rounded-2xl relative transition-all duration-300 transform active:scale-90 ${
+                                    <button
+                                        key={d}
+                                        onClick={() => { setSelectedDate(dateStr); setShowForm(false); }}
+                                        className={`aspect-square flex flex-col items-center justify-center rounded-xl p-1 relative transition-all active:scale-95 ${
                                             isSelected 
-                                            ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-500/30 scale-105 z-10 ring-4 ring-indigo-500/10' 
-                                            : isToday 
-                                                ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-black border border-indigo-200 dark:border-indigo-500/30' 
-                                                : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 font-medium'
+                                                ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' 
+                                                : dayDate.toDateString() === new Date().toDateString()
+                                                    ? 'bg-amber-100 dark:bg-amber-950/20 text-orange-600 font-bold border border-orange-200 dark:border-orange-500/10'
+                                                    : 'hover:bg-slate-50 dark:hover:bg-white/5 text-slate-800 dark:text-slate-200'
                                         }`}
                                     >
-                                        <span className="text-sm font-bold">{d}</span>
-                                        {statusUI && <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${isSelected ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : statusUI.dot}`}></div>}
+                                        <span className="text-xs font-bold">{d}</span>
+                                        {statusUI && <div className={`w-1 h-1 rounded-full mt-1 ${isSelected ? 'bg-white shadow-[0_0_4px_rgba(255,255,255,0.8)]' : statusUI.dot}`}></div>}
                                     </button>
                                 );
                             })}
                         </div>
                         
-                        <div className="mt-8 flex flex-wrap gap-4 justify-center border-t border-slate-100 dark:border-white/5 pt-6">
-                            <div className="flex items-center gap-2 text-[9px] font-black text-slate-500 uppercase tracking-widest"><div className="w-2.5 h-2.5 rounded-full bg-slate-400"></div> ฉบับร่าง</div>
-                            <div className="flex items-center gap-2 text-[9px] font-black text-slate-500 uppercase tracking-widest"><div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div> รออนุมัติ</div>
-                            <div className="flex items-center gap-2 text-[9px] font-black text-slate-500 uppercase tracking-widest"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> อนุมัติแล้ว</div>
+                        <div className="mt-4 flex flex-wrap gap-3 justify-center border-t border-slate-100 dark:border-white/5 pt-4">
+                            <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-slate-400"></div> ฉบับร่าง</div>
+                            <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-amber-400"></div> รออนุมัติ</div>
+                            <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-500 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> อนุมัติแล้ว</div>
                         </div>
                     </GlassCard>
 
                     {showForm && (
                         <div className="animate-enter">
-                            <GlassCard className="p-8 space-y-6 border-indigo-500/30 bg-white/90 dark:bg-slate-900/90 shadow-2xl overflow-visible backdrop-blur-2xl">
-                                <div className="flex items-center gap-3 border-b border-slate-100 dark:border-white/5 pb-4">
-                                    <div className="p-3 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl"><Calendar size={24} /></div>
-                                    <div><h3 className="text-xl font-black text-slate-900 dark:text-white">{editingPlanId ? 'แก้ไขแผนงานเดิม' : 'เขียนแผนงานใหม่'}</h3><p className="text-xs text-slate-500 font-bold">สำหรับวันที่ {new Date(selectedDate).toLocaleDateString('th-TH')}</p></div>
+                            <GlassCard className="p-4 space-y-4 border-slate-200/50 bg-white/95 dark:bg-slate-900/95 shadow-md overflow-visible backdrop-blur-md rounded-2xl">
+                                <div className="flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-2.5">
+                                    <div className="p-2 bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400 rounded-xl"><Calendar size={18} /></div>
+                                    <div><h3 className="text-sm font-black text-slate-900 dark:text-white">{editingPlanId ? 'แก้ไขแผนงานเดิม' : 'เขียนแผนงานใหม่'}</h3><p className="text-[10px] text-slate-500 font-bold">สำหรับวันที่ {new Date(selectedDate).toLocaleDateString('th-TH')}</p></div>
                                 </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">หัวข้อแผนงาน</label><input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500 transition-all" placeholder="เช่น นัดพบลูกค้า/ตรวจเช็คเครื่อง" /></div>
-                                    <div className="space-y-1.5"><label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">รายละเอียดเพิ่มเติม</label><textarea value={content} onChange={e => setContent(e.target.value)} rows={3} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white resize-none outline-none focus:border-indigo-500 transition-all" placeholder="ระบุสิ่งที่ต้องทำ..." /></div>
-                                    <div className="space-y-4 bg-slate-50 dark:bg-black/20 p-5 rounded-[24px] border border-slate-200 dark:border-white/5 overflow-visible">
-                                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">จุดนัดหมาย (Itinerary)</label>
-                                        <div className="space-y-3">{itinerary.map((it, idx) => (<div key={idx} className="flex items-center gap-3 bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-white/5 shadow-sm animate-enter"><div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">{idx + 1}</div><div className="flex-1"><div className="text-sm font-bold text-slate-900 dark:text-white">{it.location}</div><div className="text-[10px] text-slate-500 font-medium">{it.objective}</div></div><button onClick={() => setItinerary(itinerary.filter((_, i) => i !== idx))} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 size={16}/></button></div>))}</div>
-                                        <div className="flex flex-col sm:flex-row gap-2 mt-4 relative" ref={suggestionsRef}>
+                                <div className="space-y-3">
+                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">หัวข้อแผนงาน</label><input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-xs text-slate-900 dark:text-white font-bold outline-none focus:border-orange-500 transition-all" placeholder="เช่น นัดพบลูกค้า/ตรวจเช็คเครื่อง" /></div>
+                                    <div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">รายละเอียดเพิ่มเติม</label><textarea value={content} onChange={e => setContent(e.target.value)} rows={2} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-xs text-slate-900 dark:text-white resize-none outline-none focus:border-orange-500 transition-all" placeholder="ระบุสิ่งที่ต้องทำ..." /></div>
+                                    <div className="space-y-3 bg-slate-50 dark:bg-black/20 p-3 rounded-xl border border-slate-200 dark:border-white/5 overflow-visible">
+                                        <label className="text-[9px] font-black text-slate-550 uppercase tracking-widest">จุดนัดหมาย (Itinerary)</label>
+                                        <div className="space-y-2">{itinerary.map((it, idx) => (<div key={idx} className="flex items-center gap-2.5 bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-white/5 shadow-xs animate-enter"><div className="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center text-[9px] font-bold shrink-0">{idx + 1}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold text-slate-900 dark:text-white truncate">{it.location}</div><div className="text-[9px] text-slate-500 font-medium truncate">{it.objective}</div></div><button onClick={() => setItinerary(itinerary.filter((_, i) => i !== idx))} className="text-rose-400 hover:text-rose-600 transition-colors"><Trash2 size={14}/></button></div>))}</div>
+                                        <div className="flex flex-col sm:flex-row gap-1.5 mt-3 relative" ref={suggestionsRef}>
                                             <div className="flex-1 relative">
-                                                <input value={newLoc} onChange={e => {setNewLoc(e.target.value); setShowLocSuggestions(true);}} onFocus={() => setShowLocSuggestions(true)} placeholder="โรงพยาบาล/สถานที่" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500" />
+                                                <input value={newLoc} onChange={e => {setNewLoc(e.target.value); setShowLocSuggestions(true);}} onFocus={() => setShowLocSuggestions(true)} placeholder="โรงพยาบาล/สถานที่" className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-orange-500" />
                                                 {showLocSuggestions && (
-                                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl z-50 max-h-52 overflow-y-auto ring-1 ring-black/5">
-                                                        {filteredHospitals.length > 0 ? filteredHospitals.map((h, i) => (<button key={i} onClick={() => {setNewLoc(h); setShowLocSuggestions(false);}} className="w-full text-left px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/5 text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"><Building size={12} className="text-indigo-400" />{h}</button>)) : newLoc && (<div className="px-4 py-3 text-[10px] text-slate-400 italic">ไม่พบรายชื่อในฐานข้อมูล</div>)}
-                                                        {newLoc && !localProfile?.hospitals.some(h => h.toLowerCase() === newLoc.toLowerCase()) && (<button onClick={handleAddNewHospital} className="w-full text-left px-4 py-3 bg-indigo-50 dark:bg-indigo-900/40 text-xs text-indigo-600 dark:text-indigo-400 font-black border-t border-slate-200 dark:border-white/10 flex items-center gap-2 sticky bottom-0"><Plus size={14} className="bg-indigo-600 text-white rounded-full" />สร้างรายชื่อใหม่: "{newLoc}"</button>)}
+                                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto ring-1 ring-black/5">
+                                                        {filteredHospitals.length > 0 ? filteredHospitals.map((h, i) => (<button key={i} onClick={() => {setNewLoc(h); setShowLocSuggestions(false);}} className="w-full text-left px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-[11px] text-slate-700 dark:text-slate-300 flex items-center gap-2 border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"><Building size={10} className="text-orange-400" />{h}</button>)) : newLoc && (<div className="px-3 py-2 text-[9px] text-slate-400 italic">ไม่พบรายชื่อในฐานข้อมูล</div>)}
+                                                        {newLoc && !localProfile?.hospitals.some(h => h.toLowerCase() === newLoc.toLowerCase()) && (<button onClick={handleAddNewHospital} className="w-full text-left px-3 py-2 bg-orange-50 dark:bg-orange-900/40 text-[11px] text-orange-600 dark:text-orange-400 font-bold border-t border-slate-200 dark:border-white/10 flex items-center gap-2 sticky bottom-0"><Plus size={12} className="bg-orange-600 text-white rounded-full" />สร้างรายชื่อใหม่: "{newLoc}"</button>)}
                                                     </div>
                                                 )}
                                             </div>
-                                            <input value={newObj} onChange={e => setNewObj(e.target.value)} placeholder="เป้าหมาย" className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-sm outline-none focus:border-indigo-500" />
-                                            <button onClick={handleAddLocation} className="bg-indigo-600 text-white p-2 rounded-xl active:scale-90 transition-all shadow-lg shadow-indigo-600/20"><Plus size={20}/></button>
+                                            <input value={newObj} onChange={e => setNewObj(e.target.value)} placeholder="เป้าหมาย" className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-orange-500" />
+                                            <button onClick={handleAddLocation} className="bg-orange-500 text-white p-1.5 rounded-lg active:scale-95 transition-all shadow-sm"><Plus size={16}/></button>
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={handleSavePlan} disabled={isSaving} className="flex-1 bg-indigo-600 py-4 rounded-2xl font-black text-white dark:text-slate-900 hover:opacity-90 flex items-center justify-center gap-2 shadow-xl active:scale-95 transition-all disabled:opacity-50">
-                                            {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={20}/> {editingPlanId ? 'อัปเดตแผนงาน' : 'บันทึกเป็นฉบับร่าง'}</>}
+                                        <button onClick={handleSavePlan} disabled={isSaving} className="flex-1 bg-orange-500 py-2.5 rounded-xl font-bold text-xs text-white dark:text-slate-900 hover:opacity-90 flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all disabled:opacity-50">
+                                            {isSaving ? <Loader2 className="animate-spin" /> : <><Save size={16}/> {editingPlanId ? 'อัปเดตแผนงาน' : 'บันทึกเป็นฉบับร่าง'}</>}
                                         </button>
                                         {editingPlanId && (
-                                            <button onClick={resetForm} className="px-6 bg-slate-200 dark:bg-slate-800 rounded-2xl font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">ยกเลิก</button>
+                                            <button onClick={resetForm} className="px-4 bg-slate-200 dark:bg-slate-800 rounded-xl text-xs font-bold text-slate-650 hover:bg-slate-300 dark:hover:bg-white/10 transition-colors">ยกเลิก</button>
                                         )}
                                     </div>
                                 </div>
@@ -398,58 +397,58 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                         </div>
                     )}
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between px-2 pt-2"><h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2"><MessageSquare size={14} className="text-indigo-500" /> แผนงานวันที่ {new Date(selectedDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long' })}</h3></div>
-                        {loading ? (<div className="flex justify-center py-10"><Loader2 className="animate-spin text-indigo-500" /></div>) : selectedDayPlans.length === 0 ? (
-                            <div className="text-center py-12 bg-white/30 dark:bg-slate-900/30 rounded-[32px] border-2 border-dashed border-slate-200 dark:border-white/10 opacity-60"><Info className="mx-auto text-slate-300 mb-4" size={32} /><p className="text-slate-400 italic text-sm font-medium">ยังไม่มีแผนงานในวันนี้...</p></div>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1 pt-1.5"><h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><MessageSquare size={12} className="text-orange-500" /> แผนงานวันที่ {new Date(selectedDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long' })}</h3></div>
+                        {loading ? (<div className="flex justify-center py-10"><Loader2 className="animate-spin text-orange-500" /></div>) : selectedDayPlans.length === 0 ? (
+                            <div className="text-center py-10 bg-white/30 dark:bg-slate-900/30 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 opacity-70"><Info className="mx-auto text-slate-300 mb-2" size={24} /><p className="text-slate-400 italic text-xs font-medium">ยังไม่มีแผนงานในวันนี้...</p></div>
                         ) : selectedDayPlans.map((plan) => {
                             const statusUI = getStatusUI(plan.status);
                             const isOwnPlan = plan.userId === user.uid;
                             const canEdit = isOwnPlan && (plan.status === 'draft' || plan.status === 'rejected');
 
                             return (
-                                <GlassCard key={plan.id} className={`p-0 overflow-hidden border-indigo-500/10 ${plan.status === 'rejected' ? 'opacity-70' : ''}`}>
-                                    <div className="p-6 border-b flex justify-between items-start dark:border-white/5">
-                                        <div className="flex gap-4">
-                                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shrink-0 shadow-lg"><UserIcon size={24} /></div>
+                                <GlassCard key={plan.id} className={`p-0 overflow-hidden border-orange-500/10 ${plan.status === 'rejected' ? 'opacity-70' : ''}`}>
+                                    <div className="p-3.5 border-b flex justify-between items-start dark:border-white/5">
+                                        <div className="flex gap-3">
+                                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-amber-650 flex items-center justify-center text-white shrink-0 shadow-sm"><UserIcon size={16} /></div>
                                             <div>
-                                                <div className="flex items-center gap-2 mb-1.5"><h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight">{plan.title}</h3><div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase flex items-center gap-1 ${statusUI.color}`}>{statusUI.icon} {statusUI.label}</div></div>
-                                                <div className="flex items-center gap-3"><span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{plan.userName}</span><span className="w-1 h-1 rounded-full bg-slate-300"></span><span className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Clock size={10} /> {new Date(plan.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span></div>
+                                                <div className="flex items-center gap-1.5 mb-1"><h3 className="text-xs font-black text-slate-900 dark:text-white leading-tight">{plan.title}</h3><div className={`px-1.5 py-0.5 rounded-full text-[7.5px] font-black uppercase flex items-center gap-0.5 ${statusUI.color}`}>{statusUI.icon} {statusUI.label}</div></div>
+                                                <div className="flex items-center gap-2"><span className="text-[9px] font-black text-orange-600 dark:text-orange-400 tracking-wider">{plan.userName}</span><span className="w-0.5 h-0.5 rounded-full bg-slate-350"></span><span className="text-[9px] text-slate-400 font-bold flex items-center gap-0.5"><Clock size={9} /> {new Date(plan.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span></div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-1 relative" ref={openMenuId === plan.id ? menuRef : null}>
                                             {canEdit && (
                                                 <button 
                                                     onClick={() => handleSendForApproval(plan.id)}
-                                                    className="p-2 bg-indigo-600 text-white rounded-xl shadow-lg active:scale-90 transition-all"
+                                                    className="p-1.5 bg-orange-600 text-white rounded-lg shadow-sm active:scale-95 transition-all"
                                                     title="ส่งขออนุมัติ"
                                                 >
-                                                    <Send size={16} />
+                                                    <Send size={12} />
                                                 </button>
                                             )}
                                             <button 
                                                 onClick={() => setOpenMenuId(openMenuId === plan.id ? null : plan.id)}
-                                                className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-all"
+                                                className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-all"
                                             >
-                                                <MoreVertical size={20} />
+                                                <MoreVertical size={16} />
                                             </button>
                                             
                                             {/* Dropdown Menu */}
                                             {openMenuId === plan.id && (
-                                                <div className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] py-2 animate-enter">
-                                                    <button onClick={() => handleEditPlan(plan)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
-                                                        <Edit size={16} className="text-cyan-500" /> แก้ไขแผนงาน
+                                                <div className="absolute top-full right-0 mt-1 w-40 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-lg z-[100] py-1 animate-enter">
+                                                    <button onClick={() => handleEditPlan(plan)} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                                                        <Edit size={14} className="text-orange-500" /> แก้ไขแผนงาน
                                                     </button>
-                                                    <button onClick={() => handleDelete(plan.id)} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors border-t dark:border-white/5">
-                                                        <Trash2 size={16} /> ลบแผนงาน
+                                                    <button onClick={() => handleDelete(plan.id)} className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors border-t dark:border-white/5">
+                                                        <Trash2 size={14} /> ลบแผนงาน
                                                     </button>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="p-6">
-                                        <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed mb-4 font-medium">{plan.content}</p>
-                                        {plan.itinerary && plan.itinerary.length > 0 && (<div className="flex flex-wrap gap-2">{plan.itinerary.map((it, i) => (<div key={i} className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 px-3 py-1.5 rounded-full text-[10px] font-black border border-indigo-100 dark:border-indigo-500/20"><span>{it.location}</span><ChevronRight size={10} /><span className="opacity-70">{it.objective}</span></div>))}</div>)}
+                                    <div className="p-3.5">
+                                        <p className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed mb-3 font-medium">{plan.content}</p>
+                                        {plan.itinerary && plan.itinerary.length > 0 && (<div className="flex flex-wrap gap-1.5">{plan.itinerary.map((it, i) => (<div key={i} className="flex items-center gap-1 bg-orange-50 dark:bg-orange-950/10 text-orange-600 dark:text-orange-300 px-2 py-1 rounded-full text-[8.5px] font-bold border border-orange-100/40 dark:border-orange-500/10"><span>{it.location}</span><ChevronRight size={8} /><span className="opacity-70">{it.objective}</span></div>))}</div>)}
                                     </div>
                                 </GlassCard>
                             );
@@ -459,50 +458,50 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
             )}
 
             {activeTab === 'approvals' && (
-                <div className="space-y-6 animate-enter">
-                    <div className="flex flex-col gap-2 pt-2">
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-none">การจัดการคำขอ</h2>
-                        <p className="text-slate-500 text-sm font-medium mt-2">จัดการและติดตามสถานะแผนงาน{isAdmin ? 'ของทุกคน (Admin)' : isManager ? 'ของพนักงานที่คุณดูแล' : 'ของคุณ'}</p>
+                <div className="space-y-4 animate-enter">
+                    <div className="flex flex-col gap-1 pt-1.5">
+                        <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight leading-none">การจัดการคำขอ</h2>
+                        <p className="text-slate-500 text-xs font-medium">จัดการและติดตามสถานะแผนงาน{isAdmin ? 'ของทุกคน (Admin)' : isManager ? 'ของพนักงานที่คุณดูแล' : 'ของคุณ'}</p>
                     </div>
 
-                    {loading ? (<div className="flex justify-center py-20"><Loader2 className="animate-spin text-indigo-500" size={40} /></div>) : (
-                        <div className="space-y-6">
+                    {loading ? (<div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={32} /></div>) : (
+                        <div className="space-y-4">
                             {isPrivileged ? (
                                 allPendingPlans.length === 0 ? (
-                                    <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/20 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-white/10"><CheckCircle className="mx-auto text-emerald-500/50 mb-4" size={48} /><h3 className="text-slate-900 dark:text-white font-black uppercase tracking-widest">ทุกอย่างเรียบร้อย</h3><p className="text-slate-400 text-sm mt-1">ไม่มีแผนงานค้างรอการอนุมัติ</p></div>
+                                    <div className="text-center py-16 bg-slate-50 dark:bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10"><CheckCircle className="mx-auto text-emerald-500/50 mb-3" size={36} /><h3 className="text-slate-900 dark:text-white text-xs font-black uppercase tracking-wider">ทุกอย่างเรียบร้อย</h3><p className="text-slate-400 text-xs mt-0.5">ไม่มีแผนงานค้างรอการอนุมัติ</p></div>
                                 ) : (
                                     allPendingPlans.map((plan) => (
-                                        <GlassCard key={plan.id} className="p-0 border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden bg-white dark:bg-slate-900/90 ring-1 ring-black/5 dark:ring-white/10">
+                                        <GlassCard key={plan.id} className="p-0 border-slate-200 dark:border-white/10 shadow-md overflow-hidden bg-white dark:bg-slate-900/90 ring-1 ring-black/5 dark:ring-white/10">
                                             {/* Card Top: Profile & Date */}
-                                            <div className="p-6 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 border-b dark:border-white/5">
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-14 h-14 rounded-2xl bg-indigo-500 shadow-lg shadow-indigo-500/20 flex items-center justify-center text-white relative overflow-hidden group">
+                                            <div className="p-4 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50 border-b dark:border-white/5">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-xl bg-orange-500 shadow-md flex items-center justify-center text-white relative overflow-hidden group">
                                                             <div className="absolute inset-0 bg-white/20 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                                                            <UserIcon size={28} />
+                                                            <UserIcon size={20} />
                                                         </div>
                                                         <div>
-                                                            <h4 className="font-black text-slate-900 dark:text-white text-lg leading-tight">{plan.userName}</h4>
-                                                            <div className="flex items-center gap-2 mt-1">
-                                                                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest px-2 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 rounded-full border border-indigo-100 dark:border-indigo-500/20">SALES REP</span>
-                                                                <span className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Clock size={10} /> {new Date(plan.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span>
+                                                            <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight">{plan.userName}</h4>
+                                                            <div className="flex items-center gap-1.5 mt-0.5">
+                                                                <span className="text-[8px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider px-1.5 py-0.5 bg-orange-50 dark:bg-orange-500/10 rounded-full border border-orange-100 dark:border-orange-500/20">SALES</span>
+                                                                <span className="text-[8.5px] text-slate-400 font-bold flex items-center gap-0.5"><Clock size={9} /> {new Date(plan.createdAt).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'})}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">DATE</div>
-                                                        <div className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-sm text-sm font-black text-slate-900 dark:text-white">
+                                                        <div className="text-[8px] font-black text-slate-400 tracking-wider mb-0.5">DATE</div>
+                                                        <div className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg shadow-xs text-xs font-black text-slate-900 dark:text-white">
                                                             {new Date(plan.date).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-4">
+                                                <div className="space-y-3">
                                                     {/* Plan Title & Header */}
-                                                    <div className="relative pl-4 border-l-4 border-indigo-500">
-                                                        <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{plan.title}</h3>
-                                                        <div className="mt-2 flex items-start gap-2 bg-white dark:bg-black/30 p-3 rounded-2xl border dark:border-white/5 text-sm text-slate-600 dark:text-slate-300 italic">
-                                                            <Quote size={14} className="text-slate-400 shrink-0 mt-1" />
+                                                    <div className="relative pl-3 border-l-4 border-orange-500">
+                                                        <h3 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{plan.title}</h3>
+                                                        <div className="mt-1.5 flex items-start gap-1.5 bg-white dark:bg-black/30 p-2.5 rounded-xl border dark:border-white/5 text-xs text-slate-600 dark:text-slate-300 italic">
+                                                            <Quote size={12} className="text-slate-400 shrink-0 mt-0.5" />
                                                             <span>{plan.content}</span>
                                                         </div>
                                                     </div>
@@ -510,33 +509,33 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                                             </div>
 
                                             {/* Itinerary Timeline */}
-                                            <div className="p-6 space-y-4 bg-white/50 dark:bg-transparent">
-                                                <div className="flex items-center gap-2 px-1 mb-2">
-                                                    <Target size={14} className="text-indigo-500" />
-                                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Planned Route & Objectives</span>
+                                            <div className="p-4 space-y-3 bg-white/50 dark:bg-transparent">
+                                                <div className="flex items-center gap-1.5 px-0.5 mb-1.5">
+                                                    <Target size={11} className="text-orange-500" />
+                                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider">Planned Route & Objectives</span>
                                                 </div>
 
                                                 <div className="relative space-y-1">
                                                     {plan.itinerary.map((it, i) => (
-                                                        <div key={i} className="group flex gap-4 relative">
+                                                        <div key={i} className="group flex gap-3 relative">
                                                             {/* Vertical Connector */}
                                                             {i < plan.itinerary.length - 1 && (
-                                                                <div className="absolute left-[19px] top-10 bottom-[-16px] w-[2px] bg-slate-200 dark:bg-slate-800"></div>
+                                                                <div className="absolute left-[15px] top-8 bottom-[-12px] w-[1.5px] bg-slate-200 dark:bg-slate-800"></div>
                                                             )}
                                                             
-                                                            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center relative z-10 shadow-sm transition-transform group-hover:scale-110">
-                                                                <Building size={16} className="text-indigo-500" />
+                                                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center relative z-10 shadow-xs transition-transform group-hover:scale-105">
+                                                                <Building size={12} className="text-orange-500" />
                                                             </div>
 
-                                                            <div className="flex-1 pb-6">
-                                                                <div className="p-4 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-white/5 rounded-[24px] shadow-sm group-hover:border-indigo-500/30 transition-all">
-                                                                    <div className="flex justify-between items-start mb-1">
-                                                                        <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                                            <div className="flex-1 pb-4">
+                                                                <div className="p-3 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-white/5 rounded-xl shadow-xs group-hover:border-orange-500/30 transition-all">
+                                                                    <div className="flex justify-between items-start mb-0.5">
+                                                                        <span className="text-xs font-black text-slate-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
                                                                             {it.location}
                                                                         </span>
-                                                                        <div className="text-[9px] font-black text-slate-300 dark:text-slate-700 tracking-tighter">STOP 0{i+1}</div>
+                                                                        <div className="text-[8px] font-black text-slate-300 dark:text-slate-700 tracking-wider">STOP 0{i+1}</div>
                                                                     </div>
-                                                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed bg-slate-50 dark:bg-black/20 px-3 py-2 rounded-xl mt-2 border border-slate-100 dark:border-white/5">
+                                                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed bg-slate-50 dark:bg-black/20 px-2 py-1.5 rounded-lg mt-1 border border-slate-100 dark:border-white/5">
                                                                         {it.objective}
                                                                     </p>
                                                                 </div>
@@ -547,42 +546,42 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                                             </div>
 
                                             {/* Action Bar - Thai Only Labels as requested */}
-                                            <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-white/5 flex gap-3">
+                                            <div className="p-3 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-white/5 flex gap-2">
                                                 <button 
                                                     onClick={() => handleStatusChange(plan.id, 'approved')} 
-                                                    className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                                                    className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
                                                 >
-                                                    <CheckCircle size={18}/> อนุมัติ
+                                                    <CheckCircle size={14}/> อนุมัติ
                                                 </button>
                                                 <button 
                                                     onClick={() => handleStatusChange(plan.id, 'rejected')} 
-                                                    className="flex-1 bg-white dark:bg-slate-800 text-rose-500 border border-rose-200 dark:border-rose-500/20 font-black py-4 rounded-2xl text-xs uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+                                                    className="flex-1 bg-white dark:bg-slate-800 text-rose-500 border border-rose-200 dark:border-rose-500/20 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-xs"
                                                 >
-                                                    <XCircle size={18}/> ปฏิเสธ
+                                                    <XCircle size={14}/> ปฏิเสธ
                                                 </button>
                                             </div>
                                         </GlassCard>
                                     ))
                                 )
                             ) : (
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     {userDrafts.length > 0 && (
-                                        <div className="space-y-4">
-                                            <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-[32px] border border-indigo-100 dark:border-indigo-500/20 shadow-inner">
-                                                <div className="flex items-center justify-between mb-5">
-                                                    <div><h3 className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">แผนงานรอการส่ง ({userDrafts.length})</h3><p className="text-[10px] text-indigo-500 font-black uppercase mt-1">กด "ส่งทั้งหมด" เพื่อขออนุมัติรายอาทิตย์</p></div>
-                                                    <button onClick={handleSubmitAllDrafts} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl active:scale-95 transition-all"><Send size={14} /> ส่งทั้งหมด</button>
+                                        <div className="space-y-3">
+                                            <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-500/10 shadow-inner">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div><h3 className="text-xs font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest">แผนงานรอการส่ง ({userDrafts.length})</h3><p className="text-[9px] text-orange-500 font-bold mt-0.5">กด "ส่งทั้งหมด" เพื่อขออนุมัติรายอาทิตย์</p></div>
+                                                    <button onClick={handleSubmitAllDrafts} className="bg-orange-600 text-white px-3.5 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md active:scale-95 transition-all"><Send size={11} /> ส่งทั้งหมด</button>
                                                 </div>
-                                                <div className="space-y-2">
+                                                <div className="space-y-2.5">
                                                     {userDrafts.map(plan => (
-                                                        <div key={plan.id} className="bg-white dark:bg-slate-800 p-4 rounded-2xl flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-sm group">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={`p-2.5 rounded-xl ${plan.status === 'rejected' ? 'bg-rose-100 text-rose-500' : 'bg-slate-100 text-slate-500'}`}>{plan.status === 'rejected' ? <XCircle size={16}/> : <Edit size={16}/>}</div>
-                                                                <div><div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{plan.title}</div><div className="text-[9px] text-slate-500 font-bold uppercase mt-1">{new Date(plan.date).toLocaleDateString('th-TH', {weekday:'short', day:'numeric', month:'short'})}</div></div>
+                                                        <div key={plan.id} className="bg-white dark:bg-slate-800 p-3 rounded-xl flex items-center justify-between border border-slate-100 dark:border-white/5 shadow-xs group">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <div className={`p-2 rounded-lg ${plan.status === 'rejected' ? 'bg-rose-100 text-rose-500' : 'bg-slate-100 text-slate-500'}`}>{plan.status === 'rejected' ? <XCircle size={14}/> : <Edit size={14}/>}</div>
+                                                                <div><div className="text-xs font-extrabold text-slate-900 dark:text-white leading-snug">{plan.title}</div><div className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{new Date(plan.date).toLocaleDateString('th-TH', {weekday:'short', day:'numeric', month:'short'})}</div></div>
                                                             </div>
-                                                            <div className="flex gap-1">
-                                                                <button onClick={() => handleSendForApproval(plan.id)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"><Send size={16}/></button>
-                                                                <button onClick={() => handleEditPlan(plan)} className="p-2 text-slate-400 hover:text-cyan-500 rounded-lg transition-colors"><Edit size={16}/></button>
+                                                            <div className="flex gap-1.5">
+                                                                <button onClick={() => handleSendForApproval(plan.id)} className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"><Send size={14}/></button>
+                                                                <button onClick={() => handleEditPlan(plan)} className="p-1.5 text-slate-400 hover:text-orange-500 rounded-lg transition-colors"><Edit size={14}/></button>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -592,15 +591,15 @@ const WorkPlanner: React.FC<Props> = ({ user, userProfile }) => {
                                     )}
 
                                     {plans.filter(p => p.status === 'pending' || p.status === 'approved').length === 0 && userDrafts.length === 0 ? (
-                                        <div className="text-center py-20 bg-slate-50 dark:bg-slate-900/20 rounded-[40px] border-2 border-dashed border-slate-200 dark:border-white/10 opacity-60"><ShieldCheck className="mx-auto text-indigo-500/50 mb-4" size={48} /><h3 className="text-slate-900 dark:text-white font-black uppercase tracking-widest">ยังไม่มีข้อมูล</h3><p className="text-slate-400 text-sm mt-1 font-medium">เริ่มเขียนแผนงานที่แถบ "ปฏิทิน"</p></div>
+                                        <div className="text-center py-16 bg-slate-50 dark:bg-slate-900/20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 opacity-70"><ShieldCheck className="mx-auto text-orange-500/50 mb-3" size={36} /><h3 className="text-slate-900 dark:text-white text-xs font-black uppercase tracking-wider">ยังไม่มีข้อมูล</h3><p className="text-slate-400 text-xs mt-0.5 font-medium">เริ่มเขียนแผนงานที่แถบ "ปฏิทิน"</p></div>
                                     ) : (
-                                        <div className="space-y-4">
-                                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-2 pt-4">ประวัติการส่งแผนงาน</h3>
+                                        <div className="space-y-3">
+                                            <h3 className="text-[10px] font-bold text-slate-450 uppercase tracking-widest px-1 pt-2">ประวัติการส่งแผนงาน</h3>
                                             {plans.filter(p => p.status === 'pending' || p.status === 'approved').map((plan) => {
                                                 const statusUI = getStatusUI(plan.status);
                                                 return (
-                                                    <GlassCard key={plan.id} className={`p-6 border-slate-200 dark:border-white/10 ${plan.status === 'approved' ? 'border-emerald-500/30' : 'border-amber-500/30'}`}>
-                                                        <div className="flex justify-between items-start mb-3"><div className="flex items-center gap-3"><div className={`p-2.5 rounded-2xl ${plan.status === 'approved' ? 'bg-emerald-100 text-emerald-600 shadow-sm' : 'bg-amber-100 text-amber-600 shadow-sm'}`}>{plan.status === 'approved' ? <CheckCircle size={18} /> : <Clock size={18} />}</div><div><h4 className="font-black text-slate-900 dark:text-white leading-tight">{plan.title}</h4><div className="flex items-center gap-2 mt-1.5"><span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(plan.date).toLocaleDateString('th-TH')}</span><span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${statusUI.color}`}>{statusUI.label}</span></div></div></div></div>
+                                                    <GlassCard key={plan.id} className={`p-3.5 border-slate-200 dark:border-white/10 ${plan.status === 'approved' ? 'border-emerald-500/20' : 'border-amber-500/20'}`}>
+                                                        <div className="flex justify-between items-start mb-2"><div className="flex items-center gap-2.5"><div className={`p-2 rounded-xl ${plan.status === 'approved' ? 'bg-emerald-100 text-emerald-600 shadow-xs' : 'bg-amber-100 text-amber-600 shadow-xs'}`}>{plan.status === 'approved' ? <CheckCircle size={14} /> : <Clock size={14} />}</div><div><h4 className="font-extrabold text-slate-900 dark:text-white text-xs leading-snug">{plan.title}</h4><div className="flex items-center gap-1.5 mt-0.5"><span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-widest">{new Date(plan.date).toLocaleDateString('th-TH')}</span><span className={`px-1.5 py-0.5 rounded text-[7.5px] font-black uppercase ${statusUI.color}`}>{statusUI.label}</span></div></div></div></div>
                                                         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed italic font-medium">"{plan.content}"</p>
                                                     </GlassCard>
                                                 );

@@ -27,8 +27,8 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     let variantStyles = "";
     switch(variant) {
         case 'highlight':
-            // Cyan tint
-            variantStyles = "bg-white/90 dark:bg-slate-900/80 border-cyan-100 dark:border-cyan-500/30 shadow-[0_8px_30px_rgb(6,182,212,0.15)]";
+            // Orange tint
+            variantStyles = "bg-white/90 dark:bg-slate-900/80 border-orange-100 dark:border-orange-500/30 shadow-[0_8px_30px_rgba(249,115,22,0.15)]";
             break;
         case 'danger':
             // Rose tint

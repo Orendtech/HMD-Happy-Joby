@@ -121,8 +121,8 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
 
     return (
         <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-black text-slate-900 dark:text-white font-sans relative overflow-hidden transition-colors duration-500">
-             <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-cyan-400/10 dark:bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen animate-pulse duration-[10000ms]"></div>
-             <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-indigo-400/10 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
+             <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-orange-400/10 dark:bg-orange-500/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen animate-pulse duration-[10000ms]"></div>
+             <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-amber-400/10 dark:bg-amber-500/10 rounded-full blur-[100px] pointer-events-none mix-blend-screen"></div>
 
             {!isHomePage && (
                 <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-6 flex justify-between items-center z-20 sticky top-0 bg-[#F5F5F7]/80 dark:bg-black/80 backdrop-blur-xl border-b border-transparent transition-all">
@@ -132,7 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                                     {userProfile?.photoBase64 ? (
                                         <img src={userProfile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+                                        <div className="w-full h-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center">
                                             <span className="text-lg font-bold text-white uppercase tracking-wider">
                                                 {userProfile?.name ? userProfile.name.charAt(0) : user.email?.charAt(0)}
                                             </span>
@@ -167,7 +167,7 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                 </header>
             )}
 
-            <main className={`flex-1 overflow-y-auto pb-24 z-0 scroll-smooth pt-4 px-4`}>
+            <main className="flex-1 overflow-y-auto pb-16 z-0 scroll-smooth pt-2 bg-slate-50/40 dark:bg-black/40">
                 <Outlet />
             </main>
 
@@ -179,17 +179,19 @@ const Layout: React.FC<LayoutProps> = ({ user, userProfile }) => {
                             <button
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
-                                className={`relative flex flex-col items-center justify-center w-full h-full group ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400 dark:text-slate-500'}`}
+                                className={`relative flex flex-col items-center justify-center w-full h-full group transition-colors ${isActive ? 'text-orange-600 dark:text-orange-400 font-bold' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}
                             >
-                                <div className={`relative transform transition-all duration-300 ${isActive ? '-translate-y-1' : ''}`}>
-                                    {item.icon}
+                                <div className="relative flex flex-col items-center">
+                                    <div className="p-1 rounded-xl transition-all">
+                                        {React.cloneElement(item.icon, { size: 20 })}
+                                    </div>
                                     {item.badge !== undefined && item.badge > 0 && (
-                                        <span className="absolute -top-1 -right-2 bg-rose-500 text-white text-[9px] font-black min-w-[16px] h-4 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-md px-1 animate-pulse">
+                                        <span className="absolute top-0 right-0 transform translate-x-1.5 -translate-y-1 bg-rose-500 text-white text-[8px] font-black min-w-[14px] h-3.5 rounded-full flex items-center justify-center border border-white dark:border-slate-900 shadow px-0.5">
                                             {item.badge}
                                         </span>
                                     )}
                                 </div>
-                                <span className={`text-[10px] font-medium mt-1 transition-all duration-300 ${isActive ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 hidden'}`}>
+                                <span className="text-[9px] font-medium tracking-tight mt-0.5">
                                     {item.label}
                                 </span>
                             </button>

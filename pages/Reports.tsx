@@ -42,6 +42,7 @@ const Reports: React.FC<Props> = ({ user }) => {
     const [teamMembers, setTeamMembers] = useState<AdminUser[]>([]);
     const [targetUserId, setTargetUserId] = useState<string>(user.uid);
     const [targetUserName, setTargetUserName] = useState<string>('ประสิทธิภาพของฉัน');
+    const [targetUserProfile, setTargetUserProfile] = useState<UserProfile | null>(null);
 
     // Filter State
     const [filterStartDate, setFilterStartDate] = useState('');
@@ -120,8 +121,10 @@ const Reports: React.FC<Props> = ({ user }) => {
     };
 
     const fetchUserData = async (uid: string) => {
+        const profile = await getUserProfile(uid);
         const historyData = await getUserHistory(uid);
         const planData = await getWorkPlans(uid);
+        setTargetUserProfile(profile);
         setHistory(historyData);
         setPlans(planData);
     };
@@ -263,42 +266,62 @@ const Reports: React.FC<Props> = ({ user }) => {
             ]);
             filename = `pipeline_${targetUserName}_${filterStartDate}.csv`;
         } else {
-            headers = ["วันที่", "พนักงาน", "แผนงาน: หัวข้อ", "แผนงาน: รายละเอียด", "แผนงาน: จุดนัดพบ/เป้าหมาย", "รายงาน: สถานที่เช็คอิน", "รายงาน: เวลาเช็คอิน", "รายงาน: เวลาเช็คเอาท์", "รายงาน: ผู้ติดต่อ", "รายงาน: แผนก", "รายงาน: สรุปกิจกรรม"];
+            // New format for "บันทึกรายวัน" matching the provided screenshot
+            rows.push([`Area:`, `"${targetUserProfile?.area || '-'}"`]);
+            rows.push([`Name:`, `"${targetUserProfile?.name || targetUserName}"`]);
+            rows.push([]); // Empty row for spacing
+
+            // Combined headers structure
+            headers = [
+                "วันที่/เดือน/ปี", 
+                "ชื่อ โรงพยาบาล", 
+                "ชื่อลูกค้าและการติดต่อ", 
+                "ชื่อแผนก", 
+                "Product (New)", 
+                "Product (Follow-up)", 
+                "Issue (รายละเอียด)", 
+                "Remark (หมายเหตุ)"
+            ];
             
             journalHistory.forEach(dayReport => {
                 const dateStr = dayReport.id;
-                const dayPlan = plans.find(p => p.date === dateStr);
-                const planTitle = dayPlan?.title || '-';
-                const planContent = dayPlan?.content || '-';
-                const planItinerary = dayPlan?.itinerary ? dayPlan.itinerary.map(it => `${it.location} (${it.objective})`).join(' | ') : '-';
-
+                // Add day plan notes if no visits? 
+                // In the screenshot format, it's strictly hospital visits
+                
                 if (dayReport.report?.visits && dayReport.report.visits.length > 0) {
                     dayReport.report.visits.forEach((v: any) => {
-                        const checkInStr = formatTime(v.checkInTime);
-                        const checkOutStr = formatTime(dayReport.checkOut);
                         if (v.interactions && v.interactions.length > 0) {
                             v.interactions.forEach((i: any) => {
+                                const prodNew = i.pipeline?.isNew ? i.pipeline.product : "";
+                                const prodFollow = !i.pipeline?.isNew && i.pipeline?.product ? i.pipeline.product : "";
+                                
                                 rows.push([
-                                    dateStr, `"${targetUserName}"`, `"${planTitle.replace(/"/g, '""')}"`, `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
-                                    `"${v.location}"`, checkInStr, checkOutStr,
-                                    `"${i.customerName}"`, `"${i.department || '-'}"`, `"${(i.summary || '').replace(/"/g, '""')}"`
+                                    dateStr, 
+                                    `"${v.location}"`, 
+                                    `"${i.customerName}"`, 
+                                    `"${i.department || '-'}"`, 
+                                    `"${prodNew}"`,
+                                    `"${prodFollow}"`,
+                                    `"${(i.summary || '').replace(/"/g, '""')}"`,
+                                    `"-"` // Remark column
                                 ]);
                             });
                         } else {
                             rows.push([
-                                dateStr, `"${targetUserName}"`, `"${planTitle.replace(/"/g, '""')}"`, `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
-                                `"${v.location}"`, checkInStr, checkOutStr, '-', '-', '"(ไม่มีบันทึกกิจกรรม)"'
+                                dateStr, 
+                                `"${v.location}"`, 
+                                `"-"`, 
+                                `"-"`, 
+                                `"-"`,
+                                `"-"`,
+                                `"(ไม่มีบันทึกกิจกรรม)"`,
+                                `"-"`
                             ]);
                         }
                     });
-                } else if (dayPlan) {
-                    rows.push([
-                        dateStr, `"${targetUserName}"`, `"${planTitle.replace(/"/g, '""')}"`, `"${planContent.replace(/"/g, '""')}"`, `"${planItinerary.replace(/"/g, '""')}"`,
-                        '-', '-', '-', '-', '-', '"(ยังไม่มีข้อมูลรายงาน)"'
-                    ]);
                 }
             });
-            filename = `performance_${targetUserName}_${filterStartDate}_to_${filterEndDate}.csv`;
+            filename = `performance_form_${targetUserName}_${filterStartDate}_to_${filterEndDate}.csv`;
         }
 
         if (rows.length === 0) { alert("ไม่พบข้อมูลที่จะส่งออก"); return; }

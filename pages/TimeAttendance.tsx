@@ -47,7 +47,7 @@ const getRankTitle = (level: number) => {
     if (level >= 9) return { title: 'LEGEND', color: 'text-amber-400', themeColor: '#f59e0b' }; 
     if (level >= 7) return { title: 'ELITE', color: 'text-rose-400', themeColor: '#e11d48' };  
     if (level >= 5) return { title: 'RANGER', color: 'text-purple-400', themeColor: '#4f46e5' }; 
-    if (level >= 3) return { title: 'SCOUT', color: 'text-cyan-400', themeColor: '#06b6d4' };  
+    if (level >= 3) return { title: 'SCOUT', color: 'text-orange-400', themeColor: '#f97316' };  
     return { title: 'ROOKIE', color: 'text-slate-400', themeColor: '' }; 
 };
 
@@ -400,15 +400,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     <div className="space-y-2">
                         <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Quest Complete!</h2>
                         <p className="text-amber-600 dark:text-amber-400 font-black text-xs uppercase tracking-[0.3em]">ภารกิจรายเดือนสำเร็จแล้ว</p>
-                    </div>
-
-                    <div className="bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-8 backdrop-blur-xl shadow-xl dark:shadow-none">
-                        <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase mb-2">You Unlocked</p>
-                        <div className="flex items-center justify-center gap-3">
-                            <Coins className="text-amber-500" size={32} />
-                            <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tight">฿500</span>
-                        </div>
-                        <p className="text-slate-600 dark:text-slate-500 text-[10px] font-medium mt-4 leading-relaxed">
+                          <p className="text-slate-600 dark:text-slate-500 text-[10px] font-medium mt-4 leading-relaxed">
                             ระบบได้ทำการบันทึกรางวัลของคุณเข้าสู่พอร์ตสะสมเรียบร้อยแล้ว ขอบคุณสำหรับความตั้งใจตลอดเดือนที่ผ่านมา
                         </p>
                     </div>
@@ -434,111 +426,165 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     if (showQuestPage) {
         return (
             <div className="h-[100dvh] flex flex-col bg-[#F5F5F7] dark:bg-black text-slate-900 dark:text-white animate-enter overflow-hidden transition-colors duration-500">
-                <header className="px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4 flex items-center gap-4 z-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 shrink-0">
-                    <button onClick={() => setShowQuestPage(false)} className="p-3 bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 rounded-2xl text-slate-700 dark:text-white transition-all active:scale-95"><ChevronLeft size={24} /></button>
-                    <div><h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">Monthly Quest</h2><p className="text-[10px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">สะสมรางวัลภารกิจรายเดือน</p></div>
+                {/* Ultra-Compact Premium Header */}
+                <header className="px-4 py-3 flex items-center gap-3 z-20 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border-b border-slate-100 dark:border-white/5 shrink-0">
+                    <button 
+                        onClick={() => setShowQuestPage(false)} 
+                        className="p-2.5 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 rounded-xl text-slate-700 dark:text-white transition-all active:scale-95"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div>
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Monthly Quest</h2>
+                        <p className="text-[9px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-wider">สะสมรางวัลภารกิจรายเดือน</p>
+                    </div>
                 </header>
-                <main className="flex-1 overflow-y-auto pb-10 px-4 pt-6 space-y-6 relative no-scrollbar">
-                    <div className="absolute top-20 right-0 w-64 h-64 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+
+                <main className="flex-1 overflow-y-auto pb-8 px-3 pt-4 space-y-4 relative no-scrollbar">
+                    {/* Glowing Accent Blur in Background */}
+                    <div className="absolute top-10 right-0 w-48 h-48 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-[80px] pointer-events-none"></div>
                     
-                    <div className="relative z-10 space-y-6">
-                        <div className="flex justify-between items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[32px] p-6 shadow-xl relative overflow-hidden">
-                             <Coins className="absolute -right-6 -bottom-6 text-amber-500/10 w-40 h-40 rotate-12" />
-                             <div className="flex items-center gap-4 relative z-10">
-                                 <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-2xl animate-pulse"><Trophy size={36} className="text-slate-900 fill-slate-900" /></div>
-                                 <div><h3 className="text-slate-900 dark:text-white font-black text-3xl tracking-tight leading-none">฿500</h3><p className="text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cash Rewards</p></div>
-                             </div>
+                    <div className="relative z-10 space-y-4">
+                        {/* UNIFIED PREMIUM MEMBERSHIP-STYLE QUEST CARD */}
+                        <div className="relative rounded-2xl overflow-hidden shadow-lg border border-amber-500/20 bg-slate-950 text-white p-4">
+                            {/* Card Background Pattern */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-orange-950/40 pointer-events-none"></div>
+                            <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none"></div>
+                            <Coins className="absolute -right-10 -bottom-10 text-amber-500/5 w-36 h-36 rotate-12 pointer-events-none" />
+
+                            <div className="relative z-10 space-y-3.5">
+                                {/* Top: Trophy and Reward text */}
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-300 via-amber-500 to-orange-600 p-[1.5px] shadow-lg">
+                                            <div className="w-full h-full bg-slate-900 rounded-[11px] flex items-center justify-center">
+                                                <Trophy size={20} className="text-amber-400 fill-amber-400" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span className="text-[8px] font-black tracking-widest text-amber-400 uppercase block leading-none">GRAND QUEST PRIZE</span>
+                                            <h3 className="text-white font-black text-2xl tracking-tight leading-normal">฿500 <span className="text-xs font-bold text-slate-400 tracking-normal">CASH REWARD</span></h3>
+                                        </div>
+                                    </div>
+
+                                    {/* Star Stamp badge */}
+                                    <div className="flex items-center gap-1 px-2.5 py-1 bg-amber-500/20 rounded-lg border border-amber-500/30">
+                                        <Star size={11} className="text-amber-400 fill-amber-400 animate-pulse" />
+                                        <span className="text-[10px] font-mono font-black text-amber-400">{Math.round(monthlyQuestStats.progress)}%</span>
+                                    </div>
+                                </div>
+
+                                {/* Progress Slider Bar - extremely integrated and sleek */}
+                                <div className="space-y-1.5 pt-1.5 border-t border-white/5">
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                                        <span>PROGRESS ROADMAP</span>
+                                        <span className="font-mono text-white">
+                                            {monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} <span className="text-slate-400 text-[8px]">DAYS COMPLETE</span>
+                                        </span>
+                                    </div>
+                                    <div className="h-2.5 w-full bg-black/40 rounded-full overflow-hidden p-[1px] border border-white/5">
+                                        <div 
+                                            style={{ width: `${monthlyQuestStats.progress}%` }} 
+                                            className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative"
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="bg-white/70 dark:bg-white/5 p-6 rounded-[36px] border border-slate-200 dark:border-white/5 shadow-inner space-y-4 backdrop-blur-md">
-                            <div className="flex justify-between items-end">
-                                <div className="flex flex-col"><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress Tracker</span><span className="text-lg font-black text-slate-900 dark:text-white">{monthlyQuestStats.completedDays}/{monthlyQuestStats.targetDays} <span className="text-slate-500 font-bold text-sm">DAYS</span></span></div>
-                                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 dark:bg-amber-500/20 rounded-full border border-amber-500/20 dark:border-amber-500/30"><Star size={12} className="text-amber-600 dark:text-amber-500 fill-amber-600 dark:fill-amber-500" /><span className="text-xs font-black text-amber-600 dark:text-amber-500">{Math.round(monthlyQuestStats.progress)}%</span></div>
-                            </div>
-                            <div className="h-6 w-full bg-slate-200 dark:bg-black/40 rounded-full overflow-hidden border border-slate-300 dark:border-white/10 p-1">
-                                <div style={{ width: `${monthlyQuestStats.progress}%` }} className="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-300 rounded-full transition-all duration-1000 relative shadow-[0_0_10px_rgba(245,158,11,0.5)]"></div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2 px-2">
-                                <HelpCircle size={16} className="text-amber-500" />
-                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">เงื่อนไขการสะสมวันทำงาน</h3>
+                        {/* SLICK VERTICAL TIMELINE CHECKLIST */}
+                        <div className="space-y-2.5">
+                            <div className="flex items-center gap-1.5 px-1.5">
+                                <HelpCircle size={14} className="text-amber-500" />
+                                <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">เงื่อนไขการสะสมวันทำงาน</h3>
                             </div>
                             
-                            <div className="grid grid-cols-1 gap-3">
-                                <div className="bg-white/50 dark:bg-white/5 p-5 rounded-[28px] border border-slate-200 dark:border-white/5 flex gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 flex items-center justify-center shrink-0 border border-cyan-500/20">
-                                        <MapPin className="text-cyan-500" size={24} />
+                            <div className="grid grid-cols-1 gap-2">
+                                {/* Step 1 */}
+                                <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-white/5 flex gap-3 items-center">
+                                    <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center shrink-0 border border-cyan-500/20 text-cyan-500">
+                                        <MapPin size={16} />
                                     </div>
-                                    <div>
-                                        <h4 className="text-sm font-black text-slate-900 dark:text-white">1. เช็คอินเข้าสถานที่</h4>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">เริ่มการทำงานโดยการเช็คอินที่สถานพยาบาลหรือสถานที่นัดพบในแต่ละวัน</p>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white/50 dark:bg-white/5 p-5 rounded-[28px] border border-slate-200 dark:border-white/5 flex gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20">
-                                        <ClipboardList className="text-purple-500" size={24} />
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-black text-slate-900 dark:text-white">2. บันทึกรายงานกิจกรรม</h4>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">ต้องระบุรายละเอียดการเข้าพบอย่างน้อย 1 รายการ เพื่อยืนยันว่าได้ปฏิบัติงานจริง</p>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1 leading-none">
+                                            <span className="text-[10px] text-cyan-500 font-mono">01.</span> เช็คอินเข้าสถานที่ทำงาน
+                                        </h4>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate">เช็คอินที่สถานพยาบาลหรือสถานที่นัดพบในแต่ละวัน</p>
                                     </div>
                                 </div>
 
-                                <div className="bg-white/50 dark:bg-white/5 p-5 rounded-[28px] border border-slate-200 dark:border-white/5 flex gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                                        <LogOut className="text-emerald-500" size={24} />
+                                {/* Step 2 */}
+                                <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-white/5 flex gap-3 items-center">
+                                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20 text-purple-500">
+                                        <ClipboardList size={16} />
                                     </div>
-                                    <div>
-                                        <h4 className="text-sm font-black text-slate-900 dark:text-white">3. เช็คเอาท์จบวัน</h4>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">กดเช็คเอาท์เพื่อสรุปรายงานทั้งหมด ระบบจะนับ 1 วันที่มีคุณภาพให้ทันที</p>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1 leading-none">
+                                            <span className="text-[10px] text-purple-500 font-mono">02.</span> บันทึกรายงานกิจกรรม
+                                        </h4>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate">บันทึกประเด็นที่พูดคุยหรือกิจกรรมที่มีคุณภาพ 1 รายการ</p>
+                                    </div>
+                                </div>
+
+                                {/* Step 3 */}
+                                <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-100 dark:border-white/5 flex gap-3 items-center">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20 text-emerald-500">
+                                        <LogOut size={16} />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1 leading-none">
+                                            <span className="text-[10px] text-emerald-500 font-mono">03.</span> เช็คเอาท์ส่งสรุปจบวัน
+                                        </h4>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 leading-tight truncate">กดบันทึกรายงานเลิกงานเพื่อส่งวันคุณภาพเข้าระบบ</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="space-y-4 pt-2">
-                             <div className="flex items-center gap-2 px-2">
-                                <Zap size={16} className="text-cyan-500" />
-                                <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">คะแนน XP และโบนัส</h3>
+                        {/* HIGH-END XP POINT LIST */}
+                        <div className="space-y-2">
+                             <div className="flex items-center gap-1.5 px-1.5">
+                                <Zap size={14} className="text-cyan-500" />
+                                <h3 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest leading-none">คะแนนสะสม XP และโบนัสพิเศษ</h3>
                             </div>
-                            <GlassCard className="p-0 border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-black/20">
-                                <div className="divide-y divide-slate-200 dark:divide-white/5">
-                                    <div className="p-4 flex justify-between items-center">
-                                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เช็คอินก่อน 09:00 น. (Early Bonus)</span>
-                                        <span className="text-xs font-black text-cyan-500">+50 XP</span>
+                            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-white/5 overflow-hidden">
+                                <div className="divide-y divide-slate-100 dark:divide-white/5 text-[11px] font-bold">
+                                    <div className="px-3.5 py-2 flex justify-between items-center bg-slate-50/50 dark:bg-white/5">
+                                        <span className="text-slate-500 dark:text-slate-300">เช็คอินเช้า (ก่อน 09:00 น.) Early Bonus</span>
+                                        <span className="font-extrabold text-cyan-500 font-mono">+50 XP</span>
                                     </div>
-                                    <div className="p-4 flex justify-between items-center">
-                                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">เช็คอินเข้างานปกติ</span>
-                                        <span className="text-xs font-black text-slate-400">+15 XP</span>
+                                    <div className="px-3.5 py-2 flex justify-between items-center">
+                                        <span className="text-slate-400 dark:text-slate-400">เช็คอินเข้างานปกติช่วงวัน</span>
+                                        <span className="font-extrabold text-slate-600 dark:text-slate-300 font-mono">+15 XP</span>
                                     </div>
-                                    <div className="p-4 flex justify-between items-center">
-                                        <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">การเช็คอินจุดอื่นๆ ระหว่างวัน</span>
-                                        <span className="text-xs font-black text-slate-400">+5 XP</span>
-                                    </div>
-                                    <div className="p-4 flex justify-between items-center bg-orange-500/5">
+                                    <div className="px-3.5 py-2 flex justify-between items-center bg-orange-500/[0.02]">
                                         <div className="flex flex-col">
-                                            <span className="text-[11px] font-black text-orange-600 dark:text-orange-400">Streak Bonus (ความต่อเนื่อง)</span>
-                                            <span className="text-[9px] text-orange-500/70 font-medium">เพิ่มขึ้นตามจำนวนวันที่ทำติดต่อกัน</span>
+                                            <span className="text-orange-600 dark:text-orange-400 font-black">Streak Bonus (สะสมเข้างานต่อเนื่อง)</span>
+                                            <span className="text-[8px] text-slate-400 font-medium">เพิ่มทวีคูณตามคอมโบความต่อเนื่องทำงาน</span>
                                         </div>
-                                        <span className="text-xs font-black text-orange-500">Max +50 XP</span>
+                                        <span className="font-extrabold text-orange-500 font-mono">สูงสุด +50</span>
                                     </div>
                                 </div>
-                            </GlassCard>
+                            </div>
                         </div>
 
-                        <div className="pt-6">
+                        {/* BOTTOM ACTION - CLAIM BUTTON */}
+                        <div className="pt-2">
                             <button 
                                 onClick={handleClaimReward}
                                 disabled={monthlyQuestStats.progress < 100 || monthlyQuestStats.isClaimed || isSavingReport}
-                                className={`w-full py-5 rounded-[28px] font-black uppercase tracking-widest text-sm transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3 ${monthlyQuestStats.isClaimed ? 'bg-emerald-500 text-white' : monthlyQuestStats.progress >= 100 ? 'bg-gradient-to-r from-amber-400 to-orange-600 text-white shadow-orange-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-80'}`}
+                                className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-xs transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                                    monthlyQuestStats.isClaimed 
+                                        ? 'bg-emerald-500 text-white shadow-emerald-500/10' 
+                                        : monthlyQuestStats.progress >= 100 
+                                            ? 'bg-gradient-to-r from-amber-400 to-orange-600 text-white shadow-orange-500/20 hover:scale-[1.01]' 
+                                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-75'
+                                }`}
                             >
-                                {monthlyQuestStats.isClaimed ? <CheckCircle2 size={20} /> : <Gift size={20} />}
-                                {monthlyQuestStats.isClaimed ? 'CLAIMED' : monthlyQuestStats.progress >= 100 ? 'CLAIM ฿500 NOW' : `สะสมอีก ${monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วัน เพื่อรับรางวัล`}
+                                {monthlyQuestStats.isClaimed ? <CheckCircle2 size={16} /> : <Gift size={16} />}
+                                {monthlyQuestStats.isClaimed ? 'CLAIMED' : monthlyQuestStats.progress >= 100 ? 'CLAIM ฿500 NOW' : `สะสมอีก ${monthlyQuestStats.targetDays - monthlyQuestStats.completedDays} วันเพื่อรับรางวัล`}
                             </button>
-                            <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-widest">ทำภารกิจให้ครบเงื่อนไขทุกวันเพื่อรักษาสิทธิ์</p>
+                            <p className="text-center text-[8.5px] text-slate-400 font-bold mt-2.5 uppercase tracking-widest">ทำภารกิจให้ครบหลักเกณฑ์ทุกวันเพื่อรักษาสิทธิ์ของท่าน</p>
                         </div>
                     </div>
                 </main>
@@ -593,12 +639,12 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                             </div>
                                         )}
                                         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-2xl p-5 shadow-sm space-y-4">
-                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-2"><ClipboardList size={16} className="text-cyan-500"/> เพิ่มบันทึกกิจกรรม / การเข้าพบ</h3>
+                                            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-2"><ClipboardList size={16} className="text-orange-500"/> เพิ่มบันทึกกิจกรรม / การเข้าพบ</h3>
                                             <div className="space-y-1.5 relative">
                                                 <label className="text-[10px] font-bold text-slate-500 uppercase">1. เลือกลูกค้า / ผู้ติดต่อ</label>
-                                                <div className="relative"><Search className="absolute left-3 top-3 text-slate-400" size={14} /><input type="text" value={contactSearch} onChange={(e) => { setContactSearch(e.target.value); setIsContactDropdownOpen(true); setSelectedCustomer(null); }} placeholder="ค้นหาชื่อผู้ติดต่อ..." className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 text-sm" />{isContactDropdownOpen && (<div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-40 overflow-y-auto ring-1 ring-black/5">{ (profile?.customers || []).filter(c => c.hospital === ci.location || c.hospital === 'All').filter(c => !contactSearch || c.name.toLowerCase().includes(contactSearch.toLowerCase())).map((c, i) => (<div key={i} onClick={() => handleSelectCustomer(c.name, c.department)} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer text-sm border-b border-slate-100 dark:border-white/5 last:border-0 flex justify-between"><span className="text-slate-900 dark:text-white">{c.name}</span><span className="text-xs text-slate-500">{c.department}</span></div>))}{contactSearch && <div onClick={() => setShowAddContactView(true)} className="px-4 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold"><Plus size={14} /> สร้างรายชื่อใหม่ "{contactSearch}"</div>}</div>)}</div>{selectedCustomer && <div className="text-xs text-emerald-500 flex items-center gap-1"><Check size={12}/> เลือกแล้ว: <b>{selectedCustomer.name}</b></div>}
+                                                <div className="relative"><Search className="absolute left-3 top-3 text-slate-400" size={14} /><input type="text" value={contactSearch} onChange={(e) => { setContactSearch(e.target.value); setIsContactDropdownOpen(true); setSelectedCustomer(null); }} placeholder="ค้นหาชื่อผู้ติดต่อ..." className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-slate-900 dark:text-white outline-none focus:border-orange-500 text-sm" />{isContactDropdownOpen && (<div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-40 overflow-y-auto ring-1 ring-black/5">{ (profile?.customers || []).filter(c => c.hospital === ci.location || c.hospital === 'All').filter(c => !contactSearch || c.name.toLowerCase().includes(contactSearch.toLowerCase())).map((c, i) => (<div key={i} onClick={() => handleSelectCustomer(c.name, c.department)} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer text-sm border-b border-slate-100 dark:border-white/5 last:border-0 flex justify-between"><span className="text-slate-900 dark:text-white">{c.name}</span><span className="text-xs text-slate-500">{c.department}</span></div>))}{contactSearch && <div onClick={() => setShowAddContactView(true)} className="px-4 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold"><Plus size={14} /> สร้างรายชื่อใหม่ "{contactSearch}"</div>}</div>)}</div>{selectedCustomer && <div className="text-xs text-emerald-500 flex items-center gap-1"><Check size={12}/> เลือกแล้ว: <b>{selectedCustomer.name}</b></div>}
                                             </div>
-                                            <div className="space-y-1.5"><label className="text-[10px] font-bold text-slate-500 uppercase">2. สรุปรายละเอียดการสนทนา</label><textarea value={currentSummary} onChange={(e) => setCurrentSummary(e.target.value)} placeholder="สรุปหัวข้อที่ได้พูดคุยหรือความคืบหน้า..." rows={3} className="w-full bg-slate-50 dark:bg-black/30 border-2 border-slate-100 dark:border-white/5 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-cyan-500 focus:bg-white dark:focus:bg-slate-800 text-sm resize-none shadow-inner" /></div>
+                                            <div className="space-y-1.5"><label className="text-[10px] font-bold text-slate-500 uppercase">2. สรุปรายละเอียดการสนทนา</label><textarea value={currentSummary} onChange={(e) => setCurrentSummary(e.target.value)} placeholder="สรุปหัวข้อที่ได้พูดคุยหรือความคืบหน้า..." rows={3} className="w-full bg-slate-50 dark:bg-black/30 border-2 border-slate-100 dark:border-white/5 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-orange-500 focus:bg-white dark:focus:bg-slate-800 text-sm resize-none shadow-inner" /></div>
                                             <div className="space-y-2"><div className="flex items-center justify-between"><label className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1"><TrendingUp size={12}/> 3. เพิ่มโอกาสการขาย (โอกาสเดิมหรือดีลใหม่)?</label><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={hasOpp} onChange={(e) => setHasOpp(e.target.checked)} className="sr-only peer"/><div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div></label></div>{hasOpp && (<div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-500/20 space-y-2 animate-enter"><div className="flex p-1 bg-white/50 dark:bg-black/20 rounded-lg mb-2"><button onClick={() => { setDealMode('new'); setPipelineProduct(''); setPipelineValue(''); }} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'new' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500'}`}>ดีลใหม่</button><button onClick={() => setDealMode('update')} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'update' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500'}`}>อัปเดตดีลเดิม</button></div>{dealMode === 'update' && (<select value={selectedExistingDealId} onChange={(e) => handleExistingDealSelect(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-amber-200 dark:border-amber-500/30 text-xs outline-none focus:border-amber-500 text-slate-700 dark:text-white appearance-none"><option value="">-- เลือกดีลที่ต้องการอัปเดต --</option>{(profile?.activePipeline || []).map(deal => (<option key={deal.id} value={deal.id}>{deal.product} ({stageLabels[deal.stage] || deal.stage})</option>))}</select>)}<div className="grid grid-cols-2 gap-2"><input value={pipelineProduct} onChange={e => setPipelineProduct(e.target.value)} placeholder="ชื่อสินค้า / โปรเจกต์" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/><input type="number" value={pipelineValue} onChange={e => setPipelineValue(e.target.value)} placeholder="มูลค่า (บาท)" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/></div><div className="grid grid-cols-2 gap-2"><select value={pipelineStage} onChange={e => setPipelineStage(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none">{['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'].map(s => <option key={s} value={s}>{stageLabels[s] || s}</option>)}</select><div className="flex items-center gap-2 px-1 text-xs text-slate-500"><span>โอกาส: {pipelineProb}%</span><input type="range" min="0" max="100" step="10" value={pipelineProb} onChange={e => setPipelineProb(parseInt(e.target.value))} className="w-16 accent-indigo-500"/></div></div></div>)}</div>
                                         </div>
                                         <button onClick={() => addInteractionToDraft(idx)} disabled={!selectedCustomer || !currentSummary} className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-bold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50 text-center"><Plus size={16} /> บันทึกกิจกรรมลงร่าง</button>
@@ -608,7 +654,7 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                         );
                     })}
                 </div>
-                <div className="pt-4 pb-12 z-[100] relative">{isFinalCheckout ? (<button onClick={() => confirmCheckOut(true)} disabled={isSavingReport} className={`w-full bg-gradient-to-r ${isCheckedOut ? 'from-amber-500 to-orange-600' : 'from-emerald-500 to-cyan-600'} text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 transform active:scale-95 transition-all text-center`}>{isSavingReport ? <Loader2 className="animate-spin" /> : <><Check size={24} /> {isCheckedOut ? 'อัปเดตข้อมูลรายงาน' : 'ส่งรายงานทั้งหมดและเช็คเอาท์'}</>}</button>) : (<button onClick={(e) => { e.preventDefault(); e.stopPropagation(); confirmCheckOut(false); }} disabled={isSavingReport} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-2xl shadow-xl border-2 border-white/10 flex items-center justify-center gap-2 disabled:opacity-50 transform active:scale-95 transition-all text-center">{isSavingReport ? <Loader2 className="animate-spin" /> : <><Save size={20} /> บันทึกร่างกิจกรรมและกลับ</>}</button>)}</div>
+                <div className="pt-4 pb-12 z-[100] relative">{isFinalCheckout ? (<button onClick={() => confirmCheckOut(true)} disabled={isSavingReport} className={`w-full bg-gradient-to-r ${isCheckedOut ? 'from-amber-500 to-orange-600' : 'from-emerald-500 to-orange-500'} text-white font-bold py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 disabled:opacity-50 transform active:scale-95 transition-all text-center`}>{isSavingReport ? <Loader2 className="animate-spin" /> : <><Check size={24} /> {isCheckedOut ? 'อัปเดตข้อมูลรายงาน' : 'ส่งรายงานทั้งหมดและเช็คเอาท์'}</>}</button>) : (<button onClick={(e) => { e.preventDefault(); e.stopPropagation(); confirmCheckOut(false); }} disabled={isSavingReport} className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-4 rounded-2xl shadow-xl border-2 border-white/10 flex items-center justify-center gap-2 disabled:opacity-50 transform active:scale-95 transition-all text-center">{isSavingReport ? <Loader2 className="animate-spin" /> : <><Save size={20} /> บันทึกร่างกิจกรรมและกลับ</>}</button>)}</div>
             </div>
         );
     }
@@ -616,107 +662,341 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
     const badge = getBadgeInfo(profile?.role);
 
     return (
-        <div className="w-full max-w-2xl mx-auto space-y-4">
-            {/* COMPACT CLEAN HEADER WITH RAINBOW GLOW - Added extra top padding for safe area */}
-            <div className="sticky top-0 z-30 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 px-1">
-                <div className="relative p-[3px] rounded-[32px] overflow-hidden group/header">
-                    {/* Rainbow Border Glow Effect */}
-                    <div className="absolute inset-0 bg-rainbow-gradient opacity-80 group-hover/header:opacity-100 transition-opacity animate-rainbow-spin"></div>
-                    
-                    <GlassCard className="p-4 sm:p-5 border-transparent dark:border-transparent shadow-xl bg-white dark:bg-black overflow-hidden rounded-[30px] relative z-10">
-                        <div className="relative z-10 flex items-center justify-between">
-                            <div className="flex items-center gap-4 flex-1 min-w-0">
-                                {/* Compact Avatar - Rainbow Frame Removed */}
-                                <div className="relative shrink-0">
-                                    <div className="w-14 h-14 rounded-2xl p-[2px] bg-slate-200 dark:bg-slate-800 shadow-lg">
-                                        <div className="w-full h-full bg-slate-900 rounded-[14px] overflow-hidden relative border border-white/10">
-                                            {profile?.photoBase64 ? (
-                                                <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-white bg-slate-800">
-                                                    <Fingerprint size={24} className="text-cyan-400" />
-                                                </div>
-                                            )}
-                                        </div>
+        <div className="w-full max-w-md mx-auto space-y-3.5 px-3 pb-8 pt-2">
+            {/* ELEGANT OFFICIAL EMPLOYEE ID CARD DESIGN - Extremely compact & responsive */}
+            <div className="relative z-30 pt-1 pb-1">
+                {/* Lanyard Strap Extending from top and a metallic badge holder clip */}
+                <div className="flex flex-col items-center justify-center -mb-2 relative z-20">
+                    {/* Woven strap texture going straight up */}
+                    <div className="w-3.5 h-6 bg-gradient-to-r from-orange-600 via-orange-500 to-orange-700 shadow-sm border-x border-orange-800/25 rounded-b-[2px]"></div>
+                    {/* Compact Metallic/Plated steel badge holder bracket */}
+                    <div className="w-7 h-3 bg-gradient-to-b from-slate-200 to-slate-400 dark:from-slate-600 dark:to-slate-800 rounded-sm border border-slate-300 dark:border-slate-500 shadow-md flex items-center justify-center relative">
+                        <div className="w-2.5 h-0.5 bg-slate-900 dark:bg-black rounded-full shadow-inner"></div>
+                        {/* Metallic loop ring hook */}
+                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full border border-slate-300 dark:border-slate-500 bg-slate-300 dark:bg-slate-700"></div>
+                    </div>
+                </div>
+
+                {/* Main Compact Badge Card - Orange & White Premium Edition */}
+                <div className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-slate-100/80 dark:border-white/5 bg-white dark:bg-slate-950 p-3 text-slate-800 dark:text-white">
+                    {/* Dual-Tone Geometric Shapes for Premium Accent */}
+                    <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-orange-500/10 to-transparent rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+                    <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-orange-500 via-[#e25300] to-amber-500 pointer-events-none"></div>
+                    {/* Security Micro Grid Watermark */}
+                    <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] dark:opacity-[0.07] pointer-events-none"></div>
+
+                    {/* Card Top Header - Symmetrical & Clean */}
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-1.5 mb-2 pl-2">
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+                            <span className="text-[8px] font-black tracking-[0.2em] text-slate-400 dark:text-slate-400 uppercase">
+                                HAPPY JOBY
+                            </span>
+                        </div>
+                        <div className="px-1.5 py-0.5 bg-orange-500/10 dark:bg-orange-500/20 rounded border border-orange-500/20">
+                            <span className="text-[7px] font-black tracking-widest text-orange-600 dark:text-orange-400 uppercase">
+                                OFFICIAL ID BADGE
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-2 pl-2 items-center">
+                        {/* Photo Column */}
+                        <div className="col-span-3 flex justify-center">
+                            <div className="relative">
+                                <div className="w-12 h-12 rounded-xl p-[1.5px] bg-gradient-to-tr from-orange-500 to-amber-500 shadow-sm">
+                                    <div className="w-full h-full bg-slate-100 dark:bg-slate-900 rounded-[10px] overflow-hidden relative">
+                                        {profile?.photoBase64 ? (
+                                            <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-100 dark:bg-slate-900">
+                                                <Fingerprint size={18} className="text-orange-400 animate-pulse" />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+                                {/* Active Tracking Security Indicator */}
+                                <span className="absolute -bottom-0.5 -right-0.5 flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                </span>
+                            </div>
+                        </div>
 
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <h1 className="font-black text-slate-900 dark:text-white tracking-tighter truncate text-xl sm:text-2xl">
-                                            {profile?.name || user.email?.split('@')[0]}
-                                        </h1>
-                                        <div className={`flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 bg-slate-100 dark:bg-white/5 rounded-full border dark:border-white/10 shadow-sm ${badge.color}`}>
-                                            {badge.icon} {badge.label}
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Premium Efficiency Bar - Rainbow Gradient Removed */}
-                                    <div className="mt-2 flex items-center gap-3">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-1">LV.{currentLevel}</span>
-                                        </div>
-                                        <div className="flex-1 h-2 bg-slate-100 dark:bg-white/10 rounded-full overflow-hidden border border-slate-200 dark:border-white/5 p-[1px]">
-                                            <div 
-                                                style={{ width: `${(profile?.xp || 0) % 100}%` }} 
-                                                className="h-full rounded-full bg-cyan-500 shadow-[0_0_12px_rgba(6,182,212,0.4)] transition-all duration-1000"
-                                            ></div>
-                                        </div>
-                                    </div>
+                        {/* Employee Bio details */}
+                        <div className="col-span-9 space-y-1 pl-1">
+                            <div className="flex items-center justify-between gap-1">
+                                <div className="min-w-0">
+                                    <span className="text-[6.5px] font-extrabold text-orange-500 dark:text-orange-400 uppercase block leading-none tracking-wider">Employee Name</span>
+                                    <h2 className="font-black text-slate-800 dark:text-white truncate text-xs sm:text-xs leading-tight mt-0.5">
+                                        {profile?.name || user.email?.split('@')[0]}
+                                    </h2>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <span className="text-[6.5px] font-extrabold text-slate-400 uppercase block leading-none tracking-wider">Badge ID</span>
+                                    <span className="font-mono text-[7px] font-black text-slate-500 dark:text-slate-350 block mt-0.5 bg-slate-50 dark:bg-white/5 px-1 py-0.5 rounded border border-slate-100 dark:border-white/5">
+                                        HJ-{(user.uid || 'EMP').substring(0, 4).toUpperCase()}
+                                    </span>
                                 </div>
                             </div>
 
-                            {/* Premium Reward Badge - Minimalist bouncing reward value (Rainbow Hover Removed) */}
-                            <button 
-                                onClick={() => setShowQuestPage(true)}
-                                className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[24px] py-2 px-5 flex items-center justify-center shadow-xl active:scale-95 transition-all shrink-0"
-                            >
-                                <div className="flex items-center justify-center relative z-10">
-                                    <span className="text-lg font-black text-slate-900 dark:text-white leading-none animate-bounce">
-                                        ฿500
-                                    </span>
+                            <div className="grid grid-cols-12 gap-1.5 items-center">
+                                {/* Department / Role */}
+                                <div className="col-span-6 min-w-0">
+                                    <span className="text-[6.5px] font-extrabold text-orange-500 dark:text-orange-400 uppercase block leading-none tracking-wider">Role</span>
+                                    <div className="inline-flex items-center gap-0.5 font-black uppercase text-[7.5px] truncate mt-1 bg-orange-500 text-white dark:bg-orange-500 dark:text-slate-950 rounded px-1.5 py-0.5 shadow-xs">
+                                        {React.cloneElement(badge.icon, { size: 9, className: "text-current" })} {badge.label}
+                                    </div>
                                 </div>
-                            </button>
+
+                                {/* Dynamic XP indicator inside ID Badge */}
+                                <div className="col-span-6 bg-slate-50 dark:bg-white/5 px-1.5 py-1 rounded border border-slate-100 dark:border-white/5 space-y-0.5">
+                                    <div className="flex justify-between items-center text-[6.5px] font-black leading-none">
+                                        <span className="uppercase text-orange-600 dark:text-orange-400 truncate">LV.{currentLevel}</span>
+                                        <span className="uppercase text-slate-450 dark:text-slate-400 truncate text-[5.5px] font-bold">{rank.title}</span>
+                                    </div>
+                                    <div className="h-0.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                                        <div 
+                                            style={{ width: `${(profile?.xp || 0) % 100}%` }} 
+                                            className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_0_4px_rgba(249,115,22,0.4)]"
+                                        ></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </GlassCard>
+                    </div>
+
+                    {/* Integrated barcode and clickable Smart RFID Cash Chip */}
+                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-2 pl-2">
+                        <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-[1px] h-3 opacity-80 dark:opacity-90">
+                                {[1, 2, 1, 3, 1, 2, 1, 1, 2, 1, 3, 1].map((width, idx) => (
+                                    <div 
+                                        key={idx} 
+                                        className="bg-slate-800 dark:bg-slate-200 h-full" 
+                                        style={{ width: `${width}px` }}
+                                    ></div>
+                                ))}
+                            </div>
+                            <span className="font-mono text-[5.5px] text-slate-400 tracking-wider">RFID CARD SECURE</span>
+                        </div>
+
+                        {/* Clickable Smart Gold-NFC Quest Chip (very cool, compact) */}
+                        <button 
+                            onClick={() => setShowQuestPage(true)}
+                            className="relative overflow-hidden bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500 border border-amber-600/30 text-slate-950 font-black rounded-lg py-1 px-2 shadow-sm hover:brightness-105 active:scale-95 transition-all text-[8.5px] flex items-center gap-1 shrink-0"
+                        >
+                            <Coins size={9} className="animate-spin" style={{ animationDuration: '3s' }} />
+                            <span>QUEST ฿500</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="space-y-6 pt-2">
-                {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center fixed inset-0 pointer-events-none z-[200]"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-3xl px-6 py-3 rounded-full shadow-lg border-2 border-white/40"><Zap className="fill-white" size={28} /> +{p.xp}</div></div>))}
+            <div className="space-y-3.5 pt-0.5">
+                {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center fixed inset-0 pointer-events-none z-[200]"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-2xl px-5 py-2.5 rounded-full shadow-lg border border-white/30"><Zap className="fill-white" size={22} /> +{p.xp}</div></div>))}
                 
-                <div className="relative rounded-[32px] border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 shadow-xl overflow-visible" ref={dropdownRef}>
-                    <div className="h-56 w-full relative overflow-hidden rounded-t-[32px]">
+                {/* Premium Integrated Map & Location Search Unit - highly compact */}
+                <div className="relative rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm overflow-hidden" ref={dropdownRef}>
+                    {/* Map Panel - Compacted for mobile with premium fading edge frames */}
+                    <div className="h-32 sm:h-36 w-full relative overflow-hidden">
                         {location ? (
                             <MapDisplay lat={location.lat} lng={location.lng} markers={[{lat: location.lat, lng: location.lng, text: profile?.name || user.email || 'ตำแหน่งของฉัน', photo: profile?.photoBase64}]} className="h-full w-full" zoom={15} />
                         ) : (
-                            <div className="h-full w-full bg-slate-100 dark:bg-slate-950 flex items-center justify-center text-slate-500 text-xs gap-2"><Navigation size={14} className="animate-spin" /> ค้นหาตำแหน่ง GPS...</div>
+                            <div className="h-full w-full bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center text-slate-400 text-xs gap-1 font-sans"><Navigation size={12} className="animate-spin text-orange-500" /> ค้นหาตำแหน่ง GPS...</div>
                         )}
-                        <button onClick={getLocation} className="absolute top-3 right-3 bg-white/30 dark:bg-slate-900/40 backdrop-blur-md p-2 rounded-full text-white shadow-lg border border-white/20 z-20 hover:bg-white/50 transition-all active:scale-90"><Navigation size={18} /></button>
-                        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/60 via-black/30 to-transparent pointer-events-none z-10"></div>
-                        <div className="absolute bottom-4 left-4 z-20 pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"><div className="text-3xl font-black text-white leading-none">{time.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</div><div className="text-[10px] text-white/90 font-black uppercase tracking-wider mt-1">{time.toLocaleDateString('th-TH', {weekday: 'short', day: 'numeric', month: 'short'})}</div></div>
-                        <div className="absolute bottom-4 right-4 z-20"><div className={`px-3 py-1 rounded-full text-[9px] font-black border uppercase tracking-widest shadow-xl backdrop-blur-md ${currentStage === 'working' ? 'bg-emerald-500/80 border-emerald-400 text-white' : currentStage === 'completed' ? 'bg-slate-600/80 border-slate-500 text-white' : 'bg-cyan-500/80 border-cyan-400 text-white'}`}>{currentStage === 'working' ? 'กำลังทำงาน' : currentStage === 'completed' ? 'เลิกงานแล้ว' : 'พร้อมทำงาน'}</div></div>
+                        <button onClick={getLocation} className="absolute top-2 right-2 bg-slate-950/50 hover:bg-slate-950/75 backdrop-blur-md p-1 rounded-full text-white shadow border border-white/10 z-20 transition-all active:scale-90"><Navigation size={13} /></button>
+                        
+                        {/* Soft premium edge-blending vignettes to fade the map borders into the card container background */}
+                        <div className="absolute top-0 left-0 right-0 h-5 bg-gradient-to-b from-white dark:from-slate-900 to-transparent pointer-events-none z-10"></div>
+                        <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white dark:from-slate-900 to-transparent pointer-events-none z-10"></div>
+                        <div className="absolute top-0 bottom-0 left-0 w-4 bg-gradient-to-r from-white dark:from-slate-900 to-transparent pointer-events-none z-10"></div>
+                        <div className="absolute top-0 bottom-0 right-0 w-4 bg-gradient-to-l from-white dark:from-slate-900 to-transparent pointer-events-none z-10"></div>
+                        
+                        {/* Compact HUD Display on Map */}
+                        <div className="absolute bottom-2 left-2 z-20 pointer-events-none text-slate-700 dark:text-white drop-shadow-sm">
+                            <span className="bg-white/70 dark:bg-black/45 backdrop-blur-md px-2 py-0.5 rounded text-[10.5px] font-mono font-bold border border-slate-200/50 dark:border-white/5 inline-flex items-center gap-1.5">
+                                <span>{time.toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</span>
+                                <span className="opacity-60">|</span>
+                                <span className="text-[8px] uppercase tracking-wider">{time.toLocaleDateString('th-TH', {weekday: 'short', day: 'numeric', month: 'short'})}</span>
+                            </span>
+                        </div>
+                        <div className="absolute bottom-2 right-2 z-20">
+                            <div className={`px-2 py-0.5 rounded text-[8px] font-black border uppercase tracking-widest shadow-sm backdrop-blur-md ${currentStage === 'working' ? 'bg-emerald-500/90 border-emerald-400/45 text-white' : currentStage === 'completed' ? 'bg-slate-850/90 border-slate-700/40 text-white' : 'bg-orange-500/90 border-orange-400/45 text-white'}`}>
+                                {currentStage === 'working' ? 'กำลังทำงาน' : currentStage === 'completed' ? 'เลิกงานแล้ว' : 'พร้อมทำงาน'}
+                            </div>
+                        </div>
                     </div>
-                    <div className="p-4 space-y-4">
+
+                    {/* Integrated Controls Panel - Sleek and Compact */}
+                    <div className="p-2.5 space-y-2.5">
+                        {/* Horizontal Swiping Plans */}
                         {todayPlan && todayPlan.itinerary && todayPlan.itinerary.length > 0 && !isCheckedOut && (
-                            <div className="animate-enter"><label className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-2 mb-2 ml-1"><Target size={12} /> แผนงานวันนี้</label><div className="flex flex-wrap gap-2">{todayPlan.itinerary.map((it, idx) => { const isCheckedIn = todayData?.checkIns.some(ci => ci.location === it.location); return (<button key={idx} onClick={() => handleSelectLocation(it.location)} className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border shadow-sm active:scale-95 ${selectedPlace === it.location ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/20' : isCheckedIn ? 'bg-slate-50 dark:bg-slate-800 border-emerald-500/30 text-emerald-500 opacity-60' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-indigo-500'}`}>{isCheckedIn ? <Check size={14} /> : <MapPin size={14} />}{it.location}</button>); })}</div></div>
+                            <div className="animate-enter">
+                                <label className="text-[8px] font-extrabold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-1 mb-1 ml-0.5">
+                                    <Target size={10} /> แผนงานวันนี้ (ปัดซ้าย-ขวา)
+                                </label>
+                                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5 no-scrollbar scroll-smooth">
+                                    {todayPlan.itinerary.map((it, idx) => { 
+                                        const isCheckedIn = todayData?.checkIns.some(ci => ci.location === it.location); 
+                                        return (
+                                            <button 
+                                                key={idx} 
+                                                onClick={() => handleSelectLocation(it.location)} 
+                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 border shrink-0 active:scale-95 ${selectedPlace === it.location ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm' : isCheckedIn ? 'bg-slate-50 dark:bg-slate-800 border-emerald-500/20 text-emerald-500 opacity-60' : 'bg-white dark:bg-slate-800 border-slate-200/60 dark:border-white/5 text-slate-600 dark:text-slate-350 hover:border-indigo-500'}`}
+                                            >
+                                                {isCheckedIn ? <Check size={10} /> : <MapPin size={10} />}
+                                                {it.location}
+                                            </button>
+                                        ); 
+                                    })}
+                                </div>
+                            </div>
                         )}
-                        <div className="relative group shadow-lg rounded-2xl"><div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search size={18} className="text-slate-400" /></div><input type="text" value={searchQuery} onChange={(e) => { const val = e.target.value; setSearchQuery(val); setIsDropdownOpen(true); if(val === '') setSelectedPlace(''); }} onFocus={() => setIsDropdownOpen(true)} placeholder="เลือกสถานที่เพื่อเช็คอิน..." className="block w-full pl-11 pr-4 py-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 transition-all text-sm font-medium" />{isDropdownOpen && (<div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100] max-h-52 overflow-y-auto ring-1 ring-black/5">{filteredLocations.length > 0 ? (filteredLocations.map((loc, idx) => (<button key={idx} onClick={() => handleSelectLocation(loc)} className="w-full text-left px-5 py-4 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-300 text-sm flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0 transition-colors"><div className="flex items-center gap-3"><Building size={16} className="text-slate-400" /><span className="font-bold">{loc}</span></div>{selectedPlace === loc && <Check size={14} className="text-cyan-500" />}</button>))) : (<div className="px-5 py-8 text-center text-slate-400 text-sm italic">ไม่พบสถานที่ที่ตรงกับคำค้นหา</div>)}{searchQuery && !profile?.hospitals.some(h => h.toLowerCase() === searchQuery.toLowerCase()) && (<button onClick={handleAddNewLocation} className="w-full text-left px-5 py-4 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 text-sm flex items-center gap-3 border-t-2 border-slate-100 dark:border-white/10 sticky bottom-0 bg-white dark:bg-slate-900 font-black text-center"><div className="bg-cyan-500 text-white p-1 rounded-full inline-block mr-2"><Plus size={14} /></div>เพิ่มรายชื่อใหม่: "{searchQuery}"</button>)}</div>)}</div>
+
+                        {/* Search Location Input */}
+                        <div className="relative rounded-lg">
+                            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                                <Search size={13} className="text-slate-400" />
+                            </div>
+                            <input 
+                                type="text" 
+                                value={searchQuery} 
+                                onChange={(e) => { 
+                                    const val = e.target.value; 
+                                    setSearchQuery(val); 
+                                    setIsDropdownOpen(true); 
+                                    if(val === '') setSelectedPlace(''); 
+                                }} 
+                                onFocus={() => setIsDropdownOpen(true)} 
+                                placeholder="ค้นหาหรือระบุสถานที่เข้าทำงาน..." 
+                                className="block w-full pl-8 pr-3 py-1.5 bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-lg text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-orange-500/40 transition-all text-xs" 
+                            />
+                            {isDropdownOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg shadow-lg z-[100] max-h-40 overflow-y-auto ring-1 ring-black/5">
+                                    {filteredLocations.length > 0 ? (
+                                        filteredLocations.map((loc, idx) => (
+                                            <button 
+                                                key={idx} 
+                                                onClick={() => handleSelectLocation(loc)} 
+                                                className="w-full text-left px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-white/5 text-slate-700 dark:text-slate-350 text-xs flex justify-between items-center border-b border-slate-100 dark:border-white/5 last:border-0"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Building size={12} className="text-slate-400" />
+                                                    <span className="font-bold">{loc}</span>
+                                                </div>
+                                                {selectedPlace === loc && <Check size={11} className="text-orange-500" />}
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="px-3 py-4 text-center text-slate-400 text-xs italic">ไม่พบสถานที่ในการระบบ</div>
+                                    )}
+                                    {searchQuery && !profile?.hospitals.some(h => h.toLowerCase() === searchQuery.toLowerCase()) && (
+                                        <button 
+                                            onClick={handleAddNewLocation} 
+                                            className="w-full text-left px-3.5 py-2 hover:bg-orange-50 dark:hover:bg-orange-950/20 text-orange-600 dark:text-orange-400 text-xs flex items-center gap-1.5 border-t border-slate-150 dark:border-white/5 bg-white dark:bg-slate-900 font-extrabold sticky bottom-0"
+                                        >
+                                            <Plus size={12} className="text-orange-500" />
+                                            <span>เพิ่มสถานที่ใหม่: "{searchQuery}"</span>
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4"><button onClick={handleCheckIn} disabled={isCheckedOut || !selectedPlace} className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${isCheckedOut || !selectedPlace ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' : 'bg-gradient-to-br from-emerald-400 to-emerald-600 dark:from-emerald-600 dark:to-emerald-800 shadow-emerald-500/20 active:scale-95 text-center'}`}><Plus size={36} className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} mb-2`} /><span className={`${isCheckedOut || !selectedPlace ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight`}>เช็คอิน</span></button><button onClick={handleCheckOutStart} disabled={!isCheckedInToday} className={`relative group h-32 rounded-[32px] flex flex-col items-center justify-center transition-all duration-300 overflow-hidden ${!isCheckedInToday ? 'bg-slate-100 dark:bg-slate-800 opacity-50 cursor-not-allowed text-slate-400' : isCheckedOut ? 'bg-gradient-to-br from-amber-400 to-amber-600' : 'bg-gradient-to-br from-rose-400 to-rose-600 shadow-rose-500/20 active:scale-95 text-center'}`}>{isCheckedOut ? <Edit size={36} className="text-white mb-2" /> : <LogOut size={36} className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} mb-2`} />}<span className={`${!isCheckedInToday ? 'text-slate-400' : 'text-white'} font-black text-xl tracking-tight uppercase`}>{isCheckedOut ? 'แก้ไขรายงาน' : 'เช็คเอาท์'}</span></button></div>
-                {statusMsg && <div className="text-center text-cyan-600 text-sm py-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-2xl border border-cyan-100 dark:border-cyan-500/20">{statusMsg}</div>}
-                <div className="pt-2">
-                    <div className="flex items-center gap-2 mb-4 px-2 opacity-60"><Calendar size={14} className="text-slate-500" /><h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">เส้นทางวันนี้</h3></div>
-                    <div className="relative pl-4 space-y-4 border-l border-slate-200 dark:border-800 ml-3">{todayData?.checkIns.map((ci, idx) => { const draft = visitDrafts[idx] || { interactions: [] }; const hasInteractions = draft.interactions.length > 0; return (<div key={idx} className="relative pl-6 group"><div className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-lg ring-4 ring-white dark:ring-slate-950 transition-transform group-hover:scale-125"></div><div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-sm hover:border-cyan-500/30 transition-all"><div className="flex-1 min-w-0 pr-4 text-left"><div className="text-slate-900 dark:text-white font-bold text-sm truncate">{ci.location}</div><div className="flex items-center gap-2 mt-1"><span className="text-slate-500 dark:text-slate-400 font-mono text-[10px]">{ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}</span>{hasInteractions && (<span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[8px] font-black rounded-full uppercase border border-emerald-200 dark:border-emerald-500/20 flex items-center gap-1"><Check size={8}/> บันทึก {draft.interactions.length} รายการ</span>)}</div></div><button onClick={() => handleOpenVisitReport(idx)} className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 text-slate-400 hover:bg-cyan-50 hover:text-cyan-600 rounded-xl transition-all active:scale-90 border border-transparent" title="บันทึกกิจกรรม"><MessageSquare size={18} /></button></div></div>); })}</div>
+
+                {/* Sleek Horizontal Action Row - Highly compact */}
+                <div className="grid grid-cols-2 gap-2.5">
+                    {/* Compact Check-In Button */}
+                    <button 
+                        onClick={handleCheckIn} 
+                        disabled={isCheckedOut || !selectedPlace} 
+                        className={`relative group py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all duration-300 border ${isCheckedOut || !selectedPlace ? 'bg-slate-100/60 dark:bg-slate-900/60 border-slate-200/20 dark:border-white/5 opacity-50 cursor-not-allowed text-slate-400' : 'bg-gradient-to-r from-emerald-500 to-teal-600 dark:from-emerald-600 dark:to-teal-700 border-emerald-500/20 shadow-md hover:brightness-105 active:scale-95 font-bold text-white'}`}
+                    >
+                        <Plus size={15} />
+                        <span className="text-xs tracking-tight">
+                            {selectedPlace ? `เช็คอิน: ${selectedPlace.length > 12 ? selectedPlace.substring(0, 10) + '...' : selectedPlace}` : 'เลือกสถานที่เช็คอิน'}
+                        </span>
+                    </button>
+
+                    {/* Compact Check-Out/Edit Button */}
+                    <button 
+                        onClick={handleCheckOutStart} 
+                        disabled={!isCheckedInToday} 
+                        className={`relative group py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all duration-300 border ${!isCheckedInToday ? 'bg-slate-100/60 dark:bg-slate-900/60 border-slate-200/20 dark:border-white/5 opacity-50 cursor-not-allowed text-slate-400' : isCheckedOut ? 'bg-amber-500/90 border-amber-400/20 text-white shadow-md' : 'bg-gradient-to-r from-rose-500 to-orange-500 border-rose-500/20 shadow-md hover:brightness-105 active:scale-95 font-bold text-white'}`}
+                    >
+                        {isCheckedOut ? <Edit size={13} /> : <LogOut size={13} />}
+                        <span className="text-xs tracking-tight">
+                            {isCheckedOut ? 'ตรวจสอบ / แก้ไขสรุป' : 'เช็คเอาท์ส่งงาน'}
+                        </span>
+                    </button>
+                </div>
+
+                {statusMsg && (
+                    <div className="text-center text-orange-600 dark:text-orange-400 text-[10.5px] py-1.5 bg-orange-50 dark:bg-orange-950/15 rounded-lg border border-orange-100 dark:border-orange-500/10 font-bold">
+                        {statusMsg}
+                    </div>
+                )}
+
+                {/* Progress Roadmap list today */}
+                <div className="pt-1">
+                    <div className="flex items-center gap-1.5 mb-2.5 px-0.5 text-slate-400 dark:text-slate-500">
+                        <Calendar size={12} />
+                        <h3 className="text-[10px] font-black uppercase tracking-widest leading-none">เส้นทางความคืบหน้าวันนี้</h3>
+                    </div>
+
+                    {todayData?.checkIns && todayData.checkIns.length > 0 ? (
+                        <div className="relative pl-2.5 space-y-2 border-l border-slate-200 dark:border-white/5 ml-1.5">
+                            {todayData?.checkIns.map((ci, idx) => { 
+                                const draft = visitDrafts[idx] || { interactions: [] }; 
+                                const hasInteractions = draft.interactions.length > 0; 
+                                return (
+                                    <div key={idx} className="relative pl-4 group">
+                                        {/* Sleeker Dot */}
+                                        <div className="absolute -left-[14.5px] top-3.5 w-2 h-2 rounded-full bg-emerald-500 shadow-sm ring-2 ring-white dark:ring-black"></div>
+                                        
+                                        <div className="flex justify-between items-center bg-white/95 dark:bg-slate-900 border border-slate-100 dark:border-white/5 p-2.5 rounded-lg shadow-sm hover:border-orange-500/10 hover:shadow-xs transition-all">
+                                            <div className="flex-1 min-w-0 pr-2 text-left">
+                                                <div className="text-slate-900 dark:text-white font-bold text-xs truncate">
+                                                    {ci.location}
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-0.5 leading-none">
+                                                    <span className="text-slate-400 dark:text-slate-500 font-mono text-[8px] font-bold">
+                                                        {ci.timestamp.toDate().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}
+                                                    </span>
+                                                    {hasInteractions && (
+                                                        <span className="px-1 py-0.5 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 text-[7.5px] font-black rounded uppercase border border-emerald-100/30 dark:border-emerald-500/10 flex items-center gap-0.5">
+                                                            บันทึกกิจกรรมแล้ว {draft.interactions.length} รายการ
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleOpenVisitReport(idx)} 
+                                                className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-slate-50 dark:bg-slate-800 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-950/20 text-slate-400 rounded-md transition-all active:scale-90 border border-slate-100 dark:border-white/5" 
+                                                title="บันทึกกิจกรรม"
+                                            >
+                                                <MessageSquare size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ); 
+                            })}
+                        </div>
+                    ) : (
+                        <div className="text-center py-5 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-white/5 text-slate-400 text-xs">
+                            ยังไม่มีการลงบันทึกเช็คอินสำหรับวันนี้
+                        </div>
+                    )}
                 </div>
             </div>
 
             <style dangerouslySetInnerHTML={{ __html: `
                 @keyframes fly-xp { 
                     0% { opacity: 0; transform: translateY(0) scale(0.5); } 
-                    20% { opacity: 1; transform: translateY(-50px) scale(1.2); } 
-                    100% { opacity: 0; transform: translateY(-150px) scale(1); } 
+                    20% { opacity: 1; transform: translateY(-30px) scale(1.1); } 
+                    100% { opacity: 0; transform: translateY(-90px) scale(1); } 
                 } 
                 .animate-fly-xp { animation: fly-xp 1.2s ease-out forwards; }
                 @keyframes bounce-in {
@@ -728,33 +1008,6 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                 .animate-bounce-in { animation: bounce-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-                /* Rainbow Border Effect */
-                .bg-rainbow-gradient {
-                    background: linear-gradient(
-                        45deg,
-                        #ff0000,
-                        #ff7300,
-                        #fffb00,
-                        #48ff00,
-                        #00ffd5,
-                        #002bff,
-                        #7a00ff,
-                        #ff00c8,
-                        #ff0000
-                    );
-                    background-size: 400%;
-                }
-
-                @keyframes rainbow-spin {
-                    0% { background-position: 0% 50%; }
-                    50% { background-position: 100% 50%; }
-                    100% { background-position: 0% 50%; }
-                }
-
-                .animate-rainbow-spin {
-                    animation: rainbow-spin 6s linear infinite;
-                }
             `}} />
         </div>
     )

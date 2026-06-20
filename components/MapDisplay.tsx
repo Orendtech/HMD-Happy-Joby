@@ -137,7 +137,7 @@ export const MapDisplay: React.FC<MapDisplayProps> = ({ lat, lng, popupText, mar
         : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
 
     return (
-        <div className={`${className} overflow-hidden shadow-2xl border border-white/20 relative z-0`}>
+        <div className={`${className} overflow-hidden relative z-0`}>
             <MapContainer 
                 center={[lat, lng]} 
                 zoom={zoom} 

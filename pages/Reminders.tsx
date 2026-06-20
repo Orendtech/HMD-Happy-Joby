@@ -68,76 +68,76 @@ const Reminders: React.FC<Props> = ({ user }) => {
     };
 
     return (
-        <div className="max-w-xl mx-auto space-y-6 animate-enter pb-24 px-4">
+        <div className="max-w-xl mx-auto space-y-4 animate-enter pb-24 px-3">
             {/* Header section with title and add button */}
-            <div className="flex justify-between items-center py-4">
+            <div className="flex justify-between items-center py-2.5">
                 <div>
-                    <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">การแจ้งเตือน</h2>
-                    <p className="text-slate-500 text-sm">จัดการตารางงานและการติดตามผล</p>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">การแจ้งเตือน</h2>
+                    <p className="text-slate-500 text-xs">จัดการตารางงานและการติดตามผล</p>
                 </div>
                 <button 
                     onClick={() => setShowForm(!showForm)}
-                    className={`p-3 rounded-2xl shadow-lg transition-all active:scale-95 ${
+                    className={`p-2.5 rounded-xl shadow-md transition-all active:scale-95 ${
                         showForm 
                         ? 'bg-rose-500 text-white shadow-rose-500/20' 
-                        : 'bg-cyan-600 text-white shadow-cyan-500/20'
+                        : 'bg-orange-500 text-white shadow-orange-500/20'
                     }`}
                 >
-                    {showForm ? <X size={24} /> : <Plus size={24} />}
+                    {showForm ? <X size={20} /> : <Plus size={20} />}
                 </button>
             </div>
 
             {/* Inline Creation Form - Expanding at the top */}
             {showForm && (
                 <div className="animate-enter">
-                    <GlassCard className="p-6 border-cyan-500/30 bg-white/80 dark:bg-slate-900/80 shadow-xl overflow-visible">
-                        <div className="space-y-5">
-                            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 mb-2">
-                                <Plus className="text-cyan-500" size={20} />
+                    <GlassCard className="p-4 border-slate-200/50 bg-white/80 dark:bg-slate-900/80 shadow-md overflow-visible">
+                        <div className="space-y-3.5">
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5 mb-1">
+                                <Plus className="text-orange-500" size={16} />
                                 เพิ่มรายการใหม่
                             </h3>
                             
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">หัวข้อ (Title)</label>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">หัวข้อ (Title)</label>
                                 <input 
                                     value={title} 
                                     onChange={e => setTitle(e.target.value)} 
-                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all font-bold" 
+                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-xs text-slate-900 dark:text-white outline-none focus:border-orange-500 transition-all font-bold" 
                                     placeholder="เช่น นัดพบคุณหมอสมชาย" 
                                 />
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">รายละเอียด (Optional)</label>
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">รายละเอียด (Optional)</label>
                                 <textarea 
                                     value={desc} 
                                     onChange={e => setDesc(e.target.value)} 
-                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white outline-none focus:border-cyan-500 transition-all resize-none text-sm" 
+                                    className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-orange-500 transition-all resize-none text-xs" 
                                     placeholder="รายละเอียดเพิ่มเติม..." 
                                     rows={2} 
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">วันที่ (Date)</label>
-                                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white outline-none appearance-none font-bold" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">วันที่ (Date)</label>
+                                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-xs text-slate-900 dark:text-white outline-none appearance-none font-bold" />
                                 </div>
-                                <div className="space-y-1.5">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">เวลา (Time)</label>
-                                    <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white outline-none appearance-none font-bold" />
+                                <div className="space-y-1">
+                                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">เวลา (Time)</label>
+                                    <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl p-3 text-xs text-slate-900 dark:text-white outline-none appearance-none font-bold" />
                                 </div>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">ประเภท (Type)</label>
-                                <div className="grid grid-cols-3 gap-2 p-1.5 bg-slate-100 dark:bg-black/40 rounded-2xl">
+                            <div className="space-y-1">
+                                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">ประเภท (Type)</label>
+                                <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-black/40 rounded-xl">
                                     {(['task', 'check-in', 'follow-up'] as const).map(t => (
                                         <button 
                                             key={t}
                                             type="button"
                                             onClick={() => setType(t)}
-                                            className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${type === t ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                                            className={`py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all ${type === t ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs' : 'text-slate-400 hover:text-slate-600'}`}
                                         >
                                             {t}
                                         </button>
@@ -145,13 +145,13 @@ const Reminders: React.FC<Props> = ({ user }) => {
                                 </div>
                             </div>
 
-                            <div className="pt-2">
+                            <div className="pt-1">
                                 <button 
                                     onClick={handleAdd}
                                     disabled={isSaving || !title || !dueDate || !dueTime}
-                                    className="w-full bg-slate-900 dark:bg-white py-4 rounded-2xl font-black text-white dark:text-slate-900 hover:opacity-90 flex items-center justify-center gap-2 shadow-xl disabled:opacity-50 active:scale-95 transition-all"
+                                    className="w-full bg-slate-900 dark:bg-white py-3 rounded-xl font-bold text-xs text-white dark:text-slate-900 hover:opacity-90 flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 active:scale-95 transition-all"
                                 >
-                                    {isSaving ? <Loader2 className="animate-spin" /> : 'Set Alert'}
+                                    {isSaving ? <Loader2 className="animate-spin" /> : 'ตั้งค่าแจ้งเตือน'}
                                 </button>
                             </div>
                         </div>
@@ -161,44 +161,44 @@ const Reminders: React.FC<Props> = ({ user }) => {
 
             {/* Main content list of reminders */}
             {loading ? (
-                <div className="flex justify-center py-20"><Loader2 className="animate-spin text-cyan-500" size={40} /></div>
+                <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={32} /></div>
             ) : (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 px-2 opacity-60">
-                        <ClipboardList size={14} className="text-slate-500" />
-                        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">รายการทั้งหมด</h3>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-1.5 px-1 opacity-60">
+                        <ClipboardList size={13} className="text-slate-500" />
+                        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">รายการทั้งหมด</h3>
                     </div>
 
                     {reminders.length === 0 ? (
-                        <div className="text-center py-20 text-slate-400 italic">ไม่มีการแจ้งเตือนในขณะนี้</div>
+                        <div className="text-center py-16 text-xs text-slate-400 italic">ไม่มีการแจ้งเตือนในขณะนี้</div>
                     ) : (
                         reminders.map((r, idx) => (
                             <GlassCard 
                                 key={r.id} 
-                                className={`p-5 transition-all animate-enter ${r.isCompleted ? 'opacity-50' : ''}`}
-                                style={{ animationDelay: `${idx * 50}ms` }}
+                                className={`p-3.5 transition-all animate-enter ${r.isCompleted ? 'opacity-50' : ''}`}
+                                style={{ animationDelay: `${idx * 40}ms` }}
                             >
-                                <div className="flex items-start gap-4">
+                                <div className="flex items-start gap-3">
                                     <button 
                                         onClick={() => handleToggle(r.id, r.isCompleted)}
-                                        className={`mt-1 transition-all duration-300 transform active:scale-75 ${r.isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-cyan-500'}`}
+                                        className={`mt-0.5 transition-all duration-300 transform active:scale-75 ${r.isCompleted ? 'text-emerald-500' : 'text-slate-300 hover:text-orange-500'}`}
                                     >
-                                        {r.isCompleted ? <CheckCircle size={28} /> : <Circle size={28} />}
+                                        {r.isCompleted ? <CheckCircle size={20} /> : <Circle size={20} />}
                                     </button>
                                     <div className="flex-1 min-w-0">
-                                        <div className={`font-bold text-lg leading-tight transition-all ${r.isCompleted ? 'line-through text-slate-500' : 'text-slate-900 dark:text-white'}`}>
+                                        <div className={`font-bold text-sm leading-snug transition-all ${r.isCompleted ? 'line-through text-slate-400' : 'text-slate-900 dark:text-white'}`}>
                                             {r.title}
                                         </div>
-                                        {r.description && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{r.description}</p>}
-                                        <div className="flex flex-wrap gap-3 mt-4">
-                                            <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/5">
-                                                <Clock size={12} className="text-cyan-500" />
+                                        {r.description && <p className="text-xs text-slate-500 dark:text-slate-450 mt-0.5 line-clamp-2">{r.description}</p>}
+                                        <div className="flex flex-wrap gap-2 mt-2.5">
+                                            <div className="flex items-center gap-1 text-[8.5px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide bg-slate-50 dark:bg-slate-900/40 px-2 py-1 rounded-lg border border-slate-100 dark:border-white/5">
+                                                <Clock size={10} className="text-orange-500" />
                                                 {new Date(r.dueTime).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
                                             </div>
-                                            <div className={`text-[9px] font-black uppercase px-3 py-1.5 rounded-xl border tracking-[0.05em] ${
-                                                r.type === 'check-in' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-indigo-100 dark:border-indigo-500/20' :
-                                                r.type === 'follow-up' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 border-amber-100 dark:border-amber-500/20' :
-                                                'bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-100 dark:border-white/5'
+                                            <div className={`text-[8.5px] font-bold uppercase px-2 py-1 rounded-lg border tracking-wide ${
+                                                r.type === 'check-in' ? 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 border-indigo-100 dark:border-indigo-500/10' :
+                                                r.type === 'follow-up' ? 'bg-amber-50 dark:bg-amber-900/10 text-amber-600 border-amber-100 dark:border-amber-500/10' :
+                                                'bg-slate-50 dark:bg-slate-900/20 text-slate-500 border-slate-100 dark:border-white/5'
                                             }`}>
                                                 {r.type}
                                             </div>
@@ -206,9 +206,9 @@ const Reminders: React.FC<Props> = ({ user }) => {
                                     </div>
                                     <button 
                                         onClick={() => handleDelete(r.id)} 
-                                        className="text-slate-300 hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                        className="text-slate-300 hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-rose-50 dark:hover:bg-rose-900/20"
                                     >
-                                        <Trash2 size={20} />
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
                             </GlassCard>

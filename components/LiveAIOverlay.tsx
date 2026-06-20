@@ -371,24 +371,24 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                 <div className="relative w-20 h-20 flex items-center justify-center animate-float">
                     {!isOpen && (
                         <>
-                            <div className="absolute inset-0 border-2 border-dashed border-cyan-500/40 rounded-full animate-rotate-slow"></div>
-                            <div className="absolute inset-2 border border-cyan-400/20 rounded-full animate-rotate-reverse"></div>
+                            <div className="absolute inset-0 border-2 border-dashed border-orange-500/40 rounded-full animate-rotate-slow"></div>
+                            <div className="absolute inset-2 border border-orange-400/20 rounded-full animate-rotate-reverse"></div>
                         </>
                     )}
 
                     <button 
                         onClick={toggleAI}
-                        className={`relative w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(6,182,212,0.2)] transition-all duration-500 border-2 overflow-hidden
-                            ${isOpen ? 'bg-rose-500 border-white/30 scale-90 rotate-90' : 'bg-slate-900/80 backdrop-blur-xl border-cyan-500/50 hover:scale-110 hover:border-cyan-400'}
+                        className={`relative w-16 h-16 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(249,115,22,0.2)] transition-all duration-500 border-2 overflow-hidden
+                            ${isOpen ? 'bg-rose-500 border-white/30 scale-90 rotate-90' : 'bg-slate-900/80 backdrop-blur-xl border-orange-500/50 hover:scale-110 hover:border-orange-400'}
                         `}
                     >
-                        <div className={`absolute inset-0 bg-gradient-to-br ${isOpen ? 'from-rose-400 to-rose-600' : 'from-cyan-400/20 to-blue-600/30'} animate-pulse`}></div>
+                        <div className={`absolute inset-0 bg-gradient-to-br ${isOpen ? 'from-rose-400 to-rose-600' : 'from-orange-400/20 to-amber-600/30'} animate-pulse`}></div>
                         {isOpen ? (
                             <X className="text-white relative z-10" size={24} />
                         ) : (
                             <div className="relative z-10 flex flex-col items-center">
-                                <Bot className="text-cyan-400 group-hover:text-white transition-colors drop-shadow-[0_0_8px_rgba(6,182,212,0.5)]" size={32} />
-                                <div className="absolute -bottom-1 w-4 h-1 bg-cyan-400/50 blur-[2px] rounded-full animate-pulse"></div>
+                                <Bot className="text-orange-400 group-hover:text-white transition-colors drop-shadow-[0_0_8px_rgba(249,115,22,0.5)]" size={32} />
+                                <div className="absolute -bottom-1 w-4 h-1 bg-orange-400/50 blur-[2px] rounded-full animate-pulse"></div>
                             </div>
                         )}
                     </button>
@@ -398,7 +398,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
             {isOpen && (
                 <div className="fixed inset-0 z-[1000] bg-black flex flex-col animate-fade-in text-white h-[100dvh] w-full overflow-hidden shadow-[inset_0_0_100px_rgba(0,0,0,1)] top-0 left-0 right-0 bottom-0">
                     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                        <div className="absolute top-[-20%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(6,182,212,0.12)_0%,transparent_70%)] opacity-50"></div>
+                        <div className="absolute top-[-20%] left-[-10%] w-[120%] h-[120%] bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.12)_0%,transparent_70%)] opacity-50"></div>
                         <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[80%] bg-blue-600/10 rounded-full blur-[150px] animate-nebula-slow opacity-30"></div>
                         <div className="absolute bottom-[-10%] right-[-10%] w-[70%] h-[70%] bg-purple-600/10 rounded-full blur-[120px] animate-nebula-reverse opacity-30"></div>
                     </div>
@@ -406,10 +406,10 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                     <div className="relative z-10 w-full" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
                         <div className="max-w-2xl mx-auto flex justify-between items-center h-20 px-8">
                             <div className="flex items-center gap-3">
-                                <Radio size={16} className="text-cyan-400 animate-pulse" />
+                                <Radio size={16} className="text-orange-400 animate-pulse" />
                                 <div className="flex flex-col">
                                     <span className="text-[10px] font-black uppercase tracking-[0.4em]">Neural Link Active</span>
-                                    <span className="text-[8px] font-bold text-cyan-500 uppercase tracking-widest">
+                                    <span className="text-[8px] font-bold text-orange-500 uppercase tracking-widest">
                                         Agent: {userProfile?.name || user.email?.split('@')[0]}
                                     </span>
                                 </div>
@@ -423,21 +423,21 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                     <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8">
                         <div className="w-full max-w-2xl flex flex-col items-center space-y-12">
                             <div className="relative flex items-center justify-center w-72 h-72">
-                                <div className={`absolute inset-0 bg-cyan-500/20 rounded-full blur-[80px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
+                                <div className={`absolute inset-0 bg-orange-500/20 rounded-full blur-[80px] transition-all duration-700 ${isSpeaking ? 'scale-150 opacity-60' : isListening ? 'scale-125 opacity-30' : 'scale-100 opacity-10'}`}></div>
                                 
                                 <div className="relative w-56 h-56 flex items-center justify-center">
-                                    <div className={`absolute inset-0 bg-gradient-to-tr from-cyan-600/40 to-blue-400/40 rounded-full animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`} 
+                                    <div className={`absolute inset-0 bg-gradient-to-tr from-orange-600/40 to-amber-400/40 rounded-full animate-neural-wave ${isListening || isSpeaking ? '' : 'paused'}`} 
                                          style={{ transform: isListening ? `scale(${1 + inputVolume * 0.4})` : 'scale(1)' }}></div>
                                     <div className={`absolute inset-4 bg-gradient-to-bl from-blue-500/40 to-indigo-400/40 rounded-full animate-neural-wave-reverse ${isListening || isSpeaking ? '' : 'paused'}`}
                                          style={{ transform: isListening ? `scale(${1 + inputVolume * 0.25})` : 'scale(1)' }}></div>
                                     <div className={`absolute inset-8 bg-gradient-to-br from-indigo-600/60 to-purple-500/60 rounded-full animate-neural-pulse ${isListening || isSpeaking ? '' : 'paused'}`}></div>
                                     
                                     <div className="relative z-20 w-32 h-32 bg-slate-900 border-2 border-white/10 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(0,0,0,1)] overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-t from-cyan-500/10 to-transparent"></div>
+                                        <div className="absolute inset-0 bg-gradient-to-t from-orange-500/10 to-transparent"></div>
                                         {isConnecting ? (
                                             <Loader2 size={48} className="text-white animate-spin opacity-40" />
                                         ) : (
-                                            <Bot size={56} className={`${isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-500'} transition-colors duration-500 drop-shadow-[0_0_20px_rgba(34,211,238,0.6)]`} />
+                                            <Bot size={56} className={`${isSpeaking ? 'text-orange-400' : isListening ? 'text-emerald-400' : 'text-slate-500'} transition-colors duration-500 drop-shadow-[0_0_20px_rgba(249,115,22,0.6)]`} />
                                         )}
                                     </div>
                                 </div>
@@ -447,8 +447,8 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                                 <div className="space-y-2">
                                     <h2 className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-white/20">AI Coach</h2>
                                     <div className="flex justify-center">
-                                        <div className={`flex items-center gap-4 px-6 py-2 rounded-full border backdrop-blur-3xl transition-all duration-700 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30' : isSpeaking ? 'bg-cyan-500/10 border-cyan-500/30' : isListening ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
-                                            <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${errorMsg ? 'text-rose-400' : isSpeaking ? 'text-cyan-400' : isListening ? 'text-emerald-400' : 'text-slate-600'}`}>
+                                        <div className={`flex items-center gap-4 px-6 py-2 rounded-full border backdrop-blur-3xl transition-all duration-700 ${errorMsg ? 'bg-rose-500/20 border-rose-500/30' : isSpeaking ? 'bg-orange-500/10 border-orange-500/30' : isListening ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'}`}>
+                                            <span className={`text-[10px] font-black uppercase tracking-[0.5em] ${errorMsg ? 'text-rose-400' : isSpeaking ? 'text-orange-400' : isListening ? 'text-emerald-400' : 'text-slate-600'}`}>
                                                 {errorMsg ? 'Error' : isConnecting ? 'Connecting' : isSpeaking ? 'Speaking' : isListening ? 'Listening' : 'Ready'}
                                             </span>
                                         </div>
@@ -463,7 +463,7 @@ export const LiveAIOverlay: React.FC<Props> = ({ user, userProfile }) => {
                                     if (isSpeaking) h = `${20 + Math.random() * 80}%`;
                                     else if (isListening) h = `${10 + inputVolume * 90 * (Math.random() * 0.5 + 0.5)}%`;
                                     return (
-                                        <div key={i} className={`w-[2px] rounded-full bg-cyan-500 transition-all duration-150 ${isListening || isSpeaking ? 'opacity-100' : 'opacity-20'}`} style={{ height: h }}></div>
+                                        <div key={i} className={`w-[2px] rounded-full bg-orange-500 transition-all duration-150 ${isListening || isSpeaking ? 'opacity-100' : 'opacity-20'}`} style={{ height: h }}></div>
                                     );
                                 })}
                             </div>

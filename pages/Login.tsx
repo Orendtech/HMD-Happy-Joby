@@ -58,13 +58,13 @@ const Login: React.FC = () => {
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F5F7] dark:bg-slate-950 p-6 font-sans relative overflow-hidden transition-colors duration-500">
              {/* Cinematic Background */}
-             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-400/10 dark:bg-blue-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[5000ms]"></div>
-             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-400/10 dark:bg-purple-600/20 rounded-full blur-[100px] pointer-events-none"></div>
+             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-400/10 dark:bg-orange-605/20 rounded-full blur-[120px] pointer-events-none animate-pulse duration-[5000ms]"></div>
+             <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-amber-400/10 dark:bg-amber-600/20 rounded-full blur-[100px] pointer-events-none"></div>
 
             <div className="w-full max-w-md z-10 animate-enter">
                 <div className="text-center mb-10">
                      <div className="relative inline-block mb-6 group cursor-default">
-                        <div className="absolute -inset-2 bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                        <div className="absolute -inset-2 bg-gradient-to-r from-orange-400 via-amber-500 to-orange-600 rounded-full blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
                         <img 
                             src="https://img2.pic.in.th/pic/Happy-joby.png" 
                             alt="Happy Joby Logo" 
@@ -72,7 +72,7 @@ const Login: React.FC = () => {
                         />
                     </div>
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">
-                        Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600">Happy Joby</span>
+                        Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-600">Happy Joby</span>
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 text-sm">The intelligent workspace for modern teams.</p>
                 </div>
@@ -82,13 +82,13 @@ const Login: React.FC = () => {
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Email</label>
                             <div className="relative group">
-                                <Mail className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-cyan-500 transition-colors" size={18} />
+                                <Mail className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-orange-500 transition-colors" size={18} />
                                 <input 
                                     type="email" 
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
+                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all"
                                     placeholder="name@company.com"
                                 />
                             </div>
@@ -97,13 +97,13 @@ const Login: React.FC = () => {
                         <div className="space-y-1.5">
                             <label className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1 uppercase tracking-wider">Password</label>
                             <div className="relative group">
-                                <Key className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-cyan-500 transition-colors" size={18} />
+                                <Key className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-orange-500 transition-colors" size={18} />
                                 <input 
                                     type={showPassword ? "text" : "password"} 
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-12 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all"
+                                    className="w-full bg-white dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl py-3 pl-12 pr-12 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-all"
                                     placeholder="••••••••"
                                 />
                                 <button
@@ -133,7 +133,7 @@ const Login: React.FC = () => {
                         <button 
                             type="submit"
                             disabled={loading}
-                            className="w-full group relative bg-slate-900 dark:bg-white text-white dark:text-slate-950 font-bold py-3.5 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 overflow-hidden"
+                            className="w-full group relative bg-orange-600 hover:bg-orange-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 overflow-hidden"
                         >
                             <span className="flex items-center justify-center gap-2">
                                 {loading ? <Loader2 className="animate-spin" /> : (
@@ -149,7 +149,7 @@ const Login: React.FC = () => {
                     <div className="mt-8 flex flex-col items-center gap-4 text-sm">
                         <button onClick={() => setIsLogin(!isLogin)} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors flex items-center gap-1.5 group">
                             {isLogin ? 'New here?' : 'Already have an account?'}
-                            <span className="text-cyan-600 dark:text-cyan-400 group-hover:underline underline-offset-4">{isLogin ? 'Create an account' : 'Sign in'}</span>
+                            <span className="text-orange-600 dark:text-orange-400 group-hover:underline underline-offset-4">{isLogin ? 'Create an account' : 'Sign in'}</span>
                         </button>
                         
                         {isLogin && (
