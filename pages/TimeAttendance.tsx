@@ -642,7 +642,47 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                                             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-white/5 pb-2"><ClipboardList size={16} className="text-orange-500"/> เพิ่มบันทึกกิจกรรม / การเข้าพบ</h3>
                                             <div className="space-y-1.5 relative">
                                                 <label className="text-[10px] font-bold text-slate-500 uppercase">1. เลือกลูกค้า / ผู้ติดต่อ</label>
-                                                <div className="relative"><Search className="absolute left-3 top-3 text-slate-400" size={14} /><input type="text" value={contactSearch} onChange={(e) => { setContactSearch(e.target.value); setIsContactDropdownOpen(true); setSelectedCustomer(null); }} placeholder="ค้นหาชื่อผู้ติดต่อ..." className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-slate-900 dark:text-white outline-none focus:border-orange-500 text-sm" />{isContactDropdownOpen && (<div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-40 overflow-y-auto ring-1 ring-black/5">{ (profile?.customers || []).filter(c => c.hospital === ci.location || c.hospital === 'All').filter(c => !contactSearch || c.name.toLowerCase().includes(contactSearch.toLowerCase())).map((c, i) => (<div key={i} onClick={() => handleSelectCustomer(c.name, c.department)} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer text-sm border-b border-slate-100 dark:border-white/5 last:border-0 flex justify-between"><span className="text-slate-900 dark:text-white">{c.name}</span><span className="text-xs text-slate-500">{c.department}</span></div>))}{contactSearch && <div onClick={() => setShowAddContactView(true)} className="px-4 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold"><Plus size={14} /> สร้างรายชื่อใหม่ "{contactSearch}"</div>}</div>)}</div>{selectedCustomer && <div className="text-xs text-emerald-500 flex items-center gap-1"><Check size={12}/> เลือกแล้ว: <b>{selectedCustomer.name}</b></div>}
+                                                <div ref={isExpanded ? contactDropdownRef : null} className="relative">
+                                                    <Search className="absolute left-3 top-3 text-slate-400" size={14} />
+                                                    <input 
+                                                        type="text" 
+                                                        value={contactSearch} 
+                                                        onChange={(e) => { 
+                                                            setContactSearch(e.target.value); 
+                                                            setIsContactDropdownOpen(true); 
+                                                            setSelectedCustomer(null); 
+                                                        }} 
+                                                        onFocus={() => setIsContactDropdownOpen(true)}
+                                                        placeholder="ค้นหาชื่อผู้ติดต่อ..." 
+                                                        className="w-full bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-9 pr-4 text-slate-900 dark:text-white outline-none focus:border-orange-500 text-sm" 
+                                                    />
+                                                    {isContactDropdownOpen && (
+                                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-40 overflow-y-auto ring-1 ring-black/5">
+                                                            {((profile?.customers || []).filter(c => {
+                                                                if (!contactSearch) {
+                                                                    return c.hospital === ci.location || c.hospital === 'All';
+                                                                }
+                                                                const query = contactSearch.toLowerCase();
+                                                                return c.name.toLowerCase().includes(query) || (c.department || '').toLowerCase().includes(query) || (c.hospital || '').toLowerCase().includes(query);
+                                                            })).map((c, i) => (
+                                                                <div key={i} onClick={() => handleSelectCustomer(c.name, c.department)} className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-white/5 cursor-pointer text-sm border-b border-slate-100 dark:border-white/5 last:border-0 flex justify-between">
+                                                                    <span className="text-slate-900 dark:text-white">{c.name}</span>
+                                                                    <span className="text-xs text-slate-500">{c.department} ({c.hospital})</span>
+                                                                </div>
+                                                            ))}
+                                                            {contactSearch && (
+                                                                <div onClick={() => setShowAddContactView(true)} className="px-4 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer text-sm flex items-center gap-2 text-purple-600 dark:text-purple-400 font-bold border-t border-slate-100 dark:border-white/5">
+                                                                    <Plus size={14} /> สร้างรายชื่อใหม่ "{contactSearch}"
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {selectedCustomer && (
+                                                    <div className="text-xs text-emerald-500 flex items-center gap-1">
+                                                        <Check size={12}/> เลือกแล้ว: <b>{selectedCustomer.name}</b>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="space-y-1.5"><label className="text-[10px] font-bold text-slate-500 uppercase">2. สรุปรายละเอียดการสนทนา</label><textarea value={currentSummary} onChange={(e) => setCurrentSummary(e.target.value)} placeholder="สรุปหัวข้อที่ได้พูดคุยหรือความคืบหน้า..." rows={3} className="w-full bg-slate-50 dark:bg-black/30 border-2 border-slate-100 dark:border-white/5 rounded-xl p-3 text-slate-900 dark:text-white outline-none focus:border-orange-500 focus:bg-white dark:focus:bg-slate-800 text-sm resize-none shadow-inner" /></div>
                                             <div className="space-y-2"><div className="flex items-center justify-between"><label className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1"><TrendingUp size={12}/> 3. เพิ่มโอกาสการขาย (โอกาสเดิมหรือดีลใหม่)?</label><label className="relative inline-flex items-center cursor-pointer"><input type="checkbox" checked={hasOpp} onChange={(e) => setHasOpp(e.target.checked)} className="sr-only peer"/><div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div></label></div>{hasOpp && (<div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-500/20 space-y-2 animate-enter"><div className="flex p-1 bg-white/50 dark:bg-black/20 rounded-lg mb-2"><button onClick={() => { setDealMode('new'); setPipelineProduct(''); setPipelineValue(''); }} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'new' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500'}`}>ดีลใหม่</button><button onClick={() => setDealMode('update')} className={`flex-1 text-[10px] py-1.5 rounded-md font-bold transition-all ${dealMode === 'update' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500'}`}>อัปเดตดีลเดิม</button></div>{dealMode === 'update' && (<select value={selectedExistingDealId} onChange={(e) => handleExistingDealSelect(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-amber-200 dark:border-amber-500/30 text-xs outline-none focus:border-amber-500 text-slate-700 dark:text-white appearance-none"><option value="">-- เลือกดีลที่ต้องการอัปเดต --</option>{(profile?.activePipeline || []).map(deal => (<option key={deal.id} value={deal.id}>{deal.product} ({stageLabels[deal.stage] || deal.stage})</option>))}</select>)}<div className="grid grid-cols-2 gap-2"><input value={pipelineProduct} onChange={e => setPipelineProduct(e.target.value)} placeholder="ชื่อสินค้า / โปรเจกต์" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/><input type="number" value={pipelineValue} onChange={e => setPipelineValue(e.target.value)} placeholder="มูลค่า (บาท)" className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none focus:border-indigo-500"/></div><div className="grid grid-cols-2 gap-2"><select value={pipelineStage} onChange={e => setPipelineStage(e.target.value)} className="w-full p-2 rounded-lg bg-white dark:bg-black/20 border border-indigo-200 dark:border-indigo-500/30 text-xs outline-none">{['Prospecting', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'].map(s => <option key={s} value={s}>{stageLabels[s] || s}</option>)}</select><div className="flex items-center gap-2 px-1 text-xs text-slate-500"><span>โอกาส: {pipelineProb}%</span><input type="range" min="0" max="100" step="10" value={pipelineProb} onChange={e => setPipelineProb(parseInt(e.target.value))} className="w-16 accent-indigo-500"/></div></div></div>)}</div>
@@ -677,118 +717,128 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                     </div>
                 </div>
 
-                {/* Main Compact Badge Card - Orange & White Premium Edition */}
-                <div className="relative rounded-2xl overflow-hidden shadow-xl border-2 border-slate-100/80 dark:border-white/5 bg-white dark:bg-slate-950 p-3 text-slate-800 dark:text-white">
+                {/* Main Compact Badge Card - Orange & White Premium Landscape Edition */}
+                <div className="relative mx-auto w-full max-w-[365px] h-[225px] rounded-2xl overflow-hidden shadow-xl border-2 border-slate-100 dark:border-white/10 bg-white dark:bg-slate-950 p-4 text-slate-800 dark:text-white flex flex-col justify-between">
                     {/* Dual-Tone Geometric Shapes for Premium Accent */}
-                    <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-bl from-orange-500/10 to-transparent rounded-full -mr-16 -mt-16 pointer-events-none"></div>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-orange-500/10 to-transparent rounded-full -mr-12 -mt-12 pointer-events-none"></div>
                     <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-orange-500 via-[#e25300] to-amber-500 pointer-events-none"></div>
                     {/* Security Micro Grid Watermark */}
                     <div className="absolute inset-0 bg-grid-pattern opacity-[0.03] dark:opacity-[0.07] pointer-events-none"></div>
 
-                    {/* Card Top Header - Symmetrical & Clean */}
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-1.5 mb-2 pl-2">
-                        <div className="flex items-center gap-1.5">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-                            <span className="text-[8px] font-black tracking-[0.2em] text-slate-400 dark:text-slate-400 uppercase">
-                                HAPPY JOBY
-                            </span>
-                        </div>
-                        <div className="px-1.5 py-0.5 bg-orange-500/10 dark:bg-orange-500/20 rounded border border-orange-500/20">
-                            <span className="text-[7px] font-black tracking-widest text-orange-600 dark:text-orange-400 uppercase">
-                                OFFICIAL ID BADGE
-                            </span>
-                        </div>
+                    {/* Plastic Glare Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 dark:via-white/[0.04] to-transparent pointer-events-none z-10 select-none"></div>
+
+                    {/* Clip Slot Representation at top */}
+                    <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-8 h-2 bg-slate-900/10 dark:bg-black/30 rounded-full border border-slate-200 dark:border-white/5 flex items-center justify-center">
+                        <div className="w-5 h-0.5 bg-slate-300 dark:bg-slate-800 rounded-full"></div>
                     </div>
 
-                    <div className="grid grid-cols-12 gap-2 pl-2 items-center">
-                        {/* Photo Column */}
-                        <div className="col-span-3 flex justify-center">
+                    <div className="grid grid-cols-12 gap-3 items-center h-full pt-1.5">
+                        {/* Left column: Photo Frame & Level */}
+                        <div className="col-span-4 flex flex-col items-center justify-center space-y-2">
+                            {/* Photo Frame */}
                             <div className="relative">
-                                <div className="w-12 h-12 rounded-xl p-[1.5px] bg-gradient-to-tr from-orange-500 to-amber-500 shadow-sm">
+                                <div className="w-16 h-16 rounded-xl p-[1.5px] bg-gradient-to-tr from-orange-500 to-amber-500 shadow-md">
                                     <div className="w-full h-full bg-slate-100 dark:bg-slate-900 rounded-[10px] overflow-hidden relative">
                                         {profile?.photoBase64 ? (
                                             <img src={profile.photoBase64} alt="Profile" className="w-full h-full object-cover" />
                                         ) : (
                                             <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-100 dark:bg-slate-900">
-                                                <Fingerprint size={18} className="text-orange-400 animate-pulse" />
+                                                <Fingerprint size={24} className="text-orange-400 animate-pulse" />
                                             </div>
                                         )}
                                     </div>
                                 </div>
                                 {/* Active Tracking Security Indicator */}
-                                <span className="absolute -bottom-0.5 -right-0.5 flex h-2 w-2">
+                                <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                                    <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border border-white dark:border-slate-950"></span>
                                 </span>
+                            </div>
+
+                            {/* Level details under the photo */}
+                            <div className="w-full bg-slate-50 dark:bg-white/5 px-2 py-1 rounded-lg border border-slate-100 dark:border-white/5">
+                                <div className="flex justify-between items-center text-[7px] font-black leading-none mb-1">
+                                    <span className="uppercase text-orange-600 dark:text-orange-400">LV.{currentLevel}</span>
+                                    <span className="uppercase text-slate-400 dark:text-slate-500 text-[5.5px] truncate max-w-[28px] font-bold">{rank.title}</span>
+                                </div>
+                                <div className="h-0.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
+                                    <div 
+                                        style={{ width: `${(profile?.xp || 0) % 100}%` }} 
+                                        className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_0_2px_rgba(249,115,22,0.4)]"
+                                    ></div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Employee Bio details */}
-                        <div className="col-span-9 space-y-1 pl-1">
-                            <div className="flex items-center justify-between gap-1">
-                                <div className="min-w-0">
-                                    <span className="text-[6.5px] font-extrabold text-orange-500 dark:text-orange-400 uppercase block leading-none tracking-wider">Employee Name</span>
-                                    <h2 className="font-black text-slate-800 dark:text-white truncate text-xs sm:text-xs leading-tight mt-0.5">
-                                        {profile?.name || user.email?.split('@')[0]}
-                                    </h2>
+                        {/* Right column: Bio / ID / Role / Quest & Barcode */}
+                        <div className="col-span-8 flex flex-col justify-between h-full py-1 pl-1">
+                            {/* Card Top Title Header */}
+                            <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/10 pb-1 mb-1.5">
+                                <div className="flex flex-col">
+                                    <span className="text-[8.5px] font-black tracking-[0.2em] text-orange-500 uppercase leading-none">
+                                        Healthmedic
+                                    </span>
+                                    <span className="text-[5.5px] font-black tracking-widest text-slate-400 uppercase mt-0.5">
+                                        SECURE WORKSPACE ID
+                                    </span>
                                 </div>
-                                <div className="text-right shrink-0">
-                                    <span className="text-[6.5px] font-extrabold text-slate-400 uppercase block leading-none tracking-wider">Badge ID</span>
-                                    <span className="font-mono text-[7px] font-black text-slate-500 dark:text-slate-350 block mt-0.5 bg-slate-50 dark:bg-white/5 px-1 py-0.5 rounded border border-slate-100 dark:border-white/5">
-                                        HJ-{(user.uid || 'EMP').substring(0, 4).toUpperCase()}
+                                <div className="px-1 py-0.5 bg-orange-500/10 dark:bg-orange-500/20 rounded border border-orange-500/20">
+                                    <span className="text-[6.5px] font-black tracking-widest text-orange-600 dark:text-orange-400 uppercase">
+                                        OFFICIAL
                                     </span>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-12 gap-1.5 items-center">
-                                {/* Department / Role */}
-                                <div className="col-span-6 min-w-0">
-                                    <span className="text-[6.5px] font-extrabold text-orange-500 dark:text-orange-400 uppercase block leading-none tracking-wider">Role</span>
-                                    <div className="inline-flex items-center gap-0.5 font-black uppercase text-[7.5px] truncate mt-1 bg-orange-500 text-white dark:bg-orange-500 dark:text-slate-950 rounded px-1.5 py-0.5 shadow-xs">
-                                        {React.cloneElement(badge.icon, { size: 9, className: "text-current" })} {badge.label}
-                                    </div>
+                            {/* Info Lines */}
+                            <div className="space-y-1.5">
+                                <div>
+                                    <span className="text-[6px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-none">Employee Name</span>
+                                    <h2 className="font-black text-slate-900 dark:text-white truncate text-sm leading-tight mt-0.5">
+                                        {profile?.name || user.email?.split('@')[0]}
+                                    </h2>
                                 </div>
 
-                                {/* Dynamic XP indicator inside ID Badge */}
-                                <div className="col-span-6 bg-slate-50 dark:bg-white/5 px-1.5 py-1 rounded border border-slate-100 dark:border-white/5 space-y-0.5">
-                                    <div className="flex justify-between items-center text-[6.5px] font-black leading-none">
-                                        <span className="uppercase text-orange-600 dark:text-orange-400 truncate">LV.{currentLevel}</span>
-                                        <span className="uppercase text-slate-450 dark:text-slate-400 truncate text-[5.5px] font-bold">{rank.title}</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <span className="text-[6px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-none">Role / Dept</span>
+                                        <div className="inline-flex items-center gap-0.5 font-black uppercase text-[7.5px] mt-0.5 bg-orange-500 text-white rounded px-1.5 py-0.5 shadow-xs truncate max-w-full">
+                                            {React.cloneElement(badge.icon, { size: 8, className: "text-white" })} {badge.label}
+                                        </div>
                                     </div>
-                                    <div className="h-0.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
-                                        <div 
-                                            style={{ width: `${(profile?.xp || 0) % 100}%` }} 
-                                            className="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_0_4px_rgba(249,115,22,0.4)]"
-                                        ></div>
+                                    <div className="shrink-0 text-right">
+                                        <span className="text-[6px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-none">Badge ID</span>
+                                        <span className="font-mono text-[7px] font-black text-slate-505 dark:text-slate-350 block mt-0.5 bg-slate-50 dark:bg-white/5 px-1.5 py-0.5 border border-slate-100 dark:border-white/5 rounded">
+                                            HJ-{(user.uid || 'EMP').substring(0, 4).toUpperCase()}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Integrated barcode and clickable Smart RFID Cash Chip */}
-                    <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-2 pl-2">
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center gap-[1px] h-3 opacity-80 dark:opacity-90">
-                                {[1, 2, 1, 3, 1, 2, 1, 1, 2, 1, 3, 1].map((width, idx) => (
-                                    <div 
-                                        key={idx} 
-                                        className="bg-slate-800 dark:bg-slate-200 h-full" 
-                                        style={{ width: `${width}px` }}
-                                    ></div>
-                                ))}
+                            {/* bottom slot: Barcode & RFID System & Quest Clip */}
+                            <div className="pt-1.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between gap-2 mt-1.5">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-[1px] h-3 opacity-80 dark:opacity-90">
+                                        {[1, 2, 1, 3, 1, 2, 1, 1, 2, 1, 3, 1].map((width, idx) => (
+                                            <div 
+                                                key={idx} 
+                                                className="bg-slate-800 dark:bg-slate-200 h-full" 
+                                                style={{ width: `${width}px` }}
+                                            ></div>
+                                        ))}
+                                    </div>
+                                    <span className="font-mono text-[5px] text-slate-400 dark:text-slate-500 tracking-wider">RFID CARD SECURE</span>
+                                </div>
+
+                                <button 
+                                    onClick={() => setShowQuestPage(true)}
+                                    className="relative overflow-hidden bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500 border border-amber-600/30 text-slate-950 font-black rounded-lg py-1 px-2 shadow-xs hover:brightness-105 active:scale-95 transition-all text-[8px] flex items-center gap-0.5 shrink-0"
+                                >
+                                    <Coins size={8.5} className="animate-spin" style={{ animationDuration: '3s' }} />
+                                    <span>QUEST ฿500</span>
+                                </button>
                             </div>
-                            <span className="font-mono text-[5.5px] text-slate-400 tracking-wider">RFID CARD SECURE</span>
                         </div>
-
-                        {/* Clickable Smart Gold-NFC Quest Chip (very cool, compact) */}
-                        <button 
-                            onClick={() => setShowQuestPage(true)}
-                            className="relative overflow-hidden bg-gradient-to-br from-amber-400 via-yellow-300 to-amber-500 border border-amber-600/30 text-slate-950 font-black rounded-lg py-1 px-2 shadow-sm hover:brightness-105 active:scale-95 transition-all text-[8.5px] flex items-center gap-1 shrink-0"
-                        >
-                            <Coins size={9} className="animate-spin" style={{ animationDuration: '3s' }} />
-                            <span>QUEST ฿500</span>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -797,9 +847,9 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                 {xpParticles.map((p) => (<div key={p.id} className="animate-fly-xp flex items-center justify-center fixed inset-0 pointer-events-none z-[200]"><div className="bg-gradient-to-br from-amber-400 to-orange-500 text-white font-black text-2xl px-5 py-2.5 rounded-full shadow-lg border border-white/30"><Zap className="fill-white" size={22} /> +{p.xp}</div></div>))}
                 
                 {/* Premium Integrated Map & Location Search Unit - highly compact */}
-                <div className="relative rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm overflow-hidden" ref={dropdownRef}>
+                <div className="relative rounded-2xl border border-slate-100 dark:border-white/5 bg-white dark:bg-slate-900 shadow-sm" ref={dropdownRef}>
                     {/* Map Panel - Compacted for mobile with premium fading edge frames */}
-                    <div className="h-32 sm:h-36 w-full relative overflow-hidden">
+                    <div className="h-32 sm:h-36 w-full relative overflow-hidden rounded-t-[14px]">
                         {location ? (
                             <MapDisplay lat={location.lat} lng={location.lng} markers={[{lat: location.lat, lng: location.lng, text: profile?.name || user.email || 'ตำแหน่งของฉัน', photo: profile?.photoBase64}]} className="h-full w-full" zoom={15} />
                         ) : (
@@ -822,8 +872,8 @@ const TimeAttendance: React.FC<Props> = ({ user, userProfile: initialProfile }) 
                             </span>
                         </div>
                         <div className="absolute bottom-2 right-2 z-20">
-                            <div className={`px-2 py-0.5 rounded text-[8px] font-black border uppercase tracking-widest shadow-sm backdrop-blur-md ${currentStage === 'working' ? 'bg-emerald-500/90 border-emerald-400/45 text-white' : currentStage === 'completed' ? 'bg-slate-850/90 border-slate-700/40 text-white' : 'bg-orange-500/90 border-orange-400/45 text-white'}`}>
-                                {currentStage === 'working' ? 'กำลังทำงาน' : currentStage === 'completed' ? 'เลิกงานแล้ว' : 'พร้อมทำงาน'}
+                            <div className={`px-2 py-0.5 rounded text-[8px] font-black border uppercase tracking-widest shadow-sm backdrop-blur-md ${currentStage === 'working' ? 'bg-emerald-600 border-emerald-500/45 text-white' : 'bg-red-600 border-red-500/45 text-white'}`}>
+                                {currentStage === 'working' ? 'เข้างานแล้ว' : 'ยังไม่เข้างาน'}
                             </div>
                         </div>
                     </div>
